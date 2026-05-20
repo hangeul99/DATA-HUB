@@ -161,6 +161,15 @@ export default function SignupPage() {
               )}
             </div>
 
+            {/* 개인정보처리방침 동의 안내 */}
+            <p className="text-xs text-neutral-400 text-center leading-relaxed">
+              가입 시{" "}
+              <Link href="/privacy" target="_blank" className="text-brand-600 hover:underline font-medium">
+                개인정보처리방침
+              </Link>
+              에 동의하는 것으로 간주됩니다.
+            </p>
+
             {/* 가입 버튼 */}
             <button type="submit" disabled={loading}
               className="w-full bg-brand-600 hover:bg-brand-700 text-white font-semibold py-3.5 rounded-xl transition-colors active:scale-95 disabled:opacity-60 mt-2">

@@ -1,8 +1,10 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 import { Database } from "lucide-react";
+
 
 /**
  * 구글 등 소셜 로그인 후 소속기관이 미입력된 경우 홈 화면에 표시되는 모달
@@ -13,6 +15,7 @@ export default function OrgModal() {
   const [organization, setOrg]      = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError]           = useState<string | null>(null);
+  const [agreed, setAgreed]         = useState(false);
 
   useEffect(() => {
     const supabase = createClient();
@@ -29,6 +32,7 @@ export default function OrgModal() {
   }, []);
 
   const handleSubmit = async () => {
+    if (!agreed) { setError("개인정보처리방침에 동의해주세요."); return; }
     if (!organization.trim()) { setError("소속기관을 입력해주세요."); return; }
     setSubmitting(true);
     setError(null);
@@ -88,11 +92,24 @@ export default function OrgModal() {
 
         {error && <p className="text-sm text-red-500 mb-4">{error}</p>}
 
+        <label className="flex items-center gap-3 cursor-pointer mb-4">
+          <input
+            type="checkbox"
+            checked={agreed}
+            onChange={(e) => { setAgreed(e.target.checked); setError(null); }}
+            className="w-4 h-4 rounded border-neutral-300 text-brand-600 focus:ring-brand-400 cursor-pointer flex-shrink-0"
+          />
+          <span className="text-xs text-neutral-500 whitespace-nowrap">
+            <Link href="/privacy" target="_blank" className="text-brand-600 hover:underline font-semibold">개인정보처리방침</Link>
+            {" "}동의 <span className="text-red-400">(필수)</span>
+          </span>
+        </label>
+
         <button
           onClick={handleSubmit}
-          disabled={submitting}
-          className={`w-full py-3 rounded-xl font-semibold text-sm transition-all active:scale-95 ${
-            submitting
+          disabled={submitting || !agreed}
+          className={`w-full py-3 rounded-xl font-semibold text-sm active:scale-95 ${
+            submitting || !agreed
               ? "bg-neutral-200 text-neutral-400 cursor-not-allowed"
               : "bg-brand-600 hover:bg-brand-700 text-white"
           }`}

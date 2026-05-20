@@ -5,7 +5,7 @@ import Link from "next/link";
 import {
   Search, Grid3X3, List, Download, X,
   FileText, Eye, ShoppingCart, CheckSquare, Trash2,
-  HelpCircle, Upload, Loader2, ClipboardList,
+  HelpCircle, Upload, Loader2, ClipboardList, Lock, Unlock,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import type { User } from "@supabase/supabase-js";
@@ -71,6 +71,67 @@ interface Dataset {
 }
 
 
+// ── 지역/업체 접근 권한 신청 모달 ─────────────────────────────
+function AccessRequestModal({ onClose, onSubmit }: { onClose: () => void; onSubmit: (reason: string) => Promise<void> }) {
+  const [reason, setReason] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+  const [done, setDone] = useState(false);
+
+  const handleSubmit = async () => {
+    if (!reason.trim()) return;
+    setSubmitting(true);
+    await onSubmit(reason.trim());
+    setDone(true);
+    setSubmitting(false);
+  };
+
+  if (done) return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4">
+      <div className="bg-white rounded-2xl p-8 max-w-md w-full text-center">
+        <div className="w-14 h-14 rounded-full bg-emerald-50 flex items-center justify-center mx-auto mb-4">
+          <Unlock size={24} className="text-emerald-600" />
+        </div>
+        <h3 className="text-lg font-bold mb-2">신청 완료</h3>
+        <p className="text-sm text-neutral-500 mb-6">관리자 검토 후 승인되면 지역/업체 데이터에 접근할 수 있습니다.</p>
+        <button onClick={onClose} className="w-full bg-brand-600 hover:bg-brand-700 text-white font-semibold py-3 rounded-xl transition-colors">확인</button>
+      </div>
+    </div>
+  );
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4">
+      <div className="bg-white rounded-2xl p-7 max-w-md w-full shadow-xl">
+        <div className="flex items-center justify-between mb-5">
+          <div className="flex items-center gap-2">
+            <Lock size={16} className="text-orange-500" />
+            <h3 className="text-lg font-bold text-neutral-900">지역/업체 데이터 접근 신청</h3>
+          </div>
+          <button onClick={onClose} className="p-1.5 hover:bg-neutral-100 rounded-lg transition-colors"><X size={16} /></button>
+        </div>
+        <p className="text-sm text-neutral-500 mb-5 leading-relaxed">
+          지역/업체 데이터는 관리자 승인 후 이용할 수 있습니다.<br />
+          아래에 접근이 필요한 이유를 작성해주세요.
+        </p>
+        <textarea
+          value={reason}
+          onChange={e => setReason(e.target.value)}
+          placeholder="예) 지역 소상공인 분석 연구에 활용하고자 합니다."
+          rows={4}
+          className="w-full border border-neutral-200 rounded-xl px-4 py-3 text-sm resize-none outline-none focus:ring-2 focus:ring-brand-400 placeholder:text-neutral-400"
+        />
+        <button
+          onClick={handleSubmit}
+          disabled={!reason.trim() || submitting}
+          className="mt-4 w-full flex items-center justify-center gap-2 bg-brand-600 hover:bg-brand-700 disabled:bg-neutral-200 disabled:text-neutral-400 text-white font-semibold py-3 rounded-xl transition-colors active:scale-95"
+        >
+          {submitting && <Loader2 size={14} className="animate-spin" />}
+          {submitting ? "신청 중..." : "접근 권한 신청"}
+        </button>
+      </div>
+    </div>
+  );
+}
+
 // ── 토스트 알림 컴포넌트 ──────────────────────────────────────
 function Toast({ message, onClose }: { message: string; onClose: () => void }) {
   return (
@@ -117,6 +178,11 @@ export default function DatasetsClient() {
   const [resultDone,       setResultDone]       = useState(false);
   const [resultError,      setResultError]      = useState<string | null>(null);
 
+  // ── 지역/업체 데이터 접근 권한 상태 ──────────────────────
+  const [localDataApproved, setLocalDataApproved] = useState<boolean | null>(null);
+  const [showAccessModal, setShowAccessModal] = useState(false);
+  const [alreadyRequested, setAlreadyRequested] = useState(false);
+
   // ── 신청 내역 상태 ────────────────────────────────────────
   const [applications, setApplications] = useState<Application[]>([]);
   const [historyLoading, setHistoryLoading] = useState(false);
@@ -134,6 +200,16 @@ export default function DatasetsClient() {
     });
     return () => subscription.unsubscribe();
   }, []);
+
+  // ── 지역/업체 접근 권한 + 신청 여부 확인 ─────────────────
+  useEffect(() => {
+    if (!user) { setLocalDataApproved(null); return; }
+    const supabase = createClient();
+    supabase.from("profiles").select("local_data_approved").eq("id", user.id).single()
+      .then(({ data }) => setLocalDataApproved(data?.local_data_approved ?? false));
+    supabase.from("access_requests").select("id").eq("user_id", user.id).maybeSingle()
+      .then(({ data }) => setAlreadyRequested(!!data));
+  }, [user]);
 
   // ── 데이터셋 목록 불러오기 ─────────────────────────────────
   useEffect(() => {
@@ -227,6 +303,14 @@ export default function DatasetsClient() {
     setResultSubmitting(false);
   };
 
+  // ── 지역/업체 접근 권한 신청 제출 ────────────────────────
+  const submitAccessRequest = async (reason: string) => {
+    if (!user) return;
+    const supabase = createClient();
+    await supabase.from("access_requests").insert({ user_id: user.id, reason, status: "pending" });
+    setAlreadyRequested(true);
+  };
+
   // ── 체크박스 토글 ──────────────────────────────────────────
   const toggleSelect = (id: string) => {
     setSelected((prev) => {
@@ -303,6 +387,12 @@ export default function DatasetsClient() {
   return (
     <div className="min-h-screen bg-neutral-50">
       {toast && <Toast message={toast} onClose={() => setToast(null)} />}
+      {showAccessModal && (
+        <AccessRequestModal
+          onClose={() => setShowAccessModal(false)}
+          onSubmit={submitAccessRequest}
+        />
+      )}
 
       {/* ── 탭 바 ── */}
       <div className="bg-white border-b border-neutral-200">
@@ -692,16 +782,26 @@ export default function DatasetsClient() {
                 {filtered.map((ds) => {
                   const isSelected = selected.has(ds.id);
                   const inCart = cart.has(ds.id);
+                  const isLocal = ds.category === "지역/업체 데이터";
+                  const isLocked = isLocal && !localDataApproved;
                   return (
                     <div key={ds.id}
                       className={`group bg-white rounded-2xl border transition-all duration-200 flex flex-col overflow-hidden
-                        ${isSelected ? "border-brand-400 ring-2 ring-brand-200 shadow-brand" : "border-neutral-100 hover:border-brand-200 hover:shadow-brand"}`}>
+                        ${isLocked ? "border-orange-200" : isSelected ? "border-brand-400 ring-2 ring-brand-200 shadow-brand" : "border-neutral-100 hover:border-brand-200 hover:shadow-brand"}`}>
+
+                      {/* 잠금 배너 */}
+                      {isLocked && (
+                        <div className="bg-orange-50 border-b border-orange-100 px-3 py-1.5 flex items-center gap-1.5">
+                          <Lock size={11} className="text-orange-500 flex-shrink-0" />
+                          <span className="text-[10px] text-orange-600 font-medium">접근 권한 필요</span>
+                        </div>
+                      )}
 
                       {/* 체크박스 + 배지 */}
                       <div className="flex items-start justify-between px-4 pt-4 pb-2">
                         <input type="checkbox" checked={isSelected} onChange={() => toggleSelect(ds.id)}
-                          className="w-4 h-4 rounded border-neutral-300 text-brand-600 focus:ring-brand-400 cursor-pointer mt-0.5" />
-                        {/* 최신순 신규 배지 (생성일 기준 7일 이내) */}
+                          disabled={isLocked}
+                          className="w-4 h-4 rounded border-neutral-300 text-brand-600 focus:ring-brand-400 cursor-pointer mt-0.5 disabled:opacity-30" />
                         {new Date().getTime() - new Date(ds.created_at).getTime() < 7 * 24 * 60 * 60 * 1000 ? (
                           <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-brand-500 text-white">신규</span>
                         ) : <span />}
@@ -709,11 +809,11 @@ export default function DatasetsClient() {
 
                       {/* 아이콘 + 정보 */}
                       <div className="flex flex-col items-center px-4 pb-3 flex-1">
-                        <div className={`w-14 h-14 rounded-2xl flex items-center justify-center mb-3 text-lg font-bold ${iconColor[ds.category] ?? "bg-neutral-100 text-neutral-500"}`}>
-                          {ds.category[0]}
+                        <div className={`w-14 h-14 rounded-2xl flex items-center justify-center mb-3 text-lg font-bold relative ${iconColor[ds.category] ?? "bg-neutral-100 text-neutral-500"} ${isLocked ? "opacity-50" : ""}`}>
+                          {isLocked ? <Lock size={22} /> : ds.category[0]}
                         </div>
                         <p className="text-[10px] text-neutral-400 mb-1">{ds.category}</p>
-                        <h3 className="font-semibold text-neutral-900 text-sm leading-snug mb-1.5 text-center group-hover:text-brand-700 transition-colors line-clamp-2">
+                        <h3 className={`font-semibold text-sm leading-snug mb-1.5 text-center transition-colors line-clamp-2 ${isLocked ? "text-neutral-400" : "text-neutral-900 group-hover:text-brand-700"}`}>
                           {ds.title}
                         </h3>
                         <p className="text-[11px] text-neutral-500 leading-relaxed line-clamp-2 text-center">{ds.description}</p>
@@ -731,29 +831,41 @@ export default function DatasetsClient() {
                         </div>
                       </div>
 
-                      {/* 액션 버튼 4종 */}
+                      {/* 액션 버튼 */}
                       <div className="border-t border-neutral-100 px-4 py-3 flex items-center gap-2">
-                        {/* 설명자료 내려받기: 메타정보 txt 생성 후 다운로드 */}
-                        <button title="설명자료 내려받기" onClick={() => downloadDescription(ds)}
-                          className="flex items-center justify-center w-8 h-8 rounded-lg bg-neutral-100 hover:bg-neutral-200 text-neutral-500 transition-colors">
-                          <FileText size={14} />
-                        </button>
-                        {/* 장바구니 담기 */}
-                        <button title="장바구니 담기" onClick={() => addToCart(ds.id)}
-                          className={`flex items-center justify-center w-8 h-8 rounded-lg transition-colors
-                            ${inCart ? "bg-brand-100 text-brand-600" : "bg-neutral-100 hover:bg-neutral-200 text-neutral-500"}`}>
-                          <ShoppingCart size={14} />
-                        </button>
-                        {/* 미리보기 */}
-                        <Link href={`/datasets/${ds.id}`} title="미리보기"
-                          className="flex items-center justify-center w-8 h-8 rounded-lg bg-neutral-100 hover:bg-neutral-200 text-neutral-500 transition-colors">
-                          <Eye size={14} />
-                        </Link>
-                        {/* 신청하기 */}
-                        <Link href={`/datasets/${ds.id}`}
-                          className="flex-1 text-center text-xs font-semibold text-white bg-brand-600 hover:bg-brand-700 py-2 rounded-lg transition-colors active:scale-95">
-                          신청하기
-                        </Link>
+                        {isLocked ? (
+                          // 잠금 상태: 접근 권한 신청 버튼
+                          <button
+                            onClick={() => user ? setShowAccessModal(true) : window.location.href = "/login"}
+                            className="flex-1 text-center text-xs font-semibold flex items-center justify-center gap-1.5 py-2 rounded-lg transition-colors active:scale-95 bg-orange-500 hover:bg-orange-600 text-white"
+                          >
+                            {alreadyRequested ? (
+                              <><CheckSquare size={12} /> 신청 완료 (대기중)</>
+                            ) : (
+                              <><Lock size={12} /> 접근 권한 신청</>
+                            )}
+                          </button>
+                        ) : (
+                          <>
+                            <button title="설명자료 내려받기" onClick={() => downloadDescription(ds)}
+                              className="flex items-center justify-center w-8 h-8 rounded-lg bg-neutral-100 hover:bg-neutral-200 text-neutral-500 transition-colors">
+                              <FileText size={14} />
+                            </button>
+                            <button title="장바구니 담기" onClick={() => addToCart(ds.id)}
+                              className={`flex items-center justify-center w-8 h-8 rounded-lg transition-colors
+                                ${inCart ? "bg-brand-100 text-brand-600" : "bg-neutral-100 hover:bg-neutral-200 text-neutral-500"}`}>
+                              <ShoppingCart size={14} />
+                            </button>
+                            <Link href={`/datasets/${ds.id}`} title="미리보기"
+                              className="flex items-center justify-center w-8 h-8 rounded-lg bg-neutral-100 hover:bg-neutral-200 text-neutral-500 transition-colors">
+                              <Eye size={14} />
+                            </Link>
+                            <Link href={`/datasets/${ds.id}`}
+                              className="flex-1 text-center text-xs font-semibold text-white bg-brand-600 hover:bg-brand-700 py-2 rounded-lg transition-colors active:scale-95">
+                              신청하기
+                            </Link>
+                          </>
+                        )}
                       </div>
                     </div>
                   );

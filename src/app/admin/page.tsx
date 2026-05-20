@@ -4,13 +4,13 @@ import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import {
   Database, BarChart2, FileText, Download, Upload,
-  Trash2, CheckCircle, TrendingUp, Plus, X, Loader2, AlertTriangle,
+  Trash2, CheckCircle, TrendingUp, Plus, X, Loader2, AlertTriangle, Lock,
 } from "lucide-react";
 import * as XLSX from "xlsx";
 import { createClient } from "@/lib/supabase/client";
 
 // ── 탭 목록 — "다운로드 로그"는 "이용 현황"에 통합 ──────────────
-const ADMIN_TABS = ["실적 현황", "신청서 목록", "결과물 검토", "데이터 관리", "회원 관리", "이용 현황"];
+const ADMIN_TABS = ["실적 현황", "신청서 목록", "결과물 검토", "데이터 관리", "회원 관리", "이용 현황", "접근 권한 관리"];
 
 // ── 카테고리 목록 ─────────────────────────────────────────────
 const CATS = ["통계/공공 데이터", "연구/학술 데이터", "금융/경제 데이터", "지역/업체 데이터"];
@@ -41,6 +41,10 @@ interface MemberRow {
 }
 interface ActivityRow {
   no: number; datetime: string; organization: string; email: string; feature: string; fileName?: string;
+}
+interface AccessRequestRow {
+  id: string; created_at: string; status: string; reason: string; user_id: string;
+  profiles: { name: string; email: string; organization: string | null } | null;
 }
 interface Summary {
   datasets: number; applications: number; downloads: number; submissions: number;
@@ -211,6 +215,7 @@ export default function AdminPage() {
   const [activityRows, setActivityRows] = useState<ActivityRow[]>([]);
   const [activityPage, setActivityPage] = useState(1);
   const ACTIVITY_PER_PAGE = 100;
+  const [accessRows, setAccessRows] = useState<AccessRequestRow[]>([]);
 
   const [loading, setLoading] = useState(false);
 
@@ -391,6 +396,14 @@ export default function AdminPage() {
       setActivityRows(combined.map((row, i) => ({ no: i + 1, ...row })));
     }
 
+    if (t === 6) {
+      const { data } = await supabase
+        .from("access_requests")
+        .select("id, created_at, status, reason, user_id, profiles(name, email, organization)")
+        .order("created_at", { ascending: false });
+      setAccessRows((data as unknown as AccessRequestRow[]) ?? []);
+    }
+
     setLoading(false);
   }, []);
 
@@ -412,6 +425,17 @@ export default function AdminPage() {
     await supabase.from("datasets").update({ is_active: false }).eq("id", id);
     setDatasetRows((prev) => prev.filter((d) => d.id !== id));
     fetchSummary();
+  };
+
+  // ── 지역/업체 접근 권한 승인/거절 ───────────────────────────
+  const handleAccessRequest = async (requestId: string, userId: string, approve: boolean) => {
+    const supabase = createClient();
+    const newStatus = approve ? "approved" : "rejected";
+    await supabase.from("access_requests").update({ status: newStatus }).eq("id", requestId);
+    if (approve) {
+      await supabase.from("profiles").update({ local_data_approved: true }).eq("id", userId);
+    }
+    setAccessRows(prev => prev.map(r => r.id === requestId ? { ...r, status: newStatus } : r));
   };
 
   // ── 결과물 다운로드 서명 URL ─────────────────────────────────
@@ -752,6 +776,77 @@ export default function AdminPage() {
                 </>
               );
             })()}
+          </div>
+        )}
+
+        {/* ── Tab 6: 접근 권한 관리 ──────────────────────────────── */}
+        {!loading && tab === 6 && (
+          <div className="bg-white rounded-2xl border border-neutral-100 overflow-hidden">
+            <div className="px-6 py-4 border-b border-neutral-100 flex items-center gap-2">
+              <Lock size={15} className="text-orange-500" />
+              <h3 className="font-semibold text-neutral-900">지역/업체 데이터 접근 권한 신청 ({accessRows.length}건)</h3>
+            </div>
+            {accessRows.length === 0 ? (
+              <EmptyState icon={Lock} text="접근 권한 신청이 없습니다." />
+            ) : (
+              <table className="w-full text-sm">
+                <thead className="bg-neutral-50 border-b border-neutral-100">
+                  <tr>
+                    {["신청일", "이름", "이메일", "소속기관", "신청 사유", "상태", "처리"].map(h => (
+                      <th key={h} className="px-5 py-3 text-left text-xs font-semibold text-neutral-500 whitespace-nowrap">{h}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-neutral-50">
+                  {accessRows.map(r => {
+                    const profile = Array.isArray(r.profiles) ? r.profiles[0] : r.profiles;
+                    const isPending = r.status === "pending";
+                    return (
+                      <tr key={r.id} className="hover:bg-neutral-50 transition-colors">
+                        <td className="px-5 py-3 text-xs text-neutral-500 whitespace-nowrap">
+                          {new Date(r.created_at).toLocaleDateString("ko-KR")}
+                        </td>
+                        <td className="px-5 py-3 text-sm font-medium text-neutral-900">{profile?.name ?? "-"}</td>
+                        <td className="px-5 py-3 text-xs text-neutral-500">{profile?.email ?? "-"}</td>
+                        <td className="px-5 py-3 text-xs text-neutral-500">{profile?.organization ?? "-"}</td>
+                        <td className="px-5 py-3 text-xs text-neutral-600 max-w-[200px]">
+                          <p className="truncate" title={r.reason}>{r.reason || "-"}</p>
+                        </td>
+                        <td className="px-5 py-3">
+                          <span className={`text-xs px-2.5 py-1 rounded-full font-semibold ${
+                            r.status === "approved" ? "bg-emerald-50 text-emerald-700" :
+                            r.status === "rejected" ? "bg-red-50 text-red-600" :
+                            "bg-amber-50 text-amber-700"
+                          }`}>
+                            {r.status === "approved" ? "승인됨" : r.status === "rejected" ? "거절됨" : "대기중"}
+                          </span>
+                        </td>
+                        <td className="px-5 py-3">
+                          {isPending ? (
+                            <div className="flex items-center gap-2">
+                              <button
+                                onClick={() => handleAccessRequest(r.id, r.user_id, true)}
+                                className="text-xs px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-semibold transition-colors"
+                              >
+                                승인
+                              </button>
+                              <button
+                                onClick={() => handleAccessRequest(r.id, r.user_id, false)}
+                                className="text-xs px-3 py-1.5 rounded-lg bg-red-50 hover:bg-red-100 text-red-600 font-semibold transition-colors"
+                              >
+                                거절
+                              </button>
+                            </div>
+                          ) : (
+                            <span className="text-xs text-neutral-300">처리완료</span>
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            )}
           </div>
         )}
       </div>

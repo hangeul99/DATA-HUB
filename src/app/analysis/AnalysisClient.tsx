@@ -3,7 +3,7 @@
 import { useState, useCallback, useRef, useMemo, useEffect } from "react";
 import {
   BarChart, Bar, LineChart, Line, AreaChart, Area, PieChart, Pie, Cell,
-  ScatterChart, Scatter, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, ZAxis,
+  ComposedChart, ScatterChart, Scatter, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, ZAxis,
   RadarChart, Radar, PolarGrid, PolarAngleAxis, PolarRadiusAxis,
   Treemap,
 } from "recharts";
@@ -263,6 +263,7 @@ export default function AnalysisClient() {
   const [chartMode, setChartMode] = useState<"single" | "scatter">("single");
   const [xCol, setXCol] = useState<string | null>(null);
   const [yCol, setYCol] = useState<string | null>(null);
+  const [zCol, setZCol] = useState<string | null>(null);
   const [MapView, setMapView] = useState<React.ComponentType<{ points: {lat:number;lng:number;label?:string}[]; latCol?:string; lngCol?:string }> | null>(null);
   const [dragOver, setDragOver] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -1373,15 +1374,16 @@ export default function AnalysisClient() {
           {/* ── 산점도 모드 ── */}
           {chartMode === "scatter" && (
             <div className="space-y-5">
+              {/* 축 선택 */}
               <div className="bg-white rounded-2xl border border-neutral-200 p-5">
                 <p className="text-xs font-semibold text-neutral-500 uppercase tracking-wider mb-3">축 선택 (수치형 열만)</p>
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-3 gap-4">
                   <div>
                     <p className="text-xs text-neutral-500 mb-2">X축</p>
                     <div className="flex flex-wrap gap-2">
                       {numericCols.map((col) => (
                         <button key={col.name} onClick={() => setXCol(col.name)}
-                          className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all
+                          className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors
                             ${xCol === col.name ? "bg-brand-600 text-white" : "bg-neutral-100 text-neutral-600 hover:bg-neutral-200"}`}>
                           {col.name}
                         </button>
@@ -1393,8 +1395,25 @@ export default function AnalysisClient() {
                     <div className="flex flex-wrap gap-2">
                       {numericCols.map((col) => (
                         <button key={col.name} onClick={() => setYCol(col.name)}
-                          className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all
+                          className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors
                             ${yCol === col.name ? "bg-emerald-600 text-white" : "bg-neutral-100 text-neutral-600 hover:bg-neutral-200"}`}>
+                          {col.name}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                  <div>
+                    <p className="text-xs text-neutral-500 mb-2">버블 크기 <span className="text-neutral-400 font-normal">(선택)</span></p>
+                    <div className="flex flex-wrap gap-2">
+                      <button onClick={() => setZCol(null)}
+                        className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors
+                          ${zCol === null ? "bg-neutral-700 text-white" : "bg-neutral-100 text-neutral-600 hover:bg-neutral-200"}`}>
+                        없음
+                      </button>
+                      {numericCols.map((col) => (
+                        <button key={col.name} onClick={() => setZCol(col.name)}
+                          className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors
+                            ${zCol === col.name ? "bg-purple-600 text-white" : "bg-neutral-100 text-neutral-600 hover:bg-neutral-200"}`}>
                           {col.name}
                         </button>
                       ))}
@@ -1403,48 +1422,113 @@ export default function AnalysisClient() {
                 </div>
               </div>
 
+              {/* 산점도 + 회귀선 / 버블 차트 */}
               {xCol && yCol && xCol !== yCol && (() => {
                 const xMeta = cols.find((c) => c.name === xCol)!;
                 const yMeta = cols.find((c) => c.name === yCol)!;
+                const zMeta = zCol ? cols.find((c) => c.name === zCol) ?? null : null;
+
                 const scatterData = rows.map((_, i) => ({
                   x: xMeta.values[i] as number | null,
                   y: yMeta.values[i] as number | null,
-                })).filter((p) => p.x !== null && p.y !== null) as { x: number; y: number }[];
+                  z: zMeta ? (zMeta.values[i] as number | null) ?? 1 : 1,
+                })).filter((p) => p.x !== null && p.y !== null) as { x: number; y: number; z: number }[];
+
+                // 회귀선 계산
+                const n = scatterData.length;
+                const sx  = scatterData.reduce((s, p) => s + p.x, 0);
+                const sy  = scatterData.reduce((s, p) => s + p.y, 0);
+                const sxy = scatterData.reduce((s, p) => s + p.x * p.y, 0);
+                const sx2 = scatterData.reduce((s, p) => s + p.x * p.x, 0);
+                const sy2 = scatterData.reduce((s, p) => s + p.y * p.y, 0);
+                const xDenom = n * sx2 - sx * sx;
+                const slope = xDenom !== 0 ? (n * sxy - sx * sy) / xDenom : 0;
+                const intercept = (sy - slope * sx) / n;
+                const rDenom = Math.sqrt((n * sx2 - sx * sx) * (n * sy2 - sy * sy));
+                const r = rDenom !== 0 ? (n * sxy - sx * sy) / rDenom : 0;
+                const r2 = r * r;
+                const corrLabel = Math.abs(r) < 0.1 ? "거의 없음"
+                  : `${r > 0 ? "양의" : "음의"} ${Math.abs(r) >= 0.7 ? "강한" : Math.abs(r) >= 0.4 ? "중간" : "약한"} 상관관계`;
+
+                const xMin = Math.min(...scatterData.map((p) => p.x));
+                const xMax = Math.max(...scatterData.map((p) => p.x));
+                const trendData = [
+                  { x: xMin, trend: slope * xMin + intercept },
+                  { x: xMax, trend: slope * xMax + intercept },
+                ];
+
+                const zVals = zMeta ? scatterData.map((p) => p.z) : [];
+                const zRange: [number, number] = zMeta && Math.max(...zVals) > Math.min(...zVals)
+                  ? [20, 500] : [60, 60];
+
                 return (
                   <div className="bg-white rounded-2xl border border-neutral-200 p-6">
-                    <h2 className="font-semibold text-neutral-800 mb-1">산점도</h2>
-                    <div className="flex items-center gap-4 mb-5">
-                      <span className="flex items-center gap-1.5 text-xs text-neutral-600">
-                        <span className="inline-block w-3 h-3 rounded-sm bg-brand-600" />
-                        <span>X축 (가로) — <strong>{xCol}</strong></span>
-                      </span>
-                      <span className="flex items-center gap-1.5 text-xs text-neutral-600">
-                        <span className="inline-block w-3 h-3 rounded-sm bg-emerald-500" />
-                        <span>Y축 (세로) — <strong>{yCol}</strong></span>
-                      </span>
-                      <span className="text-xs text-neutral-400 ml-auto">{scatterData.length.toLocaleString()}개 데이터</span>
+                    <div className="flex items-start justify-between mb-3">
+                      <div>
+                        <h2 className="font-semibold text-neutral-800 mb-1">
+                          {zMeta ? "버블 차트" : "산점도 + 회귀선"}
+                        </h2>
+                        <div className="flex items-center gap-4 flex-wrap">
+                          <span className="flex items-center gap-1.5 text-xs text-neutral-600">
+                            <span className="inline-block w-3 h-3 rounded-sm bg-brand-600" /> X — <strong>{xCol}</strong>
+                          </span>
+                          <span className="flex items-center gap-1.5 text-xs text-neutral-600">
+                            <span className="inline-block w-3 h-3 rounded-sm bg-emerald-500" /> Y — <strong>{yCol}</strong>
+                          </span>
+                          {zMeta && (
+                            <span className="flex items-center gap-1.5 text-xs text-neutral-600">
+                              <span className="inline-block w-3 h-3 rounded-full bg-purple-500" /> 크기 — <strong>{zCol}</strong>
+                            </span>
+                          )}
+                          <span className="text-xs text-neutral-400 ml-auto">{scatterData.length.toLocaleString()}개</span>
+                        </div>
+                      </div>
                     </div>
-                    <ResponsiveContainer width="100%" height={400}>
-                      <ScatterChart margin={{ top: 10, right: 30, left: 10, bottom: 30 }}>
+                    <ResponsiveContainer width="100%" height={420}>
+                      <ComposedChart data={trendData} margin={{ top: 10, right: 30, left: 10, bottom: 30 }}>
                         <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
                         <XAxis dataKey="x" type="number" tick={{ fontSize: 11 }}
                           label={{ value: xCol, position: "insideBottom", offset: -15, fontSize: 12, fill: "#0D7377", fontWeight: 600 }} />
-                        <YAxis dataKey="y" type="number" tick={{ fontSize: 11 }}
+                        <YAxis type="number" tick={{ fontSize: 11 }}
                           label={{ value: yCol, angle: -90, position: "insideLeft", offset: 15, fontSize: 12, fill: "#10b981", fontWeight: 600 }} />
-                        <ZAxis range={[40, 40]} />
+                        <ZAxis dataKey="z" range={zRange} />
                         <Tooltip cursor={{ strokeDasharray: "3 3" }} content={({ payload }) => {
                           if (!payload?.length) return null;
-                          const p = payload[0]?.payload as { x: number; y: number };
+                          const p = payload[0]?.payload as { x: number; y: number; z?: number };
                           return (
                             <div className="bg-white border border-neutral-200 rounded-xl p-3 text-xs shadow-md">
                               <p className="mb-1"><span className="font-semibold text-brand-600">{xCol}</span>: {p.x}</p>
-                              <p><span className="font-semibold text-emerald-600">{yCol}</span>: {p.y}</p>
+                              <p className="mb-1"><span className="font-semibold text-emerald-600">{yCol}</span>: {p.y}</p>
+                              {zMeta && p.z !== undefined && (
+                                <p><span className="font-semibold text-purple-600">{zCol}</span>: {p.z}</p>
+                              )}
                             </div>
                           );
                         }} />
                         <Scatter data={scatterData} fill="#0D7377" fillOpacity={0.55} />
-                      </ScatterChart>
+                        {!zMeta && (
+                          <Line dataKey="trend" stroke="#f59e0b" strokeWidth={2}
+                            dot={false} type="linear" isAnimationActive={false} strokeDasharray="6 3" />
+                        )}
+                      </ComposedChart>
                     </ResponsiveContainer>
+                    {/* 상관 통계 */}
+                    <div className="mt-4 grid grid-cols-3 gap-3">
+                      <div className="bg-neutral-50 rounded-xl p-3 text-center">
+                        <p className="text-xs text-neutral-400 mb-1">피어슨 상관계수 (r)</p>
+                        <p className={`text-lg font-bold ${Math.abs(r) >= 0.7 ? "text-brand-600" : Math.abs(r) >= 0.4 ? "text-amber-500" : "text-neutral-500"}`}>
+                          {r.toFixed(3)}
+                        </p>
+                      </div>
+                      <div className="bg-neutral-50 rounded-xl p-3 text-center">
+                        <p className="text-xs text-neutral-400 mb-1">결정계수 (R²)</p>
+                        <p className="text-lg font-bold text-neutral-700">{r2.toFixed(3)}</p>
+                      </div>
+                      <div className="bg-neutral-50 rounded-xl p-3 text-center">
+                        <p className="text-xs text-neutral-400 mb-1">해석</p>
+                        <p className="text-sm font-semibold text-neutral-700">{corrLabel}</p>
+                      </div>
+                    </div>
                   </div>
                 );
               })()}
@@ -1459,6 +1543,87 @@ export default function AnalysisClient() {
                   X축과 Y축 열을 모두 선택하면 산점도가 표시됩니다.
                 </div>
               )}
+
+              {/* 상관관계 히트맵 — 수치형 열 2개 이상이면 항상 표시 */}
+              {numericCols.length >= 2 && (() => {
+                const nc = numericCols;
+                const cellSize = Math.min(64, Math.floor(480 / nc.length));
+                const getCorr = (i: number, j: number) => {
+                  const paired = rows.map((_, idx) => ({
+                    x: nc[i].values[idx], y: nc[j].values[idx],
+                  })).filter((p) => isNumeric(p.x) && isNumeric(p.y)) as { x: number; y: number }[];
+                  const pn = paired.length;
+                  if (pn < 2) return i === j ? 1 : 0;
+                  const sx = paired.reduce((s, p) => s + p.x, 0);
+                  const sy = paired.reduce((s, p) => s + p.y, 0);
+                  const sxy = paired.reduce((s, p) => s + p.x * p.y, 0);
+                  const sx2 = paired.reduce((s, p) => s + p.x * p.x, 0);
+                  const sy2 = paired.reduce((s, p) => s + p.y * p.y, 0);
+                  const d = Math.sqrt((pn * sx2 - sx * sx) * (pn * sy2 - sy * sy));
+                  return d !== 0 ? (pn * sxy - sx * sy) / d : (i === j ? 1 : 0);
+                };
+                const getColor = (r: number) => {
+                  const a = Math.abs(r);
+                  return r >= 0
+                    ? `rgba(13,115,119,${0.08 + a * 0.92})`
+                    : `rgba(239,68,68,${0.08 + a * 0.92})`;
+                };
+                return (
+                  <div className="bg-white rounded-2xl border border-neutral-200 p-6">
+                    <h2 className="font-semibold text-neutral-800 mb-1">상관관계 히트맵</h2>
+                    <p className="text-xs text-neutral-400 mb-5">수치형 열 간의 피어슨 상관계수 (−1 ~ +1)</p>
+                    <div className="overflow-x-auto">
+                      <table className="border-collapse mx-auto">
+                        <thead>
+                          <tr>
+                            <td style={{ width: cellSize, minWidth: cellSize }} />
+                            {nc.map((col) => (
+                              <td key={col.name} style={{ width: cellSize, minWidth: cellSize, height: cellSize }} className="text-center pb-1">
+                                <span className="text-xs text-neutral-500 font-medium block truncate px-1"
+                                  style={{ maxWidth: cellSize, writingMode: nc.length > 5 ? "vertical-rl" : "horizontal-tb" }}>
+                                  {col.name}
+                                </span>
+                              </td>
+                            ))}
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {nc.map((rowCol, i) => (
+                            <tr key={rowCol.name}>
+                              <td className="pr-2 text-right" style={{ maxWidth: cellSize }}>
+                                <span className="text-xs text-neutral-500 font-medium block truncate">{rowCol.name}</span>
+                              </td>
+                              {nc.map((_, j) => {
+                                const rv = getCorr(i, j);
+                                return (
+                                  <td key={j} title={`${nc[i].name} × ${nc[j].name}: ${rv.toFixed(3)}`}
+                                    style={{ width: cellSize, height: cellSize, backgroundColor: getColor(rv), border: "2px solid white" }}>
+                                    <div className="flex items-center justify-center w-full h-full">
+                                      <span style={{ fontSize: cellSize < 50 ? 9 : 11, fontWeight: 700, color: Math.abs(rv) > 0.5 ? "white" : "#374151" }}>
+                                        {rv.toFixed(2)}
+                                      </span>
+                                    </div>
+                                  </td>
+                                );
+                              })}
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                    <div className="flex items-center justify-center gap-8 mt-5">
+                      <div className="flex items-center gap-2 text-xs text-neutral-500">
+                        <div className="w-16 h-3 rounded" style={{ background: "linear-gradient(to right, rgba(13,115,119,0.08), rgba(13,115,119,1))" }} />
+                        양의 상관 (+1)
+                      </div>
+                      <div className="flex items-center gap-2 text-xs text-neutral-500">
+                        <div className="w-16 h-3 rounded" style={{ background: "linear-gradient(to right, rgba(239,68,68,0.08), rgba(239,68,68,1))" }} />
+                        음의 상관 (−1)
+                      </div>
+                    </div>
+                  </div>
+                );
+              })()}
             </div>
           )}
         </div>

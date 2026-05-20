@@ -16,6 +16,7 @@ export default function SignupPage() {
   const [loading, setLoading]               = useState(false);
   const [error, setError]                   = useState<string | null>(null);
   const [done, setDone]                     = useState(false);
+  const [agreed, setAgreed]                 = useState(false);
 
   // 비밀번호 유효성 검사
   const passwordValid = password.length >= 8;
@@ -25,6 +26,7 @@ export default function SignupPage() {
     e.preventDefault();
     setError(null);
 
+    if (!agreed) { setError("개인정보처리방침에 동의해주세요."); return; }
     if (!name.trim()) { setError("이름을 입력하세요."); return; }
     if (!organization.trim()) { setError("소속기관을 입력하세요."); return; }
     if (!passwordValid) { setError("비밀번호는 8자 이상이어야 합니다."); return; }
@@ -161,17 +163,24 @@ export default function SignupPage() {
               )}
             </div>
 
-            {/* 개인정보처리방침 동의 안내 */}
-            <p className="text-xs text-neutral-400 text-center leading-relaxed">
-              가입 시{" "}
-              <Link href="/privacy" target="_blank" className="text-brand-600 hover:underline font-medium">
-                개인정보처리방침
-              </Link>
-              에 동의하는 것으로 간주됩니다.
-            </p>
+            {/* 개인정보처리방침 동의 체크박스 */}
+            <label className="flex items-start gap-3 cursor-pointer group">
+              <input
+                type="checkbox"
+                checked={agreed}
+                onChange={(e) => setAgreed(e.target.checked)}
+                className="mt-0.5 w-4 h-4 rounded border-neutral-300 text-brand-600 focus:ring-brand-400 cursor-pointer flex-shrink-0"
+              />
+              <span className="text-xs text-neutral-500 leading-relaxed group-hover:text-neutral-700 transition-colors">
+                <Link href="/privacy" target="_blank" className="text-brand-600 hover:underline font-semibold">
+                  개인정보처리방침
+                </Link>
+                을 읽었으며, 개인정보 수집 및 이용에 동의합니다. <span className="text-red-400">(필수)</span>
+              </span>
+            </label>
 
             {/* 가입 버튼 */}
-            <button type="submit" disabled={loading}
+            <button type="submit" disabled={loading || !agreed}
               className="w-full bg-brand-600 hover:bg-brand-700 text-white font-semibold py-3.5 rounded-xl transition-colors active:scale-95 disabled:opacity-60 mt-2">
               {loading ? "처리 중..." : "회원가입"}
             </button>

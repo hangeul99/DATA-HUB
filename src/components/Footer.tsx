@@ -65,7 +65,7 @@ export default function Footer() {
         <div className="mt-12 pt-6 border-t border-neutral-800 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs">
           <p>© 2026 인제대학교 데이터거버넌스센터. All rights reserved.</p>
           <div className="flex items-center gap-4">
-            <Link href="#" className="hover:text-brand-400 transition-colors">개인정보처리방침</Link>
+            <Link href="/privacy" className="hover:text-brand-400 transition-colors">개인정보처리방침</Link>
             <Link href="#" className="hover:text-brand-400 transition-colors">이용약관</Link>
           </div>
         </div>

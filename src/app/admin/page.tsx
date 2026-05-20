@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { useRouter } from "next/navigation";
 import Link from "next/link";
 import {
   Database, BarChart2, FileText, Download, Upload,
@@ -200,6 +201,8 @@ function UploadModal({ onClose, onUploaded }: { onClose: () => void; onUploaded:
 
 // ── 관리자 페이지 본체 ────────────────────────────────────────────
 export default function AdminPage() {
+  const router = useRouter();
+  const [authorized, setAuthorized] = useState(false);
   const [tab, setTab] = useState(0);
   const [showUpload, setShowUpload] = useState(false);
 
@@ -407,11 +410,26 @@ export default function AdminPage() {
     setLoading(false);
   }, []);
 
-  // ── 마운트 시 요약 + 첫 탭 데이터 로드 ──────────────────────
+  // ── 관리자 권한 체크 (비관리자는 홈으로 리다이렉트) ─────────────
   useEffect(() => {
-    fetchSummary();
-    fetchTab(0);
-  }, [fetchSummary, fetchTab]);
+    (async () => {
+      const supabase = createClient();
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) { router.replace("/login"); return; }
+      const { data: profile } = await supabase
+        .from("profiles").select("role").eq("id", user.id).single();
+      if (profile?.role !== "admin") { router.replace("/"); return; }
+      setAuthorized(true);
+      fetchSummary();
+      fetchTab(0);
+    })();
+  }, [router, fetchSummary, fetchTab]);
+
+  if (!authorized) return (
+    <div className="min-h-screen flex items-center justify-center text-neutral-400 text-sm">
+      확인 중...
+    </div>
+  );
 
   // ── 탭 전환 시 데이터 로드 ────────────────────────────────────
   const handleTabChange = (t: number) => {

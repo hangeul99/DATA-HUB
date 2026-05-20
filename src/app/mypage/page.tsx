@@ -9,7 +9,7 @@ import { createClient } from "@/lib/supabase/client";
 import type { User } from "@supabase/supabase-js";
 import {
   User as UserIcon, Mail, LogOut, Download, FileText,
-  Upload, ChevronRight, Loader2, Calendar, Tag,
+  Upload, ChevronRight, Loader2, Calendar, Tag, Trash2,
 } from "lucide-react";
 
 // ── 타입 ─────────────────────────────────────────────────────────
@@ -54,6 +54,8 @@ export default function MyPage() {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<"applications" | "downloads" | "results">("applications");
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   // 각 탭 데이터
   const [applications, setApplications] = useState<Application[]>([]);
@@ -136,6 +138,18 @@ export default function MyPage() {
     await supabase.auth.signOut();
     router.push("/");
     router.refresh();
+  };
+
+  const deleteAccount = async () => {
+    setDeleting(true);
+    const res = await fetch("/api/delete-account", { method: "DELETE" });
+    if (res.ok) {
+      router.push("/");
+    } else {
+      alert("탈퇴 처리 중 오류가 발생했습니다. 다시 시도해주세요.");
+      setDeleting(false);
+      setShowDeleteConfirm(false);
+    }
   };
 
   // ── 날짜 포맷 헬퍼 ────────────────────────────────────────────
@@ -364,7 +378,39 @@ export default function MyPage() {
           )}
         </div>
 
-        <div className="pb-16" />
+        {/* 회원탈퇴 */}
+        <div className="max-w-4xl mx-auto px-6 mt-8 mb-16 text-right">
+          <button onClick={() => setShowDeleteConfirm(true)}
+            className="text-xs text-neutral-300 hover:text-red-400 transition-colors">
+            회원탈퇴
+          </button>
+        </div>
+
+        {/* 회원탈퇴 확인 모달 */}
+        {showDeleteConfirm && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm px-4">
+            <div className="bg-white rounded-2xl shadow-xl border border-neutral-100 p-8 w-full max-w-sm text-center">
+              <div className="w-12 h-12 rounded-full bg-red-50 flex items-center justify-center mx-auto mb-4">
+                <Trash2 size={20} className="text-red-500" />
+              </div>
+              <h2 className="text-lg font-bold text-neutral-900 mb-2">정말 탈퇴하시겠어요?</h2>
+              <p className="text-sm text-neutral-500 mb-6">
+                탈퇴 시 모든 신청 내역과 계정 정보가<br />
+                영구적으로 삭제되며 복구할 수 없습니다.
+              </p>
+              <div className="flex gap-3">
+                <button onClick={() => setShowDeleteConfirm(false)}
+                  className="flex-1 py-3 rounded-xl border border-neutral-200 text-sm font-semibold text-neutral-600 hover:bg-neutral-50 transition-colors">
+                  취소
+                </button>
+                <button onClick={deleteAccount} disabled={deleting}
+                  className="flex-1 py-3 rounded-xl bg-red-500 hover:bg-red-600 text-white text-sm font-semibold transition-colors disabled:opacity-60">
+                  {deleting ? "처리 중..." : "탈퇴하기"}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </main>
       <Footer />
     </>

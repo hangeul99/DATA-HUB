@@ -27,8 +27,8 @@ export async function proxy(request: NextRequest) {
     }
   );
 
-  const { data: { session } } = await supabase.auth.getSession();
-  const user      = session?.user ?? null;
+  // getUser()는 Supabase 서버에서 토큰을 검증 — getSession()보다 신뢰성 높음
+  const { data: { user } } = await supabase.auth.getUser();
   const isLoggedIn = !!user;
 
   // 환경변수에서 관리자 이메일 목록 로드 (쉼표 구분)
@@ -58,27 +58,6 @@ export async function proxy(request: NextRequest) {
       const loginUrl = new URL("/login", request.url);
       loginUrl.searchParams.set("redirect", pathname);
       return NextResponse.redirect(loginUrl);
-    }
-  }
-
-  // ── 4. 온보딩 리다이렉트 — 소속기관 미입력 첫 로그인 사용자 ──
-  // /onboarding, /_next, /api, /auth, /, /login 경로는 제외하여 무한루프 방지
-  if (
-    isLoggedIn &&
-    pathname !== "/" &&
-    pathname !== "/onboarding" &&
-    pathname !== "/login" &&
-    !pathname.startsWith("/_next") &&
-    !pathname.startsWith("/api") &&
-    !pathname.startsWith("/auth")
-  ) {
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("organization")
-      .eq("id", user!.id)
-      .single();
-    if (profile && !profile.organization) {
-      return NextResponse.redirect(new URL("/onboarding", request.url));
     }
   }
 

@@ -74,7 +74,22 @@ CREATE TABLE IF NOT EXISTS public.download_logs (
   downloaded_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
--- ── 5. 결과물 제출 테이블 ───────────────────────────────────────
+-- ── 5. 분석 로그 테이블 ─────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS public.analysis_logs (
+  id           UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  created_at   TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  user_id      UUID REFERENCES public.profiles(id) ON DELETE SET NULL,
+  user_name    TEXT,
+  organization TEXT,
+  user_type    TEXT,
+  session_type TEXT,
+  file_name    TEXT,
+  file_type    TEXT,
+  row_count    INTEGER,
+  col_count    INTEGER
+);
+
+-- ── 6. 결과물 제출 테이블 ───────────────────────────────────────
 CREATE TABLE IF NOT EXISTS public.results (
   id           UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id      UUID NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,

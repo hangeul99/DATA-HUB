@@ -6,10 +6,12 @@ import CategorySection from "@/components/home/CategorySection";
 import HowItWorksSection from "@/components/home/HowItWorksSection";
 import FeaturedDatasets from "@/components/home/FeaturedDatasets";
 import CtaSection from "@/components/home/CtaSection";
+import OrgModal from "@/components/OrgModal";
 
 export default function Home() {
   return (
     <>
+      <OrgModal />
       <Navbar />
       <main className="flex-1">
         <HeroSection />

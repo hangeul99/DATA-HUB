@@ -4,6 +4,8 @@ import { useState, useCallback, useRef, useMemo, useEffect } from "react";
 import {
   BarChart, Bar, LineChart, Line, AreaChart, Area, PieChart, Pie, Cell,
   ScatterChart, Scatter, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, ZAxis,
+  RadarChart, Radar, PolarGrid, PolarAngleAxis, PolarRadiusAxis,
+  Treemap,
 } from "recharts";
 import { Upload, FileText, X, TrendingUp, Table2, BarChart2, AlertCircle, Map as MapIcon, Download } from "lucide-react";
 import Papa from "papaparse";
@@ -258,7 +260,6 @@ export default function AnalysisClient() {
   const [cols, setCols] = useState<ColMeta[]>([]);
   const [activeTab, setActiveTab] = useState<"overview" | "charts" | "table" | "map">("overview");
   const [selectedCol, setSelectedCol] = useState<string | null>(null);
-  const [chartType, setChartType] = useState<"bar" | "line" | "area" | "pie">("bar");
   const [chartMode, setChartMode] = useState<"single" | "scatter">("single");
   const [xCol, setXCol] = useState<string | null>(null);
   const [yCol, setYCol] = useState<string | null>(null);
@@ -452,8 +453,19 @@ export default function AnalysisClient() {
           userType     = profile.user_type;
         }
       }
+      // 같은 사용자가 동일 파일을 이미 분석한 경우 중복 로그 생략
+      if (user?.id) {
+        const { data: dup } = await supabase
+          .from("analysis_logs")
+          .select("id")
+          .eq("user_id", user.id)
+          .eq("file_name", name)
+          .maybeSingle();
+        if (dup) return;
+      }
       supabase.from("analysis_logs").insert({
         user_id:      user?.id ?? null,
+        user_email:   user?.email ?? null,
         user_name:    userName,
         organization,
         user_type:    userType,
@@ -462,6 +474,8 @@ export default function AnalysisClient() {
         file_type:    ext,
         row_count:    data.length,
         col_count:    keys.length,
+      }).then(({ error }) => {
+        if (error) console.error("[analysis_log]", error.message, error.details);
       });
     });
   }, []);
@@ -881,6 +895,43 @@ export default function AnalysisClient() {
             </div>
           )}
 
+          {/* 수치형 열 레이더 비교 (3개 이상일 때) */}
+          {numericVizCols.length >= 3 && (() => {
+            const statsMap = new Map(numericVizCols.map(col => {
+              const vals = (col.values as (number|null)[]).filter((v): v is number => v !== null);
+              if (!vals.length) return [col.name, null];
+              const sorted = [...vals].sort((a, b) => a - b);
+              const mean = vals.reduce((s, v) => s + v, 0) / vals.length;
+              const max = sorted[sorted.length - 1];
+              return [col.name, { mean, max, nullRatio: col.values.filter(v => v === null).length / col.values.length }];
+            }));
+            // 각 열을 최댓값으로 정규화한 레이더 데이터 (열 당 하나의 포인트)
+            const radarData = numericVizCols.map(col => {
+              const s = statsMap.get(col.name);
+              return { col: col.name.length > 8 ? col.name.slice(0, 8) + "…" : col.name, 평균: s ? parseFloat(((s.mean / (s.max || 1)) * 100).toFixed(1)) : 0 };
+            });
+            return (
+              <div className="bg-white rounded-2xl border border-neutral-200 overflow-hidden">
+                <div className="px-5 py-4 border-b border-neutral-100">
+                  <h2 className="font-semibold text-neutral-800">수치형 열 레이더 비교</h2>
+                  <p className="text-xs text-neutral-400 mt-0.5">각 열의 평균값을 최댓값 기준으로 정규화 (0~100%)</p>
+                </div>
+                <div className="p-4 flex justify-center">
+                  <ResponsiveContainer width="100%" height={320}>
+                    <RadarChart data={radarData}>
+                      <PolarGrid stroke="#e5e7eb" />
+                      <PolarAngleAxis dataKey="col" tick={{ fontSize: 11, fill: "#6b7280" }} />
+                      <PolarRadiusAxis angle={30} domain={[0, 100]} tick={{ fontSize: 10 }} tickFormatter={(v) => `${v}%`} />
+                      <Radar name="평균(정규화)" dataKey="평균" stroke="#0D7377" fill="#0D7377" fillOpacity={0.2} dot={{ r: 4, fill: "#0D7377" }} />
+                      <Tooltip formatter={(v) => [`${v}%`, "정규화 평균"]} />
+                      <Legend />
+                    </RadarChart>
+                  </ResponsiveContainer>
+                </div>
+              </div>
+            );
+          })()}
+
           {/* 자동 시각화 — 전체 열 미니 차트 (isId 열 제외) */}
           <div>
             <h2 className="font-semibold text-neutral-800 mb-4">자동 시각화</h2>
@@ -983,220 +1034,220 @@ export default function AnalysisClient() {
           {/* ── 단일 열 모드 ── */}
           {chartMode === "single" && (
             <>
-              {/* 열 선택 + 차트 타입 */}
-              <div className="bg-white rounded-2xl border border-neutral-200 p-5 space-y-4">
-                <div>
-                  <p className="text-xs font-semibold text-neutral-500 uppercase tracking-wider mb-2.5">분석할 열</p>
-                  <div className="flex flex-wrap gap-2">
-                    {cols.map((col) => (
-                      <button key={col.name} onClick={() => { setSelectedCol(col.name); setChartType("bar"); }}
-                        className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all
-                          ${selectedCol === col.name ? "bg-brand-600 text-white" : "bg-neutral-100 text-neutral-600 hover:bg-neutral-200"}`}>
-                        {col.name}
-                        <span className={`ml-1.5 text-[10px] px-1 py-0.5 rounded ${selectedCol === col.name ? "bg-white/20 text-white" : "bg-neutral-200 text-neutral-400"}`}>
-                          {col.type === "numeric" ? "수치" : col.type === "date" ? "날짜" : "범주"}
-                        </span>
-                      </button>
-                    ))}
-                  </div>
+              {/* 열 선택 */}
+              <div className="bg-white rounded-2xl border border-neutral-200 p-5">
+                <p className="text-xs font-semibold text-neutral-500 uppercase tracking-wider mb-2.5">분석할 열</p>
+                <div className="flex flex-wrap gap-2">
+                  {cols.map((col) => (
+                    <button key={col.name} onClick={() => setSelectedCol(col.name)}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all
+                        ${selectedCol === col.name ? "bg-brand-600 text-white" : "bg-neutral-100 text-neutral-600 hover:bg-neutral-200"}`}>
+                      {col.name}
+                      <span className={`ml-1.5 text-[10px] px-1 py-0.5 rounded ${selectedCol === col.name ? "bg-white/20 text-white" : "bg-neutral-200 text-neutral-400"}`}>
+                        {col.type === "numeric" ? "수치" : col.type === "date" ? "날짜" : "범주"}
+                      </span>
+                    </button>
+                  ))}
                 </div>
-
-                {/* 차트 타입 (수치형 전용) */}
-                {selectedMeta?.type === "numeric" && (
-                  <div>
-                    <p className="text-xs font-semibold text-neutral-500 uppercase tracking-wider mb-2.5">차트 유형</p>
-                    <div className="flex gap-2">
-                      {(["bar", "line", "area"] as const).map((t) => (
-                        <button key={t} onClick={() => setChartType(t)}
-                          className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all border
-                            ${chartType === t ? "border-brand-500 bg-brand-50 text-brand-700" : "border-neutral-200 text-neutral-500 hover:border-brand-300"}`}>
-                          {t === "bar" ? "막대" : t === "line" ? "선" : "영역"}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                {/* 범주형 타입 선택 */}
-                {selectedMeta?.type === "categorical" && (
-                  <div>
-                    <p className="text-xs font-semibold text-neutral-500 uppercase tracking-wider mb-2.5">차트 유형</p>
-                    <div className="flex gap-2">
-                      {(["bar", "pie"] as const).map((t) => (
-                        <button key={t} onClick={() => setChartType(t)}
-                          className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all border
-                            ${chartType === t ? "border-brand-500 bg-brand-50 text-brand-700" : "border-neutral-200 text-neutral-500 hover:border-brand-300"}`}>
-                          {t === "bar" ? "막대" : "파이"}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                {/* 날짜형 타입 선택 */}
-                {selectedMeta?.type === "date" && (
-                  <div>
-                    <p className="text-xs font-semibold text-neutral-500 uppercase tracking-wider mb-2.5">차트 유형</p>
-                    <div className="flex gap-2">
-                      {(["bar", "line"] as const).map((t) => (
-                        <button key={t} onClick={() => setChartType(t)}
-                          className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all border
-                            ${chartType === t ? "border-brand-500 bg-brand-50 text-brand-700" : "border-neutral-200 text-neutral-500 hover:border-brand-300"}`}>
-                          {t === "bar" ? "막대" : "선"}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                )}
               </div>
 
-              {/* 차트 + 통계 */}
+              {/* 차트 + 통계 — 선택한 열에 해당하는 모든 차트 동시 표시 */}
               {selectedMeta && (
-                <div className="bg-white rounded-2xl border border-neutral-200 p-6">
-                  <div className="flex items-start justify-between mb-1">
-                    <h2 className="font-semibold text-neutral-800">{selectedMeta.name}</h2>
-                    {/* PNG 저장 버튼 */}
-                    <button
-                      onClick={downloadChart}
-                      className="flex items-center gap-1.5 text-xs text-neutral-400 hover:text-brand-600 transition-colors border border-neutral-200 hover:border-brand-300 rounded-lg px-3 py-1.5"
-                      title="차트 PNG 저장"
-                    >
-                      <Download size={12} /> PNG 저장
-                    </button>
-                  </div>
-                  <p className="text-xs text-neutral-400 mb-6">
-                    {selectedMeta.type === "numeric" ? "분포 (히스토그램)" : selectedMeta.type === "date" ? "월별 건수 추이" : "빈도 상위 15개"}
-                  </p>
-                  {/* 차트 SVG 캡처 영역 */}
-                  <div ref={chartRef}>
+                <div className="space-y-5" ref={chartRef}>
 
-                  {/* 수치형: 막대/선/영역 */}
-                  {selectedHist && chartType === "bar" && (
-                    <ResponsiveContainer width="100%" height={320}>
-                      <BarChart data={selectedHist} margin={{ top: 5, right: 20, left: 0, bottom: 5 }}>
-                        <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-                        <XAxis dataKey="label" tick={{ fontSize: 11 }} />
-                        <YAxis tick={{ fontSize: 11 }} />
-                        <Tooltip formatter={(v) => [`${v}건`, "빈도"]} />
-                        <Bar dataKey="count" fill="#0D7377" radius={[4, 4, 0, 0]} />
-                      </BarChart>
-                    </ResponsiveContainer>
-                  )}
-                  {selectedHist && chartType === "line" && (
-                    <ResponsiveContainer width="100%" height={320}>
-                      <LineChart data={selectedHist} margin={{ top: 5, right: 20, left: 0, bottom: 5 }}>
-                        <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-                        <XAxis dataKey="label" tick={{ fontSize: 11 }} />
-                        <YAxis tick={{ fontSize: 11 }} />
-                        <Tooltip formatter={(v) => [`${v}건`, "빈도"]} />
-                        <Line type="monotone" dataKey="count" stroke="#0D7377" strokeWidth={2} dot={false} />
-                      </LineChart>
-                    </ResponsiveContainer>
-                  )}
-                  {selectedHist && chartType === "area" && (
-                    <ResponsiveContainer width="100%" height={320}>
-                      <AreaChart data={selectedHist} margin={{ top: 5, right: 20, left: 0, bottom: 5 }}>
-                        <defs>
-                          <linearGradient id="areaGrad" x1="0" y1="0" x2="0" y2="1">
-                            <stop offset="5%" stopColor="#0D7377" stopOpacity={0.3} />
-                            <stop offset="95%" stopColor="#0D7377" stopOpacity={0} />
-                          </linearGradient>
-                        </defs>
-                        <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-                        <XAxis dataKey="label" tick={{ fontSize: 11 }} />
-                        <YAxis tick={{ fontSize: 11 }} />
-                        <Tooltip formatter={(v) => [`${v}건`, "빈도"]} />
-                        <Area type="monotone" dataKey="count" stroke="#0D7377" fill="url(#areaGrad)" strokeWidth={2} />
-                      </AreaChart>
-                    </ResponsiveContainer>
-                  )}
-
-                  {/* 수치형 통계 (이상값: IQR 기반) */}
+                  {/* 수치형 통계 요약 */}
                   {selectedStats && (
-                    <div className="grid grid-cols-4 md:grid-cols-7 gap-3 mt-6">
-                      {[
-                        { label: "평균",    val: selectedStats.mean,         warn: false },
-                        { label: "중앙값",  val: selectedStats.median,       warn: false },
-                        { label: "표준편차",val: selectedStats.std,          warn: false },
-                        { label: "최솟값",  val: selectedStats.min,          warn: false },
-                        { label: "최댓값",  val: selectedStats.max,          warn: false },
-                        { label: "결측값",  val: selectedStats.nullCount,    warn: selectedStats.nullCount > 0 },
-                        { label: "이상값",  val: selectedStats.outlierCount, warn: selectedStats.outlierCount > 0 },
-                      ].map(({ label, val, warn }) => (
-                        <div key={label} className={`rounded-xl p-3 text-center ${warn && val > 0 ? "bg-amber-50" : "bg-neutral-50"}`}>
-                          <p className="text-[10px] text-neutral-400 mb-1">{label}</p>
-                          <p className={`font-bold text-sm ${warn && val > 0 ? "text-amber-600" : "text-brand-600"}`}>{val}</p>
+                    <div className="bg-white rounded-2xl border border-neutral-200 p-5">
+                      <div className="flex items-center justify-between mb-4">
+                        <h2 className="font-semibold text-neutral-800">{selectedMeta.name} — 기초 통계</h2>
+                        <button onClick={downloadChart}
+                          className="flex items-center gap-1.5 text-xs text-neutral-400 hover:text-brand-600 transition-colors border border-neutral-200 hover:border-brand-300 rounded-lg px-3 py-1.5"
+                          title="차트 PNG 저장">
+                          <Download size={12} /> PNG 저장
+                        </button>
+                      </div>
+                      <div className="grid grid-cols-4 md:grid-cols-7 gap-3">
+                        {[
+                          { label: "평균",    val: selectedStats.mean,         warn: false },
+                          { label: "중앙값",  val: selectedStats.median,       warn: false },
+                          { label: "표준편차",val: selectedStats.std,          warn: false },
+                          { label: "최솟값",  val: selectedStats.min,          warn: false },
+                          { label: "최댓값",  val: selectedStats.max,          warn: false },
+                          { label: "결측값",  val: selectedStats.nullCount,    warn: selectedStats.nullCount > 0 },
+                          { label: "이상값",  val: selectedStats.outlierCount, warn: selectedStats.outlierCount > 0 },
+                        ].map(({ label, val, warn }) => (
+                          <div key={label} className={`rounded-xl p-3 text-center ${warn && val > 0 ? "bg-amber-50" : "bg-neutral-50"}`}>
+                            <p className="text-[10px] text-neutral-400 mb-1">{label}</p>
+                            <p className={`font-bold text-sm ${warn && val > 0 ? "text-amber-600" : "text-brand-600"}`}>{val}</p>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* 수치형: 히스토그램 (막대) */}
+                  {selectedHist && (
+                    <div className="bg-white rounded-2xl border border-neutral-200 p-5">
+                      <p className="text-sm font-semibold text-neutral-700 mb-4">막대 (히스토그램)</p>
+                      <ResponsiveContainer width="100%" height={300}>
+                        <BarChart data={selectedHist} margin={{ top: 5, right: 20, left: 0, bottom: 5 }}>
+                          <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                          <XAxis dataKey="label" tick={{ fontSize: 11 }} />
+                          <YAxis tick={{ fontSize: 11 }} />
+                          <Tooltip formatter={(v) => [`${v}건`, "빈도"]} />
+                          <Bar dataKey="count" fill="#0D7377" radius={[4, 4, 0, 0]} />
+                        </BarChart>
+                      </ResponsiveContainer>
+                    </div>
+                  )}
+
+                  {/* 수치형: 선 차트 */}
+                  {selectedHist && (
+                    <div className="bg-white rounded-2xl border border-neutral-200 p-5">
+                      <p className="text-sm font-semibold text-neutral-700 mb-4">선 차트</p>
+                      <ResponsiveContainer width="100%" height={300}>
+                        <LineChart data={selectedHist} margin={{ top: 5, right: 20, left: 0, bottom: 5 }}>
+                          <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                          <XAxis dataKey="label" tick={{ fontSize: 11 }} />
+                          <YAxis tick={{ fontSize: 11 }} />
+                          <Tooltip formatter={(v) => [`${v}건`, "빈도"]} />
+                          <Line type="monotone" dataKey="count" stroke="#2D5F8F" strokeWidth={2} dot={{ r: 3, fill: "#2D5F8F" }} />
+                        </LineChart>
+                      </ResponsiveContainer>
+                    </div>
+                  )}
+
+                  {/* 수치형: 영역 차트 */}
+                  {selectedHist && (
+                    <div className="bg-white rounded-2xl border border-neutral-200 p-5">
+                      <p className="text-sm font-semibold text-neutral-700 mb-4">영역 차트</p>
+                      <ResponsiveContainer width="100%" height={300}>
+                        <AreaChart data={selectedHist} margin={{ top: 5, right: 20, left: 0, bottom: 5 }}>
+                          <defs>
+                            <linearGradient id="areaGrad" x1="0" y1="0" x2="0" y2="1">
+                              <stop offset="5%" stopColor="#4FAFAF" stopOpacity={0.4} />
+                              <stop offset="95%" stopColor="#4FAFAF" stopOpacity={0} />
+                            </linearGradient>
+                          </defs>
+                          <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                          <XAxis dataKey="label" tick={{ fontSize: 11 }} />
+                          <YAxis tick={{ fontSize: 11 }} />
+                          <Tooltip formatter={(v) => [`${v}건`, "빈도"]} />
+                          <Area type="monotone" dataKey="count" stroke="#4FAFAF" fill="url(#areaGrad)" strokeWidth={2} />
+                        </AreaChart>
+                      </ResponsiveContainer>
+                    </div>
+                  )}
+
+                  {/* 수치형: 박스플롯 */}
+                  {selectedMeta.type === "numeric" && selectedStats && (() => {
+                    const { min, max, mean } = selectedStats;
+                    const vals = (selectedMeta.values as (number|null)[]).filter((v): v is number => v !== null);
+                    const sorted = [...vals].sort((a, b) => a - b);
+                    const q1 = sorted[Math.floor(sorted.length * 0.25)] ?? min;
+                    const q3 = sorted[Math.floor(sorted.length * 0.75)] ?? max;
+                    const median = sorted[Math.floor(sorted.length * 0.5)] ?? mean;
+                    const range = max - min || 1;
+                    const toX = (v: number) => ((v - min) / range) * 560 + 40;
+                    const outliers = vals.filter(v => v < q1 - 1.5 * (q3 - q1) || v > q3 + 1.5 * (q3 - q1));
+                    return (
+                      <div className="bg-white rounded-2xl border border-neutral-200 p-5">
+                        <p className="text-sm font-semibold text-neutral-700 mb-4">박스플롯</p>
+                        <div className="overflow-x-auto py-4">
+                          <svg width={640} height={140} className="mx-auto">
+                            <line x1={toX(min)} y1={70} x2={toX(q1)} y2={70} stroke="#94a3b8" strokeWidth={2} />
+                            <line x1={toX(q3)} y1={70} x2={toX(max)} y2={70} stroke="#94a3b8" strokeWidth={2} />
+                            <line x1={toX(min)} y1={55} x2={toX(min)} y2={85} stroke="#94a3b8" strokeWidth={2} />
+                            <line x1={toX(max)} y1={55} x2={toX(max)} y2={85} stroke="#94a3b8" strokeWidth={2} />
+                            <rect x={toX(q1)} y={45} width={toX(q3) - toX(q1)} height={50} fill="#0D737720" stroke="#0D7377" strokeWidth={2} rx={4} />
+                            <line x1={toX(median)} y1={45} x2={toX(median)} y2={95} stroke="#0D7377" strokeWidth={3} />
+                            <polygon points={`${toX(mean)},40 ${toX(mean)-6},52 ${toX(mean)+6},52`} fill="#f97316" opacity={0.8} />
+                            {outliers.slice(0, 60).map((v, i) => (
+                              <circle key={i} cx={toX(v)} cy={70} r={4} fill="#ef444480" />
+                            ))}
+                            <text x={toX(min)} y={115} textAnchor="middle" fontSize={10} fill="#64748b">{Number(min).toLocaleString()}</text>
+                            <text x={toX(q1)} y={115} textAnchor="middle" fontSize={10} fill="#64748b">Q1</text>
+                            <text x={toX(median)} y={115} textAnchor="middle" fontSize={10} fill="#0D7377" fontWeight={600}>중앙값</text>
+                            <text x={toX(q3)} y={115} textAnchor="middle" fontSize={10} fill="#64748b">Q3</text>
+                            <text x={toX(max)} y={115} textAnchor="middle" fontSize={10} fill="#64748b">{Number(max).toLocaleString()}</text>
+                            <text x={toX(mean)} y={35} textAnchor="middle" fontSize={10} fill="#f97316">평균</text>
+                          </svg>
+                          <div className="flex justify-center gap-6 mt-2 text-xs text-neutral-500">
+                            <span><span className="inline-block w-3 h-3 rounded bg-[#0D737720] border border-[#0D7377] mr-1" />IQR (Q1–Q3)</span>
+                            <span><span className="inline-block w-3 h-0.5 bg-[#0D7377] mr-1 align-middle" />중앙값</span>
+                            <span><span className="inline-block w-2 h-2 bg-orange-400 mr-1 rotate-45 align-middle" />평균</span>
+                            <span><span className="inline-block w-2 h-2 rounded-full bg-red-400 mr-1 align-middle" />이상값</span>
+                          </div>
                         </div>
-                      ))}
+                      </div>
+                    );
+                  })()}
+
+                  {/* 수치형: 누적 분포 */}
+                  {selectedMeta.type === "numeric" && selectedHist && (() => {
+                    let cum = 0;
+                    const total = selectedHist.reduce((s, d) => s + d.count, 0);
+                    const cumData = selectedHist.map(d => { cum += d.count; return { label: d.label, pct: parseFloat(((cum / total) * 100).toFixed(1)) }; });
+                    return (
+                      <div className="bg-white rounded-2xl border border-neutral-200 p-5">
+                        <p className="text-sm font-semibold text-neutral-700 mb-4">누적 분포 (CDF)</p>
+                        <ResponsiveContainer width="100%" height={300}>
+                          <AreaChart data={cumData} margin={{ top: 5, right: 20, left: 0, bottom: 5 }}>
+                            <defs>
+                              <linearGradient id="cumGrad" x1="0" y1="0" x2="0" y2="1">
+                                <stop offset="5%" stopColor="#6366f1" stopOpacity={0.25} />
+                                <stop offset="95%" stopColor="#6366f1" stopOpacity={0} />
+                              </linearGradient>
+                            </defs>
+                            <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                            <XAxis dataKey="label" tick={{ fontSize: 11 }} />
+                            <YAxis tick={{ fontSize: 11 }} domain={[0, 100]} tickFormatter={(v) => `${v}%`} />
+                            <Tooltip formatter={(v) => [`${v}%`, "누적 비율"]} />
+                            <Area type="monotone" dataKey="pct" stroke="#6366f1" fill="url(#cumGrad)" strokeWidth={2} />
+                          </AreaChart>
+                        </ResponsiveContainer>
+                      </div>
+                    );
+                  })()}
+
+                  {/* 범주형: 막대 차트 */}
+                  {selectedFreq && selectedFreq.length > 0 && (
+                    <div className="bg-white rounded-2xl border border-neutral-200 p-5">
+                      <p className="text-sm font-semibold text-neutral-700 mb-4">막대 차트 (빈도 상위 15개)</p>
+                      <ResponsiveContainer width="100%" height={Math.max(300, selectedFreq.length * 38)}>
+                        <BarChart data={selectedFreq} layout="vertical" margin={{ top: 5, right: 30, left: 10, bottom: 5 }}>
+                          <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                          <XAxis type="number" tick={{ fontSize: 11 }} />
+                          <YAxis type="category" dataKey="label" tick={{ fontSize: 11 }} width={160}
+                            tickFormatter={(v: string) => v.length > 18 ? v.slice(0, 18) + "…" : v} />
+                          <Tooltip content={({ payload }) => {
+                            if (!payload?.length) return null;
+                            const d = payload[0]?.payload as { label: string; count: number };
+                            return (
+                              <div className="bg-white border border-neutral-200 rounded-xl p-3 text-xs shadow-md max-w-[220px]">
+                                <p className="font-semibold text-neutral-800 mb-1 break-words">{d.label}</p>
+                                <p className="text-brand-600">{d.count.toLocaleString()}건</p>
+                              </div>
+                            );
+                          }} />
+                          <Bar dataKey="count" radius={[0, 4, 4, 0]} barSize={22}>
+                            {selectedFreq.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
+                          </Bar>
+                        </BarChart>
+                      </ResponsiveContainer>
                     </div>
                   )}
 
-                  {/* 범주형: 막대 */}
-                  {selectedFreq && selectedFreq.length > 0 && chartType === "bar" && (
-                    <ResponsiveContainer width="100%" height={Math.max(320, selectedFreq.length * 38)}>
-                      <BarChart data={selectedFreq} layout="vertical" margin={{ top: 5, right: 30, left: 10, bottom: 5 }}>
-                        <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-                        <XAxis type="number" tick={{ fontSize: 11 }} />
-                        <YAxis type="category" dataKey="label" tick={{ fontSize: 11 }} width={160}
-                          tickFormatter={(v: string) => v.length > 18 ? v.slice(0, 18) + "…" : v} />
-                        <Tooltip content={({ payload }) => {
-                          if (!payload?.length) return null;
-                          const d = payload[0]?.payload as { label: string; count: number };
-                          return (
-                            <div className="bg-white border border-neutral-200 rounded-xl p-3 text-xs shadow-md max-w-[220px]">
-                              <p className="font-semibold text-neutral-800 mb-1 break-words">{d.label}</p>
-                              <p className="text-brand-600">{d.count.toLocaleString()}건</p>
-                            </div>
-                          );
-                        }} />
-                        <Bar dataKey="count" radius={[0, 4, 4, 0]} barSize={22}>
-                          {selectedFreq.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
-                        </Bar>
-                      </BarChart>
-                    </ResponsiveContainer>
-                  )}
-
-                  {/* 날짜형: 월별 막대 */}
-                  {selectedDateFreq && selectedDateFreq.length > 0 && chartType === "bar" && (
-                    <ResponsiveContainer width="100%" height={320}>
-                      <BarChart data={selectedDateFreq} margin={{ top: 5, right: 20, left: 0, bottom: 30 }}>
-                        <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-                        <XAxis dataKey="label" tick={{ fontSize: 10 }} angle={-35} textAnchor="end" interval={0} />
-                        <YAxis tick={{ fontSize: 11 }} />
-                        <Tooltip formatter={(v) => [`${v}건`, "건수"]} />
-                        <Bar dataKey="count" fill="#0D7377" radius={[4, 4, 0, 0]} />
-                      </BarChart>
-                    </ResponsiveContainer>
-                  )}
-
-                  {/* 날짜형: 월별 선 */}
-                  {selectedDateFreq && selectedDateFreq.length > 0 && chartType === "line" && (
-                    <ResponsiveContainer width="100%" height={320}>
-                      <LineChart data={selectedDateFreq} margin={{ top: 5, right: 20, left: 0, bottom: 30 }}>
-                        <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-                        <XAxis dataKey="label" tick={{ fontSize: 10 }} angle={-35} textAnchor="end" interval={0} />
-                        <YAxis tick={{ fontSize: 11 }} />
-                        <Tooltip formatter={(v) => [`${v}건`, "건수"]} />
-                        <Line type="monotone" dataKey="count" stroke="#0D7377" strokeWidth={2} dot={{ r: 3 }} />
-                      </LineChart>
-                    </ResponsiveContainer>
-                  )}
-
-                  {/* 날짜형: 데이터 없음 */}
-                  {selectedMeta?.type === "date" && selectedDateFreq?.length === 0 && (
-                    <div className="py-12 text-center text-sm text-neutral-400">
-                      날짜로 인식된 값이 없습니다.
-                    </div>
-                  )}
-
-                  {/* 범주형: 파이 */}
-                  {selectedFreq && selectedFreq.length > 0 && chartType === "pie" && (() => {
+                  {/* 범주형: 파이 차트 */}
+                  {selectedFreq && selectedFreq.length > 0 && (() => {
                     const pieData = selectedFreq.slice(0, 12);
                     const showLabel = pieData.length <= 6;
+                    const total = pieData.reduce((s, r) => s + r.count, 0);
                     return (
-                      <div>
+                      <div className="bg-white rounded-2xl border border-neutral-200 p-5">
+                        <p className="text-sm font-semibold text-neutral-700 mb-1">파이 차트</p>
                         {pieData.length < selectedFreq.length && (
-                          <p className="text-xs text-neutral-400 mb-3 text-center">상위 {pieData.length}개 항목 표시 (전체 {selectedFreq.length}개)</p>
+                          <p className="text-xs text-neutral-400 mb-3">상위 {pieData.length}개 항목 표시 (전체 {selectedFreq.length}개)</p>
                         )}
                         <ResponsiveContainer width="100%" height={showLabel ? 360 : 300}>
                           <PieChart>
@@ -1209,7 +1260,6 @@ export default function AnalysisClient() {
                             <Tooltip content={({ payload }) => {
                               if (!payload?.length) return null;
                               const d = payload[0]?.payload as { label: string; count: number };
-                              const total = pieData.reduce((s, r) => s + r.count, 0);
                               return (
                                 <div className="bg-white border border-neutral-200 rounded-xl p-3 text-xs shadow-md max-w-[220px]">
                                   <p className="font-semibold text-neutral-800 mb-1 break-words">{d.label}</p>
@@ -1224,7 +1274,97 @@ export default function AnalysisClient() {
                       </div>
                     );
                   })()}
-                  </div>{/* /chartRef */}
+
+                  {/* 범주형: 트리맵 */}
+                  {selectedFreq && selectedFreq.length > 0 && (() => {
+                    const tmData = selectedFreq.slice(0, 20).map((d, i) => ({ name: d.label, size: d.count, fill: COLORS[i % COLORS.length] }));
+                    return (
+                      <div className="bg-white rounded-2xl border border-neutral-200 p-5">
+                        <p className="text-sm font-semibold text-neutral-700 mb-4">트리맵</p>
+                        <ResponsiveContainer width="100%" height={360}>
+                          <Treemap data={tmData} dataKey="size" nameKey="name"
+                            content={({ x, y, width, height, name, fill }: { x?: number; y?: number; width?: number; height?: number; name?: string; fill?: string }) => {
+                              const w = width ?? 0; const h = height ?? 0;
+                              if (w < 30 || h < 20) return <rect x={x} y={y} width={w} height={h} fill={fill} rx={2} />;
+                              return (
+                                <g>
+                                  <rect x={x} y={y} width={w} height={h} fill={fill} rx={4} stroke="white" strokeWidth={2} />
+                                  {w > 50 && h > 28 && (
+                                    <text x={(x ?? 0) + w / 2} y={(y ?? 0) + h / 2} textAnchor="middle" dominantBaseline="middle"
+                                      fontSize={Math.min(13, w / 7)} fill="white" fontWeight={600}>
+                                      {(name ?? "").length > 10 ? (name ?? "").slice(0, 10) + "…" : name}
+                                    </text>
+                                  )}
+                                </g>
+                              );
+                            }}
+                          />
+                        </ResponsiveContainer>
+                      </div>
+                    );
+                  })()}
+
+                  {/* 날짜형: 월별 막대 */}
+                  {selectedDateFreq && selectedDateFreq.length > 0 && (
+                    <div className="bg-white rounded-2xl border border-neutral-200 p-5">
+                      <p className="text-sm font-semibold text-neutral-700 mb-4">월별 막대 차트</p>
+                      <ResponsiveContainer width="100%" height={300}>
+                        <BarChart data={selectedDateFreq} margin={{ top: 5, right: 20, left: 0, bottom: 30 }}>
+                          <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                          <XAxis dataKey="label" tick={{ fontSize: 10 }} angle={-35} textAnchor="end" interval={0} />
+                          <YAxis tick={{ fontSize: 11 }} />
+                          <Tooltip formatter={(v) => [`${v}건`, "건수"]} />
+                          <Bar dataKey="count" fill="#0D7377" radius={[4, 4, 0, 0]} />
+                        </BarChart>
+                      </ResponsiveContainer>
+                    </div>
+                  )}
+
+                  {/* 날짜형: 월별 선 차트 */}
+                  {selectedDateFreq && selectedDateFreq.length > 0 && (
+                    <div className="bg-white rounded-2xl border border-neutral-200 p-5">
+                      <p className="text-sm font-semibold text-neutral-700 mb-4">월별 선 차트</p>
+                      <ResponsiveContainer width="100%" height={300}>
+                        <LineChart data={selectedDateFreq} margin={{ top: 5, right: 20, left: 0, bottom: 30 }}>
+                          <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                          <XAxis dataKey="label" tick={{ fontSize: 10 }} angle={-35} textAnchor="end" interval={0} />
+                          <YAxis tick={{ fontSize: 11 }} />
+                          <Tooltip formatter={(v) => [`${v}건`, "건수"]} />
+                          <Line type="monotone" dataKey="count" stroke="#2D5F8F" strokeWidth={2} dot={{ r: 3 }} />
+                        </LineChart>
+                      </ResponsiveContainer>
+                    </div>
+                  )}
+
+                  {/* 날짜형: 월별 영역 차트 */}
+                  {selectedDateFreq && selectedDateFreq.length > 0 && (
+                    <div className="bg-white rounded-2xl border border-neutral-200 p-5">
+                      <p className="text-sm font-semibold text-neutral-700 mb-4">월별 영역 차트</p>
+                      <ResponsiveContainer width="100%" height={300}>
+                        <AreaChart data={selectedDateFreq} margin={{ top: 5, right: 20, left: 0, bottom: 30 }}>
+                          <defs>
+                            <linearGradient id="dateAreaGrad" x1="0" y1="0" x2="0" y2="1">
+                              <stop offset="5%" stopColor="#4FAFAF" stopOpacity={0.4} />
+                              <stop offset="95%" stopColor="#4FAFAF" stopOpacity={0} />
+                            </linearGradient>
+                          </defs>
+                          <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                          <XAxis dataKey="label" tick={{ fontSize: 10 }} angle={-35} textAnchor="end" interval={0} />
+                          <YAxis tick={{ fontSize: 11 }} />
+                          <Tooltip formatter={(v) => [`${v}건`, "건수"]} />
+                          <Area type="monotone" dataKey="count" stroke="#4FAFAF" fill="url(#dateAreaGrad)" strokeWidth={2} />
+                        </AreaChart>
+                      </ResponsiveContainer>
+                    </div>
+                  )}
+
+                  {/* 날짜형: 데이터 없음 */}
+                  {selectedMeta.type === "date" && selectedDateFreq?.length === 0 && (
+                    <div className="bg-white rounded-2xl border border-neutral-200 py-12 text-center text-sm text-neutral-400">
+                      날짜로 인식된 값이 없습니다.
+                    </div>
+                  )}
+
                 </div>
               )}
             </>

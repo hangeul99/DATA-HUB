@@ -6,6 +6,7 @@ import {
   Database, BarChart2, FileText, Download, Upload,
   Trash2, CheckCircle, TrendingUp, Plus, X, Loader2, AlertTriangle,
 } from "lucide-react";
+import * as XLSX from "xlsx";
 import { createClient } from "@/lib/supabase/client";
 
 // ── 탭 목록 — "다운로드 로그"는 "이용 현황"에 통합 ──────────────
@@ -39,7 +40,7 @@ interface MemberRow {
   applicationCount?: number;
 }
 interface ActivityRow {
-  no: number; datetime: string; organization: string; email: string; feature: string;
+  no: number; datetime: string; organization: string; email: string; feature: string; fileName?: string;
 }
 interface Summary {
   datasets: number; applications: number; downloads: number; submissions: number;
@@ -208,11 +209,29 @@ export default function AdminPage() {
   const [datasetRows, setDatasetRows] = useState<DatasetRow[]>([]);
   const [memberRows, setMemberRows] = useState<MemberRow[]>([]);
   const [activityRows, setActivityRows] = useState<ActivityRow[]>([]);
+  const [activityPage, setActivityPage] = useState(1);
+  const ACTIVITY_PER_PAGE = 100;
 
   const [loading, setLoading] = useState(false);
 
   const fmtDate = (iso: string) =>
     new Date(iso).toLocaleString("ko-KR", { year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit" });
+
+  // 이용 현황 엑셀 내보내기
+  const exportActivityExcel = () => {
+    const rows = activityRows.map(r => ({
+      "번호": r.no,
+      "일시": fmtDate(r.datetime),
+      "소속": r.organization,
+      "아이디(이메일)": r.email,
+      "이용기능": r.feature,
+      "파일명": r.fileName ?? "",
+    }));
+    const ws = XLSX.utils.json_to_sheet(rows);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "이용현황");
+    XLSX.writeFile(wb, `이용현황_${new Date().toISOString().slice(0,10)}.xlsx`);
+  };
 
   const fmtBytes = (bytes: number | null) => {
     if (!bytes) return "-";
@@ -314,20 +333,19 @@ export default function AdminPage() {
       const maskEmail = (email: string | null | undefined): string => {
         if (!email) return "-";
         const [local, domain] = email.split("@");
-        if (!domain) return email;
-        const visible = local.slice(0, Math.min(3, local.length));
-        return `${visible}***@${domain}`;
+        if (!domain || local.length <= 4) return email;
+        return `${local.slice(0, local.length - 4)}****@${domain}`;
       };
 
       const [{ data: logs }, { data: apps }, { data: dls }] = await Promise.all([
         supabase
           .from("analysis_logs")
-          .select("id, created_at, organization, profiles(email)")
+          .select("id, created_at, organization, user_email, file_name")
           .order("created_at", { ascending: false })
           .limit(500),
         supabase
           .from("applications")
-          .select("id, created_at, institution, profiles(email)")
+          .select("id, created_at, institution, profiles(email), datasets(title)")
           .order("created_at", { ascending: false })
           .limit(500),
         supabase
@@ -337,8 +355,8 @@ export default function AdminPage() {
           .limit(500),
       ]);
 
-      type LogRaw = { id: string; created_at: string; organization: string | null; profiles: { email: string } | null };
-      type AppRaw = { id: string; created_at: string; institution: string; profiles: { email: string } | { email: string }[] | null };
+      type LogRaw = { id: string; created_at: string; organization: string | null; user_email: string | null; file_name: string | null };
+      type AppRaw = { id: string; created_at: string; institution: string; profiles: { email: string } | { email: string }[] | null; datasets: { title: string } | null };
       type DlRaw  = { id: string; downloaded_at: string; profiles: { email: string; organization: string | null } | null; datasets: { title: string } | null };
 
       const getEmail = (p: AppRaw["profiles"]): string | undefined => {
@@ -351,14 +369,16 @@ export default function AdminPage() {
         ...((logs ?? []) as unknown as LogRaw[]).map((l) => ({
           datetime: l.created_at,
           organization: l.organization ?? "-",
-          email: maskEmail((l.profiles as { email: string } | null)?.email),
+          email: maskEmail(l.user_email),
           feature: "데이터 분석",
+          fileName: l.file_name ?? undefined,
         })),
         ...((apps ?? []) as unknown as AppRaw[]).map((a) => ({
           datetime: a.created_at,
           organization: a.institution ?? "-",
           email: maskEmail(getEmail(a.profiles)),
           feature: "데이터 신청",
+          fileName: a.datasets?.title ?? undefined,
         })),
         ...((dls ?? []) as unknown as DlRaw[]).map((d) => ({
           datetime: d.downloaded_at,
@@ -657,44 +677,81 @@ export default function AdminPage() {
           <div className="bg-white rounded-2xl border border-neutral-100 overflow-hidden">
             <div className="px-5 py-3 border-b border-neutral-100 flex items-center justify-between">
               <h3 className="font-semibold text-neutral-900 text-sm">이용 현황 로그 ({activityRows.length}건)</h3>
-              <span className="text-xs text-neutral-400">데이터 분석 · 데이터 신청 · 다운로드 통합</span>
-            </div>
-            {activityRows.length === 0 ? <EmptyState icon={BarChart2} text="이용 기록이 없습니다." /> : (
-              <div className="overflow-x-auto">
-                <table className="w-full text-xs">
-                  <thead className="bg-neutral-50 border-b border-neutral-100">
-                    <tr>
-                      {["번호", "일시", "소속", "아이디(이메일)", "이용기능"].map(h => (
-                        <th key={h} className="px-3 py-2 text-left font-semibold text-neutral-500 whitespace-nowrap">{h}</th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-neutral-50">
-                    {activityRows.map(row => (
-                      <tr key={row.no} className="hover:bg-neutral-50">
-                        <td className="px-3 py-1.5 text-neutral-400 tabular-nums w-10">{row.no}</td>
-                        <td className="px-3 py-1.5 text-neutral-600 whitespace-nowrap">
-                          {new Date(row.datetime).toLocaleString("ko-KR", { year: "2-digit", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit" })}
-                        </td>
-                        <td className="px-3 py-1.5 text-neutral-700 max-w-[120px] truncate">{row.organization}</td>
-                        <td className="px-3 py-1.5 font-medium text-neutral-700 font-mono">{row.email}</td>
-                        <td className="px-3 py-1.5">
-                          <span className={`px-2 py-0.5 rounded-full font-medium ${
-                            row.feature === "데이터 분석"
-                              ? "bg-brand-50 text-brand-700"
-                              : row.feature === "데이터 신청"
-                              ? "bg-blue-50 text-blue-700"
-                              : "bg-emerald-50 text-emerald-700"
-                          }`}>
-                            {row.feature}
-                          </span>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+              <div className="flex items-center gap-3">
+                <span className="text-xs text-neutral-400">데이터 분석 · 데이터 신청 · 다운로드 통합</span>
+                <button onClick={exportActivityExcel} disabled={activityRows.length === 0}
+                  className="flex items-center gap-1.5 text-xs font-medium text-emerald-700 bg-emerald-50 hover:bg-emerald-100 px-3 py-1.5 rounded-lg transition-colors disabled:opacity-40">
+                  <Download size={12} /> 엑셀 내보내기
+                </button>
               </div>
-            )}
+            </div>
+            {activityRows.length === 0 ? <EmptyState icon={BarChart2} text="이용 기록이 없습니다." /> : (() => {
+              const totalPages = Math.ceil(activityRows.length / ACTIVITY_PER_PAGE);
+              const pageRows = activityRows.slice((activityPage - 1) * ACTIVITY_PER_PAGE, activityPage * ACTIVITY_PER_PAGE);
+              return (
+                <>
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-xs">
+                      <thead className="bg-neutral-50 border-b border-neutral-100">
+                        <tr>
+                          {["번호", "일시", "소속", "아이디(이메일)", "이용기능", "파일명"].map(h => (
+                            <th key={h} className="px-3 py-2 text-left font-semibold text-neutral-500 whitespace-nowrap">{h}</th>
+                          ))}
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-neutral-50">
+                        {pageRows.map(row => (
+                          <tr key={row.no} className="hover:bg-neutral-50">
+                            <td className="px-3 py-1.5 text-neutral-400 tabular-nums w-10">{row.no}</td>
+                            <td className="px-3 py-1.5 text-neutral-600 whitespace-nowrap">
+                              {new Date(row.datetime).toLocaleString("ko-KR", { year: "2-digit", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit" })}
+                            </td>
+                            <td className="px-3 py-1.5 text-neutral-700 max-w-[120px] truncate">{row.organization}</td>
+                            <td className="px-3 py-1.5 font-medium text-neutral-700 font-mono">{row.email}</td>
+                            <td className="px-3 py-1.5">
+                              <span className={`px-2 py-0.5 rounded-full font-medium ${
+                                row.feature === "데이터 분석"
+                                  ? "bg-brand-50 text-brand-700"
+                                  : row.feature === "데이터 신청"
+                                  ? "bg-blue-50 text-blue-700"
+                                  : "bg-emerald-50 text-emerald-700"
+                              }`}>
+                                {row.feature}
+                              </span>
+                            </td>
+                            <td className="px-3 py-1.5 text-neutral-500 max-w-[160px]">
+                              {row.fileName
+                                ? <span title={row.fileName}>{row.fileName.length > 20 ? row.fileName.slice(0, 18) + "…" : row.fileName}</span>
+                                : <span className="text-neutral-300">-</span>}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                  {totalPages > 1 && (
+                    <div className="flex items-center justify-center gap-1 px-4 py-3 border-t border-neutral-100">
+                      <button onClick={() => setActivityPage(p => Math.max(1, p - 1))} disabled={activityPage === 1}
+                        className="px-2.5 py-1 text-xs rounded-lg text-neutral-500 hover:bg-neutral-100 disabled:opacity-30 transition-colors">
+                        ← 이전
+                      </button>
+                      {Array.from({ length: totalPages }, (_, i) => i + 1).map(p => (
+                        <button key={p} onClick={() => setActivityPage(p)}
+                          className={`w-7 h-7 text-xs rounded-lg font-medium transition-colors ${
+                            p === activityPage ? "bg-brand-600 text-white" : "text-neutral-500 hover:bg-neutral-100"
+                          }`}>
+                          {p}
+                        </button>
+                      ))}
+                      <button onClick={() => setActivityPage(p => Math.min(totalPages, p + 1))} disabled={activityPage === totalPages}
+                        className="px-2.5 py-1 text-xs rounded-lg text-neutral-500 hover:bg-neutral-100 disabled:opacity-30 transition-colors">
+                        다음 →
+                      </button>
+                    </div>
+                  )}
+                </>
+              );
+            })()}
           </div>
         )}
       </div>

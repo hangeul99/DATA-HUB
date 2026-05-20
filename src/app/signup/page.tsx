@@ -7,15 +7,15 @@ import { ArrowLeft, Lock, Shield, AlertCircle, Eye, EyeOff, CheckCircle } from "
 import { createClient } from "@/lib/supabase/client";
 
 export default function SignupPage() {
-  const [name, setName] = useState("");
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
+  const [name, setName]                     = useState("");
+  const [organization, setOrganization]     = useState("");
+  const [email, setEmail]                   = useState("");
+  const [password, setPassword]             = useState("");
   const [passwordConfirm, setPasswordConfirm] = useState("");
-  const [showPassword, setShowPassword] = useState(false);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  // 가입 완료 후 이메일 인증 안내 화면 표시 여부
-  const [done, setDone] = useState(false);
+  const [showPassword, setShowPassword]     = useState(false);
+  const [loading, setLoading]               = useState(false);
+  const [error, setError]                   = useState<string | null>(null);
+  const [done, setDone]                     = useState(false);
 
   // 비밀번호 유효성 검사
   const passwordValid = password.length >= 8;
@@ -25,8 +25,8 @@ export default function SignupPage() {
     e.preventDefault();
     setError(null);
 
-    // 클라이언트 유효성 검사
     if (!name.trim()) { setError("이름을 입력하세요."); return; }
+    if (!organization.trim()) { setError("소속기관을 입력하세요."); return; }
     if (!passwordValid) { setError("비밀번호는 8자 이상이어야 합니다."); return; }
     if (!passwordMatch) { setError("비밀번호가 일치하지 않습니다."); return; }
 
@@ -37,8 +37,7 @@ export default function SignupPage() {
       email,
       password,
       options: {
-        // 이름을 메타데이터로 저장 → profiles 트리거가 name 필드에 반영
-        data: { full_name: name },
+        data: { full_name: name, organization: organization.trim() },
         // 이메일 인증 후 돌아올 주소
         emailRedirectTo: `${location.origin}/auth/callback`,
       },
@@ -122,6 +121,11 @@ export default function SignupPage() {
             {/* 이름 */}
             <input type="text" value={name} onChange={(e) => setName(e.target.value)}
               placeholder="이름" required
+              className="w-full px-4 py-3.5 rounded-xl border border-neutral-200 text-sm text-neutral-700 focus:outline-none focus:ring-2 focus:ring-brand-400 placeholder:text-neutral-400" />
+
+            {/* 소속기관 */}
+            <input type="text" value={organization} onChange={(e) => setOrganization(e.target.value)}
+              placeholder="소속기관 (예: 인제대학교, 김해시청)" required
               className="w-full px-4 py-3.5 rounded-xl border border-neutral-200 text-sm text-neutral-700 focus:outline-none focus:ring-2 focus:ring-brand-400 placeholder:text-neutral-400" />
 
             {/* 이메일 */}

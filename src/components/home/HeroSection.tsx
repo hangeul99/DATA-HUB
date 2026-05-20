@@ -2,6 +2,7 @@
 
 import { useEffect, useRef } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { ArrowRight, Search, ChevronDown } from "lucide-react";
 
 export default function HeroSection() {
@@ -48,38 +49,45 @@ export default function HeroSection() {
       <div className="relative z-10 max-w-5xl mx-auto px-6 text-center">
 
         {/* 로고 + 센터명 영역 */}
-        <div ref={logoRef} className="flex flex-col items-center mb-10">
-
-          {/* 센터명 */}
-          <p className="text-white/70 text-sm font-semibold tracking-[0.25em] uppercase mb-2">
-            Inje University
+        <div ref={logoRef} className="flex flex-col items-center mb-12">
+          {/* 글로컬 로고 — 흰 원형 배경 위에 크게 */}
+          <div className="relative mb-6">
+            <div className="w-52 h-52 md:w-64 md:h-64 rounded-full bg-white/10 backdrop-blur-sm border border-white/20 flex items-center justify-center shadow-2xl">
+              <div className="relative w-40 h-40 md:w-52 md:h-52 drop-shadow-xl">
+                <Image src="/logo.png" alt="인제대학교 로고" fill sizes="208px"
+                  style={{ objectFit: "contain" }} priority draggable={false} />
+              </div>
+            </div>
+          </div>
+          <p className="text-white/60 text-sm font-medium tracking-[0.18em] mb-2">
+            인제대학교 글로컬대학
           </p>
-          <h2 className="text-white text-4xl md:text-5xl font-extrabold tracking-tight">
+          <h2 className="text-white text-3xl md:text-4xl font-extrabold tracking-tight">
             데이터거버넌스센터
           </h2>
         </div>
 
         {/* 구분선 */}
-        <div className="w-12 h-px bg-white/25 mx-auto mb-10" />
+        <div className="w-16 h-px bg-white/20 mx-auto mb-10" />
 
         {/* 메인 타이틀 */}
         <h1
           ref={titleRef}
           className="text-4xl md:text-5xl lg:text-6xl font-bold text-white leading-tight tracking-tight"
         >
-          데이터로 만드는
+          데이터로 여는
           <br />
-          <span className="text-brand-300">더 나은 연구</span>
+          <span className="text-brand-300">지역 혁신의 시대</span>
         </h1>
 
         {/* 서브 문구 */}
         <p
           ref={subRef}
-          className="mt-6 text-base md:text-lg text-white/60 max-w-xl mx-auto leading-relaxed"
+          className="mt-6 text-base md:text-lg text-white/60 max-w-2xl mx-auto leading-relaxed"
         >
-          통계, 공공, 연구, 금융 데이터를 한 곳에서 탐색하고 신청하세요.
+          연구자·기업·지자체·일반인 모두를 위한 인제대학교 데이터 플랫폼.
           <br className="hidden md:block" />
-          검증된 데이터로 연구와 프로젝트의 가치를 높이세요.
+          통계·공공·연구·금융 데이터를 한 곳에서 탐색하고 신청하세요.
         </p>
 
         {/* 검색바 */}

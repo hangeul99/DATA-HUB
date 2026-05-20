@@ -1,40 +1,29 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { createClient } from "@/lib/supabase/client";
 
-const stats = [
-  { value: 1240, suffix: "+", label: "등록 데이터셋" },
-  { value: 89, suffix: "%", label: "신청 승인율" },
-  { value: 3600, suffix: "+", label: "활용 건수" },
-  { value: 4, suffix: "개", label: "데이터 카테고리" },
-];
+interface StatItem { value: number; suffix: string; label: string; }
 
-function useCountUp(target: number, duration = 1500, started: boolean) {
+function useCountUp(target: number, duration = 1400, started: boolean) {
   const [count, setCount] = useState(0);
   useEffect(() => {
     if (!started) return;
-    let start = 0;
+    let cur = 0;
     const step = target / (duration / 16);
     const timer = setInterval(() => {
-      start += step;
-      if (start >= target) {
-        setCount(target);
-        clearInterval(timer);
-      } else {
-        setCount(Math.floor(start));
-      }
+      cur += step;
+      if (cur >= target) { setCount(target); clearInterval(timer); }
+      else setCount(Math.floor(cur));
     }, 16);
     return () => clearInterval(timer);
   }, [target, duration, started]);
   return count;
 }
 
-function StatCard({ value, suffix, label, delay, started }: {
-  value: number; suffix: string; label: string; delay: number; started: boolean;
-}) {
+function StatCard({ value, suffix, label, delay, started }: StatItem & { delay: number; started: boolean }) {
   const count = useCountUp(value, 1400, started);
   const ref = useRef<HTMLDivElement>(null);
-
   useEffect(() => {
     if (!ref.current) return;
     ref.current.style.opacity = "0";
@@ -46,7 +35,6 @@ function StatCard({ value, suffix, label, delay, started }: {
       ref.current.style.transform = "translateY(0)";
     }, delay);
   }, [delay, started]);
-
   return (
     <div ref={ref} className="text-center">
       <div className="text-4xl md:text-5xl font-bold text-brand-600 tabular-nums">
@@ -59,7 +47,31 @@ function StatCard({ value, suffix, label, delay, started }: {
 
 export default function StatsSection() {
   const sectionRef = useRef<HTMLDivElement>(null);
-  const [started, setStarted] = useState(false);
+  const [started, setStarted]   = useState(false);
+  const [stats, setStats]       = useState<StatItem[]>([
+    { value: 0, suffix: "+", label: "등록 데이터셋" },
+    { value: 0, suffix: "+", label: "총 신청 건수" },
+    { value: 0, suffix: "+", label: "총 다운로드" },
+    { value: 4, suffix: "개", label: "데이터 카테고리" },
+  ]);
+
+  // Supabase에서 실시간 수치 조회
+  useEffect(() => {
+    const supabase = createClient();
+    (async () => {
+      const [{ count: datasets }, { count: applications }, { count: downloads }] = await Promise.all([
+        supabase.from("datasets").select("*", { count: "exact", head: true }).eq("is_active", true),
+        supabase.from("applications").select("*", { count: "exact", head: true }),
+        supabase.from("download_logs").select("*", { count: "exact", head: true }),
+      ]);
+      setStats([
+        { value: datasets  ?? 0, suffix: "+", label: "등록 데이터셋" },
+        { value: applications ?? 0, suffix: "+", label: "총 신청 건수" },
+        { value: downloads ?? 0, suffix: "+", label: "총 다운로드" },
+        { value: 4, suffix: "개", label: "데이터 카테고리" },
+      ]);
+    })();
+  }, []);
 
   useEffect(() => {
     const observer = new IntersectionObserver(

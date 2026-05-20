@@ -95,8 +95,8 @@ export default function Navbar() {
               <div className="w-9 h-9 rounded-lg bg-brand-600 flex items-center justify-center text-white text-xs font-black flex-shrink-0">IU</div>
             )}
             <div className="flex flex-col justify-center leading-snug">
-              <span className={`text-[11px] font-medium transition-colors duration-300 ${isHome && !scrolled ? "text-white/70" : "text-neutral-400"}`}>
-                인제대학교
+              <span className={`text-[10px] font-medium transition-colors duration-300 ${isHome && !scrolled ? "text-white/60" : "text-neutral-400"}`}>
+                인제대학교 글로컬대학
               </span>
               <span className={`text-sm font-bold tracking-tight transition-colors duration-300 ${isHome && !scrolled ? "text-white" : "text-neutral-800"}`}>
                 데이터거버넌스센터

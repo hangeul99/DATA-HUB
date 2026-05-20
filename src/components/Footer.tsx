@@ -10,18 +10,18 @@ export default function Footer() {
           {/* Brand */}
           <div className="space-y-4">
             <div className="flex items-center gap-3">
-              <div className="relative w-10 h-10 flex-shrink-0">
+              <div className="relative w-14 h-14 flex-shrink-0">
                 <Image
                   src="/logo.png"
                   alt="인제대학교 데이터거버넌스센터 로고"
                   fill
-                  sizes="40px"
+                  sizes="56px"
                   style={{ objectFit: "contain" }}
                   draggable={false}
                 />
               </div>
               <div className="flex flex-col leading-tight">
-                <span className="text-xs text-neutral-500">인제대학교</span>
+                <span className="text-[11px] text-neutral-500">인제대학교 글로컬대학</span>
                 <span className="font-bold text-white text-sm">데이터거버넌스센터</span>
               </div>
             </div>

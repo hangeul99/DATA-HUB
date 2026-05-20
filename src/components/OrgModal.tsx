@@ -1,49 +1,41 @@
 "use client";
 
-import { Suspense, useEffect, useState } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { Database } from "lucide-react";
 
 /**
- * 온보딩 페이지
- * - 소셜 로그인 직후 organization 미입력 사용자에게 표시
- * - proxy.ts에서 ?redirect= 파라미터로 원래 목적지를 전달
- * - 소속기관 입력 후 profiles 테이블 업데이트 → redirect 경로로 이동
+ * 구글 등 소셜 로그인 후 소속기관이 미입력된 경우 홈 화면에 표시되는 모달
+ * 한 번 입력하면 profiles 테이블에 저장되고 이후에는 나타나지 않음
  */
-function OnboardingContent() {
-  const router = useRouter();
-  const searchParams = useSearchParams();
-  const redirectTo = searchParams.get("redirect") || "/";
-
-  const [organization, setOrganization] = useState("");
+export default function OrgModal() {
+  const [show, setShow]             = useState(false);
+  const [organization, setOrg]      = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError]           = useState<string | null>(null);
 
-  // 이미 온보딩 완료한 사용자는 목적지(또는 홈)로 이동
   useEffect(() => {
     const supabase = createClient();
-    supabase.auth.getUser().then(async ({ data: { user } }) => {
-      if (!user) { router.replace("/login"); return; }
+    (async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
       const { data: profile } = await supabase
         .from("profiles")
         .select("organization")
         .eq("id", user.id)
         .single();
-      if (profile?.organization) router.replace(redirectTo);
-    });
-  }, [router, redirectTo]);
+      if (profile && !profile.organization) setShow(true);
+    })();
+  }, []);
 
-  // 소속기관을 profiles 테이블에 저장 후 목적지로 이동
   const handleSubmit = async () => {
     if (!organization.trim()) { setError("소속기관을 입력해주세요."); return; }
-
     setSubmitting(true);
     setError(null);
 
     const supabase = createClient();
     const { data: { user } } = await supabase.auth.getUser();
-    if (!user) { router.replace("/login"); return; }
+    if (!user) { setSubmitting(false); return; }
 
     const { error: updateErr } = await supabase
       .from("profiles")
@@ -53,18 +45,20 @@ function OnboardingContent() {
     if (updateErr) {
       setError("저장에 실패했습니다. 다시 시도해주세요.");
       setSubmitting(false);
-      return;
+    } else {
+      setShow(false);
     }
-
-    router.replace(redirectTo);
   };
 
+  if (!show) return null;
+
   return (
-    <div className="min-h-screen bg-neutral-50 flex items-center justify-center px-4">
-      <div className="bg-white rounded-2xl shadow-sm border border-neutral-100 p-8 w-full max-w-md">
+    // 반투명 오버레이
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm px-4">
+      <div className="bg-white rounded-2xl shadow-xl border border-neutral-100 p-8 w-full max-w-md">
 
         {/* 로고 */}
-        <div className="flex items-center gap-2.5 mb-8">
+        <div className="flex items-center gap-2.5 mb-6">
           <div className="w-9 h-9 rounded-xl bg-brand-600 flex items-center justify-center flex-shrink-0">
             <Database size={18} className="text-white" />
           </div>
@@ -74,19 +68,21 @@ function OnboardingContent() {
           </div>
         </div>
 
-        <h1 className="text-xl font-bold text-neutral-900 mb-1">소속기관 입력</h1>
-        <p className="text-sm text-neutral-500 mb-7">서비스 이용을 위해 소속기관을 입력해주세요.</p>
+        <h2 className="text-lg font-bold text-neutral-900 mb-1">소속기관을 입력해주세요</h2>
+        <p className="text-sm text-neutral-500 mb-6">서비스 이용을 위해 한 번만 입력하면 됩니다.</p>
 
-        <div className="mb-6">
+        <div className="mb-4">
           <label className="block text-sm font-semibold text-neutral-700 mb-2">
             소속기관 <span className="text-red-500">*</span>
           </label>
           <input
             type="text"
             value={organization}
-            onChange={(e) => { setOrganization(e.target.value); setError(null); }}
+            onChange={(e) => { setOrg(e.target.value); setError(null); }}
+            onKeyDown={(e) => e.key === "Enter" && handleSubmit()}
             placeholder="예: 인제대학교, 김해시청, (주)인제소프트"
             className="w-full px-4 py-3 rounded-xl border border-neutral-200 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400"
+            autoFocus
           />
         </div>
 
@@ -105,13 +101,5 @@ function OnboardingContent() {
         </button>
       </div>
     </div>
-  );
-}
-
-export default function OnboardingPage() {
-  return (
-    <Suspense>
-      <OnboardingContent />
-    </Suspense>
   );
 }

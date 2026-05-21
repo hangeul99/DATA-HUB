@@ -85,7 +85,7 @@ export default function Navbar() {
           {/* 로고 — 왼쪽 고정 */}
           <Link href="/" className="flex items-center gap-3 group flex-shrink-0 justify-self-start">
             {!logoError ? (
-              <div className="relative w-9 h-9 flex-shrink-0">
+              <div className="relative w-9 h-9 flex-shrink-0 bg-white rounded-lg border border-neutral-100 p-0.5 shadow-sm">
                 <Image src="/logo.png" alt="인제대학교 로고" fill sizes="36px"
                   style={{ objectFit: "contain" }} priority draggable={false}
                   onError={() => setLogoError(true)} />

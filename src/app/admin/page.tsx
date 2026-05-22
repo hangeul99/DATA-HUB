@@ -22,7 +22,7 @@ interface UtilRow {
   applications: number; downloads: number; submissions: number;
 }
 interface AppRow {
-  id: string; created_at: string; institution: string; field: string;
+  id: string; created_at: string; institution: string; field: string; status: string;
   profiles: { name: string; email: string } | null;
   datasets: { title: string } | null;
 }
@@ -295,7 +295,7 @@ export default function AdminPage() {
     if (t === 1) {
       const { data } = await supabase
         .from("applications")
-        .select("id, created_at, institution, field, profiles(name, email), datasets(title)")
+        .select("id, created_at, institution, field, status, profiles(name, email), datasets(title)")
         .order("created_at", { ascending: false });
       setAppRows((data as unknown as AppRow[]) ?? []);
     }
@@ -446,6 +446,14 @@ export default function AdminPage() {
     fetchSummary();
   };
 
+  // ── 데이터 신청 승인/반려 ────────────────────────────────────
+  const handleApplication = async (id: string, approve: boolean) => {
+    const supabase = createClient();
+    const status = approve ? "approved" : "rejected";
+    await supabase.from("applications").update({ status }).eq("id", id);
+    setAppRows((prev) => prev.map((a) => a.id === id ? { ...a, status } : a));
+  };
+
   // ── 지역/업체 접근 권한 승인/거절 ───────────────────────────
   const handleAccessRequest = async (requestId: string, userId: string, approve: boolean) => {
     const supabase = createClient();
@@ -562,7 +570,7 @@ export default function AdminPage() {
               <table className="w-full">
                 <thead className="bg-neutral-50 border-b border-neutral-100">
                   <tr>
-                    {["신청자", "이메일", "소속", "데이터셋", "활용분야", "신청일", "상태"].map(h => (
+                    {["신청자", "이메일", "소속", "데이터셋", "활용분야", "신청일", "처리"].map(h => (
                       <th key={h} className="px-5 py-3 text-left text-xs font-semibold text-neutral-500">{h}</th>
                     ))}
                   </tr>
@@ -577,9 +585,24 @@ export default function AdminPage() {
                       <td className="px-5 py-4 text-xs text-neutral-500">{a.field}</td>
                       <td className="px-5 py-4 text-xs text-neutral-500">{fmtDate(a.created_at)}</td>
                       <td className="px-5 py-4">
-                        <span className="flex items-center gap-1 text-xs text-brand-600 bg-brand-50 px-2 py-0.5 rounded-full w-fit">
-                          <CheckCircle size={10} /> 승인
-                        </span>
+                        {a.status === "approved" ? (
+                          <span className="flex items-center gap-1 text-xs text-emerald-700 bg-emerald-50 px-2 py-1 rounded-full w-fit">
+                            <CheckCircle size={10} /> 승인됨
+                          </span>
+                        ) : a.status === "rejected" ? (
+                          <span className="text-xs text-red-500 bg-red-50 px-2 py-1 rounded-full w-fit block">반려됨</span>
+                        ) : (
+                          <div className="flex gap-1.5">
+                            <button onClick={() => handleApplication(a.id, true)}
+                              className="px-2.5 py-1 text-xs font-semibold bg-brand-600 hover:bg-brand-700 text-white rounded-lg transition-colors">
+                              승인
+                            </button>
+                            <button onClick={() => handleApplication(a.id, false)}
+                              className="px-2.5 py-1 text-xs font-semibold bg-neutral-100 hover:bg-red-50 text-neutral-600 hover:text-red-600 rounded-lg transition-colors">
+                              반려
+                            </button>
+                          </div>
+                        )}
                       </td>
                     </tr>
                   ))}

@@ -12,6 +12,7 @@ import { Database } from "lucide-react";
  */
 export default function OrgModal() {
   const [show, setShow]             = useState(false);
+  const [name, setName]             = useState("");
   const [organization, setOrg]      = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError]           = useState<string | null>(null);
@@ -24,15 +25,19 @@ export default function OrgModal() {
       if (!user) return;
       const { data: profile } = await supabase
         .from("profiles")
-        .select("organization")
+        .select("organization, name")
         .eq("id", user.id)
         .single();
-      if (profile && !profile.organization) setShow(true);
+      if (profile && !profile.organization) {
+        setName(profile.name ?? user.user_metadata?.full_name ?? "");
+        setShow(true);
+      }
     })();
   }, []);
 
   const handleSubmit = async () => {
     if (!agreed) { setError("개인정보처리방침에 동의해주세요."); return; }
+    if (!name.trim()) { setError("이름을 입력해주세요."); return; }
     if (!organization.trim()) { setError("소속기관을 입력해주세요."); return; }
     setSubmitting(true);
     setError(null);
@@ -43,7 +48,7 @@ export default function OrgModal() {
 
     const { error: updateErr } = await supabase
       .from("profiles")
-      .update({ organization: organization.trim() })
+      .update({ name: name.trim(), organization: organization.trim() })
       .eq("id", user.id);
 
     if (updateErr) {
@@ -72,8 +77,22 @@ export default function OrgModal() {
           </div>
         </div>
 
-        <h2 className="text-lg font-bold text-neutral-900 mb-1">소속기관을 입력해주세요</h2>
+        <h2 className="text-lg font-bold text-neutral-900 mb-1">추가 정보를 입력해주세요</h2>
         <p className="text-sm text-neutral-500 mb-6">서비스 이용을 위해 한 번만 입력하면 됩니다.</p>
+
+        <div className="mb-3">
+          <label className="block text-sm font-semibold text-neutral-700 mb-2">
+            이름 <span className="text-red-500">*</span>
+          </label>
+          <input
+            type="text"
+            value={name}
+            onChange={(e) => { setName(e.target.value); setError(null); }}
+            placeholder="홍길동"
+            className="w-full px-4 py-3 rounded-xl border border-neutral-200 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400"
+            autoFocus
+          />
+        </div>
 
         <div className="mb-4">
           <label className="block text-sm font-semibold text-neutral-700 mb-2">
@@ -86,7 +105,6 @@ export default function OrgModal() {
             onKeyDown={(e) => e.key === "Enter" && handleSubmit()}
             placeholder="예: 인제대학교, 김해시청, (주)인제소프트"
             className="w-full px-4 py-3 rounded-xl border border-neutral-200 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400"
-            autoFocus
           />
         </div>
 

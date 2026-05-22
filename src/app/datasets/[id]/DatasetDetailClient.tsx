@@ -304,7 +304,7 @@ export default function DatasetDetailClient({ id }: { id: string }) {
 
   const [dataset, setDataset] = useState<Dataset | null>(null);
   const [loading, setLoading] = useState(true);
-  const [hasApplied, setHasApplied] = useState(false);
+  const [appStatus, setAppStatus] = useState<"pending" | "approved" | "rejected" | null>(null);
   const [userInfo, setUserInfo] = useState<UserInfo | null>(null);
   const [downloading, setDownloading] = useState(false);
   const [downloadError, setDownloadError] = useState<string | null>(null);
@@ -336,10 +336,10 @@ export default function DatasetDetailClient({ id }: { id: string }) {
           email: profile?.email ?? user.email ?? "",
         });
 
-        // 신청 여부 확인
+        // 신청 여부 + 상태 확인
         const { data: app } = await supabase
-          .from("applications").select("id").eq("user_id", user.id).eq("dataset_id", id).maybeSingle();
-        setHasApplied(!!app);
+          .from("applications").select("id, status").eq("user_id", user.id).eq("dataset_id", id).maybeSingle();
+        if (app) setAppStatus((app as { id: string; status: string }).status as "pending" | "approved" | "rejected");
       }
       setLoading(false);
     });
@@ -441,11 +441,11 @@ export default function DatasetDetailClient({ id }: { id: string }) {
           {/* ── 사이드바 ─────────────────────────────────────────── */}
           <div className="space-y-4">
             <div className="bg-white rounded-2xl border border-neutral-100 p-5 sticky top-24">
-              {hasApplied ? (
+              {appStatus === "approved" ? (
                 <>
                   <div className="flex items-center gap-2 text-brand-600 mb-4">
                     <CheckCircle size={18} />
-                    <span className="text-sm font-semibold">신청 완료 — 다운로드 가능</span>
+                    <span className="text-sm font-semibold">승인 완료 — 다운로드 가능</span>
                   </div>
                   {downloadError && (
                     <div className="bg-red-50 border border-red-100 rounded-xl px-3 py-2 text-xs text-red-600 mb-3">{downloadError}</div>
@@ -455,9 +455,26 @@ export default function DatasetDetailClient({ id }: { id: string }) {
                     {downloading ? <Loader2 size={16} className="animate-spin" /> : <Download size={16} />}
                     {downloading ? "다운로드 중..." : dataset.file_path ? "데이터 다운로드" : "파일 준비 중"}
                   </button>
-                  {!dataset.file_path && (
-                    <p className="text-xs text-neutral-400 text-center mt-2">파일이 아직 업로드되지 않았습니다.</p>
-                  )}
+                </>
+              ) : appStatus === "pending" ? (
+                <>
+                  <div className="flex items-center gap-2 text-amber-600 mb-4">
+                    <Loader2 size={16} className="animate-spin" />
+                    <span className="text-sm font-semibold">검토 중</span>
+                  </div>
+                  <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 text-xs text-amber-700 text-center">
+                    신청서를 검토 중입니다.<br />승인 후 다운로드가 가능합니다.
+                  </div>
+                </>
+              ) : appStatus === "rejected" ? (
+                <>
+                  <div className="flex items-center gap-2 text-red-500 mb-4">
+                    <Lock size={16} />
+                    <span className="text-sm font-semibold">신청 반려됨</span>
+                  </div>
+                  <div className="bg-red-50 border border-red-100 rounded-xl p-4 text-xs text-red-600 text-center">
+                    신청이 반려되었습니다.<br />문의: han9449@inje.ac.kr
+                  </div>
                 </>
               ) : (
                 <>
@@ -480,7 +497,7 @@ export default function DatasetDetailClient({ id }: { id: string }) {
                     <p className="font-semibold text-neutral-700">신청 절차</p>
                     <p>① 신청서 작성 (소속, 목적 등)</p>
                     <p>② 보안 서약 동의</p>
-                    <p>③ 제출 즉시 다운로드 가능</p>
+                    <p>③ 관리자 검토 후 승인 시 다운로드 가능</p>
                   </div>
                 </>
               )}
@@ -502,7 +519,7 @@ export default function DatasetDetailClient({ id }: { id: string }) {
           dataset={dataset}
           userInfo={userInfo}
           onClose={() => setShowApply(false)}
-          onSuccess={() => { setShowApply(false); setShowSuccess(true); setHasApplied(true); }}
+          onSuccess={() => { setShowApply(false); setShowSuccess(true); setAppStatus("pending"); }}
         />
       )}
 

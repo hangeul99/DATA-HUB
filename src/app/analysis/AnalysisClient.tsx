@@ -675,6 +675,15 @@ export default function AnalysisClient() {
           <p className="text-neutral-500 text-sm">CSV 또는 Excel 파일을 업로드하면 자동으로 통계 분석과 시각화를 제공합니다.</p>
         </div>
 
+        {/* 개인정보 포함 파일 업로드 금지 안내 */}
+        <div className="w-full mb-4 flex items-start gap-2.5 bg-amber-50 border border-amber-200 rounded-xl px-4 py-3">
+          <AlertCircle size={15} className="text-amber-500 flex-shrink-0 mt-0.5" />
+          <p className="text-xs text-amber-700 leading-relaxed">
+            <span className="font-semibold">주의:</span> 개인정보(이름, 주민번호, 연락처 등)가 포함된 파일은 업로드하지 마세요.
+            업로드된 파일은 분석 목적으로만 처리되며 서버에 저장되지 않습니다.
+          </p>
+        </div>
+
         {/* 드래그 앤 드롭 영역 */}
         <div
           onDrop={onDrop}

@@ -171,9 +171,11 @@ export default function SignupPage() {
                 onChange={(e) => setAgreed(e.target.checked)}
                 className="mt-0.5 w-4 h-4 rounded border-neutral-300 text-brand-600 focus:ring-brand-400 cursor-pointer flex-shrink-0"
               />
-              <span className="text-xs text-neutral-500 group-hover:text-neutral-700 transition-colors whitespace-nowrap">
+              <span className="text-xs text-neutral-500 group-hover:text-neutral-700 transition-colors">
                 <Link href="/privacy" target="_blank" className="text-brand-600 hover:underline font-semibold">개인정보처리방침</Link>
-                {" "}동의 <span className="text-red-400">(필수)</span>
+                {" "}및{" "}
+                <Link href="/terms" target="_blank" className="text-brand-600 hover:underline font-semibold">이용약관</Link>
+                {" "}동의 · 만 14세 이상 확인 <span className="text-red-400">(필수)</span>
               </span>
             </label>
 

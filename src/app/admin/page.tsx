@@ -312,6 +312,7 @@ export default function AdminPage() {
       const { data } = await supabase
         .from("datasets")
         .select("id, title, category, year, file_size, is_active, created_at")
+        .eq("is_active", true)
         .order("created_at", { ascending: false });
       setDatasetRows((data as DatasetRow[]) ?? []);
     }

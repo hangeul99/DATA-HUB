@@ -359,7 +359,25 @@ export default function DatasetDetailClient({ id }: { id: string }) {
       return;
     }
     await supabase.from("download_logs").insert({ user_id: userInfo.id, dataset_id: dataset.id });
-    window.open(signedData.signedUrl, "_blank");
+
+    // 숫자 prefix 제거: "127832_heart.csv" → "heart.csv"
+    const rawName = dataset.file_path.split("/").pop() ?? "download";
+    const cleanName = rawName.replace(/^\d+_/, "");
+
+    try {
+      const res = await fetch(signedData.signedUrl);
+      const blob = await res.blob();
+      const blobUrl = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = blobUrl;
+      a.download = cleanName;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(blobUrl);
+    } catch {
+      setDownloadError("다운로드에 실패했습니다. 다시 시도해주세요.");
+    }
     setDownloading(false);
   };
 

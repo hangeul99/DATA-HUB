@@ -79,6 +79,7 @@ export default function Navbar() {
   const linkColor = isHome && !scrolled ? "text-white" : "text-neutral-700";
 
   return (
+    <>
     <header className={`fixed top-0 left-0 right-0 z-50 transition-colors duration-300 ${navBg}`}>
       <div className="w-full px-6 lg:px-10">
         {/* CSS grid 3-column: 로고(좌) | 네비(중) | 인증(우) */}
@@ -214,7 +215,8 @@ export default function Navbar() {
         </div>
       )}
 
-      {showSurvey && <SurveyModal onClose={() => setShowSurvey(false)} />}
     </header>
+    {showSurvey && <SurveyModal onClose={() => setShowSurvey(false)} />}
+    </>
   );
 }

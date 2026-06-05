@@ -7,6 +7,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { Menu, X, LogOut, User, Settings } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import type { User as SupabaseUser } from "@supabase/supabase-js";
+import SurveyModal from "@/components/SurveyModal";
 
 // 상단 네비게이션 링크 목록
 const navLinks = [
@@ -17,11 +18,12 @@ const navLinks = [
 ];
 
 export default function Navbar() {
-  const [scrolled,    setScrolled]    = useState(false);
-  const [mobileOpen,  setMobileOpen]  = useState(false);
-  const [logoError,   setLogoError]   = useState(false);
-  const [user,        setUser]        = useState<SupabaseUser | null>(null);
-  const [isAdmin,     setIsAdmin]     = useState(false);
+  const [scrolled,      setScrolled]      = useState(false);
+  const [mobileOpen,    setMobileOpen]    = useState(false);
+  const [logoError,     setLogoError]     = useState(false);
+  const [user,          setUser]          = useState<SupabaseUser | null>(null);
+  const [isAdmin,       setIsAdmin]       = useState(false);
+  const [showSurvey,    setShowSurvey]    = useState(false);
 
   const pathname = usePathname();
   const router   = useRouter();
@@ -114,6 +116,10 @@ export default function Navbar() {
                 {link.label}
               </Link>
             ))}
+            <button onClick={() => setShowSurvey(true)}
+              className={`text-sm font-medium transition-colors duration-200 hover:opacity-70 opacity-75 ${linkColor}`}>
+              만족도 조사
+            </button>
           </nav>
 
           {/* 인증 영역 — 오른쪽 고정 */}
@@ -188,6 +194,11 @@ export default function Navbar() {
               </Link>
             ))}
             <hr className="border-neutral-100 my-1" />
+            <button onClick={() => { setShowSurvey(true); setMobileOpen(false); }}
+              className="text-sm font-medium text-neutral-700 py-2 hover:text-brand-600 transition-colors text-left">
+              만족도 조사
+            </button>
+            <hr className="border-neutral-100" />
             {user ? (
               <button onClick={logout}
                 className="text-sm font-semibold text-center bg-neutral-100 text-neutral-700 py-3 rounded-xl hover:bg-neutral-200 transition-colors">
@@ -202,6 +213,8 @@ export default function Navbar() {
           </div>
         </div>
       )}
+
+      {showSurvey && <SurveyModal onClose={() => setShowSurvey(false)} />}
     </header>
   );
 }

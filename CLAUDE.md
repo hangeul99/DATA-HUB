@@ -188,7 +188,11 @@ lhg9449@gmail.com → lhg****@gmail.com
 - 환경변수는 .env.local 파일에만 저장
 - Supabase 쿼리 실패해도 UX에 영향 없도록 try/catch 처리
 - 서버 컴포넌트에서 auth는 `getUser()` 사용
-- 새 기능 완성 후 `npx vercel --prod` 로 배포
+- **모든 코드/파일 변경 후 반드시 git push (GitHub에 올리기)**
+  ```bash
+  git add [파일명] && git commit -m "설명" && git push
+  ```
+- 새 기능 완성 후 `npx vercel --prod` 로 배포 (또는 git push → Vercel 자동 배포)
 
 ### 색상 시스템
 

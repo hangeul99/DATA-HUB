@@ -189,7 +189,6 @@ export default function Navbar() {
               </Link>
             ))}
             <hr className="border-neutral-100 my-1" />
-            <hr className="border-neutral-100" />
             {user ? (
               <button onClick={logout}
                 className="text-sm font-semibold text-center bg-neutral-100 text-neutral-700 py-3 rounded-xl hover:bg-neutral-200 transition-colors">

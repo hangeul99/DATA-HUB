@@ -42,6 +42,7 @@ interface MemberRow {
 }
 interface ActivityRow {
   no: number; datetime: string; organization: string; email: string; feature: string; fileName?: string;
+  downloaded?: boolean; appStatus?: string;
 }
 interface AccessRequestRow {
   id: string; created_at: string; status: string; reason: string; user_id: string;
@@ -337,8 +338,7 @@ export default function AdminPage() {
     }
 
     if (t === 5) {
-      // 이용 현황: 데이터 분석 + 데이터 신청 + 다운로드 로그 통합
-      // 이름 대신 이메일(아이디) 표시, 앞 3자만 공개하고 나머지 마스킹
+      // 이용 현황: 데이터 분석 + (데이터 신청 + 다운로드 통합) 로그
       const maskEmail = (email: string | null | undefined): string => {
         if (!email) return "-";
         const [local, domain] = email.split("@");
@@ -354,19 +354,19 @@ export default function AdminPage() {
           .limit(500),
         supabase
           .from("applications")
-          .select("id, created_at, institution, profiles(email), datasets(title)")
+          .select("id, created_at, institution, user_id, dataset_id, status, profiles(email), datasets(title)")
           .order("created_at", { ascending: false })
           .limit(500),
         supabase
           .from("download_logs")
-          .select("id, downloaded_at, profiles(email, organization), datasets(title)")
+          .select("id, downloaded_at, user_id, dataset_id, profiles(email, organization), datasets(title)")
           .order("downloaded_at", { ascending: false })
           .limit(500),
       ]);
 
       type LogRaw = { id: string; created_at: string; organization: string | null; user_email: string | null; file_name: string | null };
-      type AppRaw = { id: string; created_at: string; institution: string; profiles: { email: string } | { email: string }[] | null; datasets: { title: string } | null };
-      type DlRaw  = { id: string; downloaded_at: string; profiles: { email: string; organization: string | null } | null; datasets: { title: string } | null };
+      type AppRaw = { id: string; created_at: string; institution: string; user_id: string; dataset_id: string; status: string; profiles: { email: string } | { email: string }[] | null; datasets: { title: string } | null };
+      type DlRaw  = { id: string; downloaded_at: string; user_id: string; dataset_id: string; profiles: { email: string; organization: string | null } | null; datasets: { title: string } | null };
 
       const getEmail = (p: AppRaw["profiles"]): string | undefined => {
         if (!p) return undefined;
@@ -374,27 +374,55 @@ export default function AdminPage() {
         return p.email;
       };
 
+      // 다운로드 맵: "user_id:dataset_id" → downloaded_at
+      const dlMap = new Map<string, string>();
+      ((dls ?? []) as unknown as DlRaw[]).forEach(d => {
+        if (d.user_id && d.dataset_id) dlMap.set(`${d.user_id}:${d.dataset_id}`, d.downloaded_at);
+      });
+
+      // 신청+다운로드 매칭 추적 (중복 제거용)
+      const matchedDlKeys = new Set<string>();
+
+      const appCombined = ((apps ?? []) as unknown as AppRaw[]).map(a => {
+        const key = `${a.user_id}:${a.dataset_id}`;
+        const dlAt = dlMap.get(key);
+        if (dlAt) matchedDlKeys.add(key);
+        return {
+          datetime: a.created_at,
+          organization: a.institution ?? "-",
+          email: maskEmail(getEmail(a.profiles)),
+          feature: dlAt ? "신청+다운로드" : "데이터 신청",
+          fileName: a.datasets?.title ?? undefined,
+          downloaded: !!dlAt,
+          appStatus: a.status,
+        };
+      });
+
+      // 신청 없이 다운로드만 있는 경우 (예외 케이스)
+      const orphanDls = ((dls ?? []) as unknown as DlRaw[])
+        .filter(d => d.user_id && d.dataset_id && !matchedDlKeys.has(`${d.user_id}:${d.dataset_id}`))
+        .map(d => ({
+          datetime: d.downloaded_at,
+          organization: (d.profiles as { email: string; organization: string | null } | null)?.organization ?? "-",
+          email: maskEmail((d.profiles as { email: string; organization: string | null } | null)?.email),
+          feature: "다운로드",
+          fileName: d.datasets?.title ?? undefined,
+          downloaded: true,
+          appStatus: undefined,
+        }));
+
       const combined = [
-        ...((logs ?? []) as unknown as LogRaw[]).map((l) => ({
+        ...((logs ?? []) as unknown as LogRaw[]).map(l => ({
           datetime: l.created_at,
           organization: l.organization ?? "-",
           email: maskEmail(l.user_email),
           feature: "데이터 분석",
           fileName: l.file_name ?? undefined,
+          downloaded: false,
+          appStatus: undefined,
         })),
-        ...((apps ?? []) as unknown as AppRaw[]).map((a) => ({
-          datetime: a.created_at,
-          organization: a.institution ?? "-",
-          email: maskEmail(getEmail(a.profiles)),
-          feature: "데이터 신청",
-          fileName: a.datasets?.title ?? undefined,
-        })),
-        ...((dls ?? []) as unknown as DlRaw[]).map((d) => ({
-          datetime: d.downloaded_at,
-          organization: (d.profiles as { email: string; organization: string | null } | null)?.organization ?? "-",
-          email: maskEmail((d.profiles as { email: string; organization: string | null } | null)?.email),
-          feature: `다운로드 · ${d.datasets?.title ?? "-"}`,
-        })),
+        ...appCombined,
+        ...orphanDls,
       ].sort((a, b) => new Date(b.datetime).getTime() - new Date(a.datetime).getTime());
 
       setActivityRows(combined.map((row, i) => ({ no: i + 1, ...row })));
@@ -775,15 +803,23 @@ export default function AdminPage() {
                             <td className="px-3 py-1.5 text-neutral-700 max-w-[120px] truncate">{row.organization}</td>
                             <td className="px-3 py-1.5 font-medium text-neutral-700 font-mono">{row.email}</td>
                             <td className="px-3 py-1.5">
-                              <span className={`px-2 py-0.5 rounded-full font-medium ${
-                                row.feature === "데이터 분석"
-                                  ? "bg-brand-50 text-brand-700"
-                                  : row.feature === "데이터 신청"
-                                  ? "bg-blue-50 text-blue-700"
-                                  : "bg-emerald-50 text-emerald-700"
-                              }`}>
-                                {row.feature}
-                              </span>
+                              {row.feature === "신청+다운로드" ? (
+                                <div className="flex items-center gap-1">
+                                  <span className="px-1.5 py-0.5 rounded-full text-[10px] font-semibold bg-blue-50 text-blue-700">신청</span>
+                                  <span className="text-neutral-300 text-[10px]">→</span>
+                                  <span className="px-1.5 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-50 text-emerald-700">다운로드</span>
+                                </div>
+                              ) : (
+                                <span className={`px-2 py-0.5 rounded-full font-medium ${
+                                  row.feature === "데이터 분석"
+                                    ? "bg-brand-50 text-brand-700"
+                                    : row.feature === "데이터 신청"
+                                    ? "bg-blue-50 text-blue-700"
+                                    : "bg-emerald-50 text-emerald-700"
+                                }`}>
+                                  {row.feature}
+                                </span>
+                              )}
                             </td>
                             <td className="px-3 py-1.5 text-neutral-500 max-w-[160px]">
                               {row.fileName

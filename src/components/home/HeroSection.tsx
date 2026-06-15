@@ -50,18 +50,15 @@ export default function HeroSection() {
 
         {/* 로고 + 센터명 영역 */}
         <div ref={logoRef} className="flex flex-col items-center mb-12">
-          {/* 글로컬 로고 — 흰 원형 배경 위에 크게 */}
+          {/* 글로컬 로고 */}
           <div className="relative mb-6">
-            <div className="w-52 h-52 md:w-64 md:h-64 rounded-full bg-white/10 backdrop-blur-sm border border-white/20 flex items-center justify-center shadow-2xl">
-              <div className="relative w-40 h-40 md:w-52 md:h-52 drop-shadow-xl">
-                <Image src="/logo.png" alt="인제대학교 로고" fill sizes="208px"
+            <div className="w-52 h-52 md:w-64 md:h-64 rounded-2xl bg-white flex items-center justify-center shadow-2xl p-4">
+              <div className="relative w-full h-full drop-shadow-sm">
+                <Image src="/logo.png" alt="인제대학교 글로컬대학 로고" fill sizes="256px"
                   style={{ objectFit: "contain" }} priority draggable={false} />
               </div>
             </div>
           </div>
-          <p className="text-white/60 text-sm font-medium tracking-[0.18em] mb-2">
-            인제대학교 글로컬대학
-          </p>
           <h2 className="text-white text-3xl md:text-4xl font-extrabold tracking-tight">
             데이터거버넌스센터
           </h2>

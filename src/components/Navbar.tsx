@@ -84,25 +84,19 @@ export default function Navbar() {
         <div className="grid grid-cols-3 items-center h-16">
 
           {/* 로고 — 왼쪽 고정 */}
-          <Link href="/" className="flex items-center gap-3 group flex-shrink-0 justify-self-start">
+          <Link href="/" className="flex items-center gap-2.5 group flex-shrink-0 justify-self-start">
             {!logoError ? (
-              <div className="relative w-9 h-9 flex-shrink-0 bg-white rounded-lg border border-neutral-100 p-0.5 shadow-sm">
-                <Image src="/logo.png" alt="인제대학교 로고" fill sizes="36px"
+              <div className="relative h-12 w-10 flex-shrink-0">
+                <Image src="/logo.png" alt="인제대학교 글로컬대학 로고" fill sizes="40px"
                   style={{ objectFit: "contain" }} priority draggable={false}
                   onError={() => setLogoError(true)} />
               </div>
             ) : (
-              // 로고 이미지 로드 실패 시 텍스트 폴백
               <div className="w-9 h-9 rounded-lg bg-brand-600 flex items-center justify-center text-white text-xs font-black flex-shrink-0">IU</div>
             )}
-            <div className="flex flex-col justify-center leading-snug">
-              <span className={`text-[10px] font-medium transition-colors duration-300 ${isHome && !scrolled ? "text-white/60" : "text-neutral-400"}`}>
-                인제대학교 글로컬대학
-              </span>
-              <span className={`text-sm font-bold tracking-tight transition-colors duration-300 ${isHome && !scrolled ? "text-white" : "text-neutral-800"}`}>
-                데이터거버넌스센터
-              </span>
-            </div>
+            <span className={`text-sm font-bold tracking-tight transition-colors duration-300 ${isHome && !scrolled ? "text-white" : "text-neutral-800"}`}>
+              데이터거버넌스센터
+            </span>
           </Link>
 
           {/* 데스크탑 네비게이션 — 가운데 정렬 */}

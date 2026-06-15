@@ -84,11 +84,11 @@ export default function Navbar() {
         <div className="grid grid-cols-3 items-center h-16">
 
           {/* 로고 — 왼쪽 고정 */}
-          <Link href="/" className="flex items-center gap-2.5 group flex-shrink-0 justify-self-start">
+          <Link href="/" className="flex items-center gap-3 group flex-shrink-0 justify-self-start">
             {!logoError ? (
-              <div className="relative h-12 w-10 flex-shrink-0">
-                <Image src="/logo.png" alt="인제대학교 글로컬대학 로고" fill sizes="40px"
-                  style={{ objectFit: "contain" }} priority draggable={false}
+              <div className="relative h-8 w-36 flex-shrink-0">
+                <Image src="/logo.png" alt="인제대학교 글로컬대학 로고" fill sizes="144px"
+                  style={{ objectFit: "contain", objectPosition: "left center" }} priority draggable={false}
                   onError={() => setLogoError(true)} />
               </div>
             ) : (

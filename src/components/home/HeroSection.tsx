@@ -52,9 +52,9 @@ export default function HeroSection() {
         <div ref={logoRef} className="flex flex-col items-center mb-12">
           {/* 글로컬 로고 */}
           <div className="relative mb-6">
-            <div className="w-52 h-52 md:w-64 md:h-64 rounded-2xl bg-white flex items-center justify-center shadow-2xl p-4">
-              <div className="relative w-full h-full drop-shadow-sm">
-                <Image src="/logo.png" alt="인제대학교 글로컬대학 로고" fill sizes="256px"
+            <div className="rounded-2xl bg-white shadow-2xl px-8 py-5 flex items-center justify-center">
+              <div className="relative h-20 w-72 md:h-24 md:w-96">
+                <Image src="/logo.png" alt="인제대학교 글로컬대학 로고" fill sizes="384px"
                   style={{ objectFit: "contain" }} priority draggable={false} />
               </div>
             </div>

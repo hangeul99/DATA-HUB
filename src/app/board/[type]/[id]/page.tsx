@@ -6,7 +6,7 @@ import Link from "next/link";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import { createClient } from "@/lib/supabase/client";
-import { ChevronLeft, Trash2, Loader2 } from "lucide-react";
+import { ChevronLeft, Trash2, Pencil, Loader2 } from "lucide-react";
 import "react-quill/dist/quill.snow.css";
 
 const BOARDS = [
@@ -119,11 +119,17 @@ export default function PostDetailPage() {
                       <span>조회 {post.views}</span>
                     </div>
                     {canDelete && (
-                      <button onClick={handleDelete} disabled={deleting}
-                        className="flex items-center gap-1 text-xs text-red-400 hover:text-red-600 hover:bg-red-50 px-2.5 py-1.5 rounded-lg transition-colors">
-                        {deleting ? <Loader2 size={11} className="animate-spin" /> : <Trash2 size={11} />}
-                        삭제
-                      </button>
+                      <div className="flex items-center gap-1.5">
+                        <Link href={`/board/${type}/${id}/edit`}
+                          className="flex items-center gap-1 text-xs text-neutral-400 hover:text-brand-600 hover:bg-brand-50 px-2.5 py-1.5 rounded-lg transition-colors">
+                          <Pencil size={11} /> 수정
+                        </Link>
+                        <button onClick={handleDelete} disabled={deleting}
+                          className="flex items-center gap-1 text-xs text-red-400 hover:text-red-600 hover:bg-red-50 px-2.5 py-1.5 rounded-lg transition-colors">
+                          {deleting ? <Loader2 size={11} className="animate-spin" /> : <Trash2 size={11} />}
+                          삭제
+                        </button>
+                      </div>
                     )}
                   </div>
                 </div>

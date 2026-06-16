@@ -8,33 +8,33 @@ import Footer from "@/components/Footer";
 import { createClient } from "@/lib/supabase/client";
 import { ChevronLeft, Trash2, Loader2 } from "lucide-react";
 
+const BOARDS = [
+  { type: "free",     label: "자유게시판" },
+  { type: "feedback", label: "요구 및 개선사항" },
+];
+
 const BOARD_LABELS: Record<string, string> = {
   free: "자유게시판",
   feedback: "요구 및 개선사항",
 };
 
 interface Post {
-  id: string;
-  created_at: string;
-  title: string;
-  content: string;
-  author_name: string;
-  views: number;
-  user_id: string | null;
+  id: string; created_at: string; title: string;
+  content: string; author_name: string; views: number; user_id: string | null;
 }
 
 export default function PostDetailPage() {
   const params = useParams();
   const router = useRouter();
-  const type = params.type as string;
-  const id = params.id as string;
-  const label = BOARD_LABELS[type] ?? "게시판";
+  const type   = params.type as string;
+  const id     = params.id as string;
+  const label  = BOARD_LABELS[type] ?? "게시판";
 
-  const [post, setPost] = useState<Post | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [post,          setPost]          = useState<Post | null>(null);
+  const [loading,       setLoading]       = useState(true);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
-  const [isAdmin, setIsAdmin] = useState(false);
-  const [deleting, setDeleting] = useState(false);
+  const [isAdmin,       setIsAdmin]       = useState(false);
+  const [deleting,      setDeleting]      = useState(false);
 
   useEffect(() => {
     const supabase = createClient();
@@ -45,11 +45,9 @@ export default function PostDetailPage() {
       if (!postData) { router.replace(`/board/${type}`); return; }
       setPost(postData as Post);
       await supabase.from("posts").update({ views: postData.views + 1 }).eq("id", id);
-
       if (user) {
         setCurrentUserId(user.id);
-        const { data: profile } = await supabase
-          .from("profiles").select("role").eq("id", user.id).single();
+        const { data: profile } = await supabase.from("profiles").select("role").eq("id", user.id).single();
         setIsAdmin(profile?.role === "admin");
       }
       setLoading(false);
@@ -69,54 +67,70 @@ export default function PostDetailPage() {
     <>
       <Navbar />
       <main className="min-h-screen bg-neutral-50 pt-16">
-        <div className="bg-white border-b border-neutral-100">
-          <div className="max-w-4xl mx-auto px-6 py-12">
-            <Link href={`/board/${type}`}
-              className="text-xs text-neutral-400 hover:text-brand-600 mb-3 inline-flex items-center gap-1 transition-colors">
-              <ChevronLeft size={12} /> {label}
-            </Link>
-            <p className="text-brand-600 font-semibold text-sm uppercase tracking-widest mb-3">Board</p>
-            <h1 className="text-3xl font-bold text-neutral-900 mb-2">{label}</h1>
-          </div>
-        </div>
+        <div className="max-w-6xl mx-auto px-6 py-10 flex gap-6 items-start">
 
-        <div className="max-w-4xl mx-auto px-6 py-8">
-          {loading ? (
-            <div className="flex justify-center py-20">
-              <Loader2 size={24} className="animate-spin text-brand-400" />
+          {/* 왼쪽 사이드바 */}
+          <aside className="w-44 flex-shrink-0">
+            <div className="bg-white rounded-2xl border border-neutral-100 overflow-hidden sticky top-24">
+              <div className="bg-brand-600 px-4 py-3">
+                <p className="text-white font-bold text-sm">게시판</p>
+              </div>
+              <nav className="py-1.5">
+                {BOARDS.map(b => (
+                  <Link key={b.type} href={`/board/${b.type}`}
+                    className={`flex items-center px-4 py-2.5 text-sm transition-colors ${
+                      type === b.type
+                        ? "text-brand-700 font-semibold bg-brand-50 border-l-2 border-brand-500"
+                        : "text-neutral-600 hover:bg-neutral-50 hover:text-brand-600"
+                    }`}>
+                    {b.label}
+                  </Link>
+                ))}
+              </nav>
             </div>
-          ) : post ? (
-            <div className="bg-white rounded-2xl border border-neutral-100 overflow-hidden">
-              <div className="px-7 py-6 border-b border-neutral-100">
-                <h2 className="text-xl font-bold text-neutral-900 mb-3">{post.title}</h2>
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3 text-xs text-neutral-400">
-                    <span>{post.author_name}</span>
-                    <span>·</span>
-                    <span>{new Date(post.created_at).toLocaleDateString("ko-KR", { year: "numeric", month: "long", day: "numeric" })}</span>
-                    <span>·</span>
-                    <span>조회 {post.views}</span>
+          </aside>
+
+          {/* 오른쪽 본문 */}
+          <div className="flex-1 min-w-0">
+            {loading ? (
+              <div className="flex justify-center py-20">
+                <Loader2 size={24} className="animate-spin text-brand-400" />
+              </div>
+            ) : post ? (
+              <div className="bg-white rounded-2xl border border-neutral-100 overflow-hidden">
+                {/* 글 제목 */}
+                <div className="px-7 py-5 border-b border-neutral-100">
+                  <h2 className="text-lg font-bold text-neutral-900 mb-3">{post.title}</h2>
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3 text-xs text-neutral-400">
+                      <span>{post.author_name[0]}**</span>
+                      <span>·</span>
+                      <span>{new Date(post.created_at).toLocaleDateString("ko-KR")}</span>
+                      <span>·</span>
+                      <span>조회 {post.views}</span>
+                    </div>
+                    {canDelete && (
+                      <button onClick={handleDelete} disabled={deleting}
+                        className="flex items-center gap-1 text-xs text-red-400 hover:text-red-600 hover:bg-red-50 px-2.5 py-1.5 rounded-lg transition-colors">
+                        {deleting ? <Loader2 size={11} className="animate-spin" /> : <Trash2 size={11} />}
+                        삭제
+                      </button>
+                    )}
                   </div>
-                  {canDelete && (
-                    <button onClick={handleDelete} disabled={deleting}
-                      className="flex items-center gap-1 text-xs text-red-400 hover:text-red-600 hover:bg-red-50 px-2.5 py-1.5 rounded-lg transition-colors">
-                      {deleting ? <Loader2 size={11} className="animate-spin" /> : <Trash2 size={11} />}
-                      삭제
-                    </button>
-                  )}
+                </div>
+                {/* 본문 */}
+                <div className="px-7 py-8 min-h-[240px]">
+                  <p className="text-sm text-neutral-700 leading-relaxed whitespace-pre-wrap">{post.content}</p>
                 </div>
               </div>
-              <div className="px-7 py-8 min-h-[200px]">
-                <p className="text-sm text-neutral-700 leading-relaxed whitespace-pre-wrap">{post.content}</p>
-              </div>
-            </div>
-          ) : null}
+            ) : null}
 
-          <div className="mt-6">
-            <Link href={`/board/${type}`}
-              className="inline-flex items-center gap-1.5 text-sm text-neutral-500 hover:text-brand-600 transition-colors">
-              <ChevronLeft size={14} /> 목록으로
-            </Link>
+            <div className="flex items-center justify-between mt-4">
+              <Link href={`/board/${type}`}
+                className="inline-flex items-center gap-1.5 text-sm text-neutral-500 hover:text-brand-600 transition-colors">
+                <ChevronLeft size={14} /> 목록으로
+              </Link>
+            </div>
           </div>
         </div>
       </main>

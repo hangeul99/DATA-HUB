@@ -14,6 +14,7 @@ const navLinks = [
   { href: "/analysis", label: "데이터 분석" },
   { href: "/policy",   label: "정책" },
   { href: "/survey",   label: "만족도 조사" },
+  { href: "/board",    label: "게시판" },
 ];
 
 export default function Navbar() {

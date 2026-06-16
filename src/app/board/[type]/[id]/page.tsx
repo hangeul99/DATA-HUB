@@ -6,7 +6,7 @@ import Link from "next/link";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import { createClient } from "@/lib/supabase/client";
-import { ChevronLeft, Trash2, Pencil, Loader2 } from "lucide-react";
+import { ChevronLeft, Trash2, Pencil, Loader2, Download } from "lucide-react";
 
 const BOARDS = [
   { type: "free",      label: "자유게시판" },
@@ -17,6 +17,7 @@ const BOARDS = [
 interface Post {
   id: string; created_at: string; title: string;
   content: string; author_name: string; views: number; user_id: string | null;
+  attachment_path?: string | null; attachment_name?: string | null;
 }
 
 export default function PostDetailPage() {
@@ -57,6 +58,21 @@ export default function PostDetailPage() {
   };
 
   const canDelete = post && currentUserId && (currentUserId === post.user_id || isAdmin);
+
+  const handleDownload = async () => {
+    if (!post?.attachment_path || !post?.attachment_name) return;
+    const { data } = await createClient().storage
+      .from("post-attachments")
+      .createSignedUrl(post.attachment_path, 60);
+    if (!data?.signedUrl) return;
+    const res  = await fetch(data.signedUrl);
+    const blob = await res.blob();
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement("a");
+    a.href = url; a.download = post.attachment_name;
+    document.body.appendChild(a); a.click();
+    document.body.removeChild(a); URL.revokeObjectURL(url);
+  };
 
   return (
     <>
@@ -140,6 +156,18 @@ export default function PostDetailPage() {
                     dangerouslySetInnerHTML={{ __html: post.content }}
                   />
                 </div>
+
+                {/* 첨부파일 다운로드 */}
+                {post.attachment_path && post.attachment_name && (
+                  <div className="px-5 md:px-7 py-4 border-t border-neutral-100">
+                    <p className="text-xs text-neutral-400 mb-2">첨부파일</p>
+                    <button onClick={handleDownload}
+                      className="inline-flex items-center gap-2 px-4 py-2.5 bg-brand-50 hover:bg-brand-100 text-brand-700 rounded-xl text-sm font-medium transition-colors active:scale-95">
+                      <Download size={14} />
+                      {post.attachment_name}
+                    </button>
+                  </div>
+                )}
               </div>
             ) : null}
 

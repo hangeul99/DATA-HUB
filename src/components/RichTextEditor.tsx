@@ -89,10 +89,15 @@ export default function RichTextEditor({ value, onChange, placeholder = "내용�
           className="text-xs border border-neutral-200 rounded px-1.5 py-1 bg-white focus:outline-none cursor-pointer"
         >
           <option value="" disabled>크기</option>
-          <option value="10px">소</option>
-          <option value="14px">중</option>
-          <option value="20px">대</option>
-          <option value="28px">특대</option>
+          <option value="10px">10</option>
+          <option value="12px">12</option>
+          <option value="14px">14</option>
+          <option value="16px">16</option>
+          <option value="18px">18</option>
+          <option value="20px">20</option>
+          <option value="24px">24</option>
+          <option value="28px">28</option>
+          <option value="36px">36</option>
         </select>
 
         <span className="w-px h-4 bg-neutral-300" />

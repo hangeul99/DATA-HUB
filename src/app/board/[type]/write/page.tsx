@@ -1,12 +1,12 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import { createClient } from "@/lib/supabase/client";
-import { ChevronLeft, Loader2 } from "lucide-react";
+import { ChevronLeft, Loader2, Paperclip, X } from "lucide-react";
 import RichTextEditor from "@/components/RichTextEditor";
 
 const BOARD_LABELS: Record<string, string> = {
@@ -23,9 +23,11 @@ export default function WritePostPage() {
 
   const [title,       setTitle]       = useState("");
   const [content,     setContent]     = useState("");
+  const [file,        setFile]        = useState<File | null>(null);
   const [submitting,  setSubmitting]  = useState(false);
   const [error,       setError]       = useState<string | null>(null);
   const [authChecked, setAuthChecked] = useState(false);
+  const fileRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (!label) { router.replace("/board"); return; }
@@ -38,7 +40,7 @@ export default function WritePostPage() {
   const handleSubmit = async () => {
     if (!title.trim()) { setError("제목을 입력해주세요."); return; }
     const textOnly = content.replace(/<[^>]*>/g, "").trim();
-    if (!textOnly) { setError("내용을 입력해주세요."); return; }
+    if (!textOnly && type !== "resources") { setError("내용을 입력해주세요."); return; }
     setSubmitting(true);
     setError(null);
 
@@ -49,12 +51,27 @@ export default function WritePostPage() {
     const { data: profile } = await supabase
       .from("profiles").select("name").eq("id", user.id).single();
 
+    let attachmentPath: string | null = null;
+    let attachmentName: string | null = null;
+
+    if (type === "resources" && file) {
+      const storagePath = `${user.id}/${Date.now()}_${file.name}`;
+      const { data: uploadData, error: uploadErr } = await supabase.storage
+        .from("post-attachments")
+        .upload(storagePath, file);
+      if (uploadErr) { setError("파일 업로드에 실패했습니다."); setSubmitting(false); return; }
+      attachmentPath = uploadData.path;
+      attachmentName = file.name;
+    }
+
     const { data: post, error: err } = await supabase.from("posts").insert({
       board_type: type,
       title: title.trim(),
       content,
       user_id: user.id,
       author_name: profile?.name ?? user.email?.split("@")[0] ?? "익명",
+      attachment_path: attachmentPath,
+      attachment_name: attachmentName,
     }).select("id").single();
 
     if (err || !post) { setError("글 등록에 실패했습니다."); setSubmitting(false); return; }
@@ -96,6 +113,35 @@ export default function WritePostPage() {
                   onChange={v => { setContent(v); setError(null); }}
                 />
               </div>
+
+              {/* 자료 게시판 전용 파일 첨부 */}
+              {type === "resources" && (
+                <div>
+                  <label className="block text-sm font-semibold text-neutral-700 mb-2">파일 첨부</label>
+                  {file ? (
+                    <div className="flex items-center gap-2 px-4 py-3 bg-neutral-50 border border-neutral-200 rounded-xl">
+                      <Paperclip size={14} className="text-brand-500 flex-shrink-0" />
+                      <span className="text-sm text-neutral-700 flex-1 truncate">{file.name}</span>
+                      <span className="text-xs text-neutral-400">
+                        {(file.size / 1024 / 1024).toFixed(1)}MB
+                      </span>
+                      <button onClick={() => { setFile(null); if (fileRef.current) fileRef.current.value = ""; }}
+                        className="text-neutral-400 hover:text-red-500 transition-colors">
+                        <X size={14} />
+                      </button>
+                    </div>
+                  ) : (
+                    <button type="button" onClick={() => fileRef.current?.click()}
+                      className="flex items-center gap-2 px-4 py-3 border border-dashed border-neutral-300 rounded-xl text-sm text-neutral-500 hover:border-brand-400 hover:text-brand-600 hover:bg-brand-50 transition-colors w-full">
+                      <Paperclip size={14} />
+                      파일을 선택하세요
+                    </button>
+                  )}
+                  <input ref={fileRef} type="file" className="hidden"
+                    onChange={e => setFile(e.target.files?.[0] ?? null)} />
+                </div>
+              )}
+
               {error && <p className="text-sm text-red-500">{error}</p>}
             </div>
 

@@ -18,8 +18,8 @@ const FONTS = [
 export default function RichTextEditor({ value, onChange, placeholder = "내용을 입력하세요." }: Props) {
   const editorRef   = useRef<HTMLDivElement>(null);
   const initialized = useRef(false);
+  const savedRange  = useRef<Range | null>(null);
 
-  // Set initial HTML on mount only (value is already loaded by parent before rendering)
   useEffect(() => {
     if (!initialized.current && editorRef.current) {
       editorRef.current.innerHTML = value || "";
@@ -31,29 +31,86 @@ export default function RichTextEditor({ value, onChange, placeholder = "내용�
     if (editorRef.current) onChange(editorRef.current.innerHTML);
   };
 
+  // 드롭다운 클릭 시 contenteditable 포커스가 사라지므로, mousedown에 선택 영역 저장
+  const saveRange = () => {
+    const sel = window.getSelection();
+    if (sel && sel.rangeCount > 0) {
+      savedRange.current = sel.getRangeAt(0).cloneRange();
+    }
+  };
+
+  // 저장된 선택 영역을 복원 후 포커스
+  const restoreRange = () => {
+    editorRef.current?.focus();
+    const sel = window.getSelection();
+    if (sel && savedRange.current) {
+      sel.removeAllRanges();
+      sel.addRange(savedRange.current);
+    }
+  };
+
   const exec = (cmd: string, val?: string) => {
     editorRef.current?.focus();
     document.execCommand(cmd, false, val ?? "");
     sync();
   };
 
-  const applyFontSize = (pt: string) => {
-    editorRef.current?.focus();
-    const sel = window.getSelection();
-    const hasSelection = sel && sel.rangeCount > 0 && !sel.isCollapsed;
-    document.execCommand("fontSize", false, "7");
-    if (hasSelection) {
-      editorRef.current?.querySelectorAll("font[size='7']").forEach(el => {
-        const span = document.createElement("span");
-        span.style.fontSize = pt;
-        while (el.firstChild) span.appendChild(el.firstChild);
-        el.parentNode?.replaceChild(span, el);
-      });
-    }
+  // select(글자체)용: 선택 복원 후 fontName 적용
+  const applyFontName = (font: string) => {
+    restoreRange();
+    document.execCommand("fontName", false, font);
     sync();
   };
 
-  const isEmpty = !value || value.replace(/<[^>]*>/g, "").trim() === "";
+  // select(글자크기)용: 선택 복원 후 Range API로 span 삽입
+  const applyFontSize = (px: string) => {
+    restoreRange();
+    const sel = window.getSelection();
+    if (!sel || sel.rangeCount === 0) return;
+
+    const range = sel.getRangeAt(0);
+
+    if (!sel.isCollapsed) {
+      // 선택된 텍스트를 span으로 감싸기
+      const span = document.createElement("span");
+      span.style.fontSize = px;
+      try {
+        const fragment = range.extractContents();
+        span.appendChild(fragment);
+        range.insertNode(span);
+        // 커서를 span 뒤로 이동
+        const newRange = document.createRange();
+        newRange.setStartAfter(span);
+        newRange.collapse(true);
+        sel.removeAllRanges();
+        sel.addRange(newRange);
+      } catch {
+        // 선택이 여러 블록에 걸치면 execCommand 폴백
+        document.execCommand("fontSize", false, "7");
+        editorRef.current?.querySelectorAll("font[size='7']").forEach(el => {
+          const s = document.createElement("span");
+          s.style.fontSize = px;
+          while (el.firstChild) s.appendChild(el.firstChild);
+          el.parentNode?.replaceChild(s, el);
+        });
+      }
+    } else {
+      // 선택 없음: 빈 span 삽입 후 그 안에 커서 위치 (이후 입력에 크기 적용)
+      const span = document.createElement("span");
+      span.style.fontSize = px;
+      span.innerHTML = "​"; // 너비 0 공백 (커서 위치용)
+      range.insertNode(span);
+      const newRange = document.createRange();
+      newRange.setStart(span.firstChild!, 1);
+      newRange.collapse(true);
+      sel.removeAllRanges();
+      sel.addRange(newRange);
+    }
+
+    sync();
+  };
+
+  const isEmpty = !value || value.replace(/<[^>]*>/g, "").replace(/​/g, "").trim() === "";
 
   type BtnProps = { title: string; onClick: () => void; children: React.ReactNode; className?: string };
   const Btn = ({ title, onClick, children, className = "" }: BtnProps) => (
@@ -73,8 +130,8 @@ export default function RichTextEditor({ value, onChange, placeholder = "내용�
       <div className="flex items-center flex-wrap gap-1 px-3 py-2 bg-neutral-50 border-b border-neutral-200">
 
         <select
-          onMouseDown={e => e.stopPropagation()}
-          onChange={e => exec("fontName", e.target.value)}
+          onMouseDown={saveRange}
+          onChange={e => { applyFontName(e.target.value); (e.target as HTMLSelectElement).value = ""; }}
           defaultValue=""
           className="text-xs border border-neutral-200 rounded px-1.5 py-1 bg-white focus:outline-none cursor-pointer"
         >
@@ -83,8 +140,8 @@ export default function RichTextEditor({ value, onChange, placeholder = "내용�
         </select>
 
         <select
-          onMouseDown={e => e.stopPropagation()}
-          onChange={e => applyFontSize(e.target.value)}
+          onMouseDown={saveRange}
+          onChange={e => { applyFontSize(e.target.value); (e.target as HTMLSelectElement).value = ""; }}
           defaultValue=""
           className="text-xs border border-neutral-200 rounded px-1.5 py-1 bg-white focus:outline-none cursor-pointer"
         >
@@ -102,10 +159,10 @@ export default function RichTextEditor({ value, onChange, placeholder = "내용�
 
         <span className="w-px h-4 bg-neutral-300" />
 
-        <Btn title="굵게" onClick={() => exec("bold")} className="font-bold">B</Btn>
-        <Btn title="기울기" onClick={() => exec("italic")} className="italic">I</Btn>
-        <Btn title="밑줄" onClick={() => exec("underline")} className="underline">U</Btn>
-        <Btn title="취소선" onClick={() => exec("strikeThrough")} className="line-through">S</Btn>
+        <Btn title="굵게"   onClick={() => exec("bold")}          className="font-bold">B</Btn>
+        <Btn title="기울기" onClick={() => exec("italic")}         className="italic">I</Btn>
+        <Btn title="밑줄"   onClick={() => exec("underline")}      className="underline">U</Btn>
+        <Btn title="취소선" onClick={() => exec("strikeThrough")}  className="line-through">S</Btn>
 
         <span className="w-px h-4 bg-neutral-300" />
 
@@ -121,7 +178,7 @@ export default function RichTextEditor({ value, onChange, placeholder = "내용�
 
         <span className="w-px h-4 bg-neutral-300" />
 
-        <Btn title="번호 목록" onClick={() => exec("insertOrderedList")}>1.</Btn>
+        <Btn title="번호 목록"   onClick={() => exec("insertOrderedList")}>1.</Btn>
         <Btn title="글머리 목록" onClick={() => exec("insertUnorderedList")}>•</Btn>
 
         <span className="w-px h-4 bg-neutral-300" />

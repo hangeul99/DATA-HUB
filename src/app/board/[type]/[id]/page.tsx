@@ -6,7 +6,7 @@ import Link from "next/link";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import { createClient } from "@/lib/supabase/client";
-import { ChevronLeft, Trash2, Pencil, Loader2, Download } from "lucide-react";
+import { ChevronLeft, Trash2, Pencil, Loader2, Download, Send } from "lucide-react";
 
 const BOARDS = [
   { type: "free",      label: "자유게시판" },
@@ -18,6 +18,11 @@ interface Post {
   id: string; created_at: string; title: string;
   content: string; author_name: string; views: number; user_id: string | null;
   attachment_path?: string | null; attachment_name?: string | null;
+}
+
+interface Comment {
+  id: string; created_at: string; content: string;
+  author_name: string; user_id: string;
 }
 
 export default function PostDetailPage() {
@@ -32,6 +37,18 @@ export default function PostDetailPage() {
   const [isAdmin,       setIsAdmin]       = useState(false);
   const [deleting,      setDeleting]      = useState(false);
 
+  const [comments,       setComments]       = useState<Comment[]>([]);
+  const [commentInput,   setCommentInput]   = useState("");
+  const [commentSubmit,  setCommentSubmit]  = useState(false);
+  const [authorName,     setAuthorName]     = useState("");
+
+  const loadComments = async () => {
+    const { data } = await createClient()
+      .from("comments").select("*").eq("post_id", id).eq("is_active", true)
+      .order("created_at", { ascending: true });
+    setComments((data as Comment[]) ?? []);
+  };
+
   useEffect(() => {
     const supabase = createClient();
     Promise.all([
@@ -43,12 +60,37 @@ export default function PostDetailPage() {
       await supabase.from("posts").update({ views: postData.views + 1 }).eq("id", id);
       if (user) {
         setCurrentUserId(user.id);
-        const { data: profile } = await supabase.from("profiles").select("role").eq("id", user.id).single();
+        const { data: profile } = await supabase.from("profiles").select("role, name").eq("id", user.id).single();
         setIsAdmin(profile?.role === "admin");
+        setAuthorName(profile?.name ?? user.email?.split("@")[0] ?? "익명");
       }
+      await loadComments();
       setLoading(false);
     });
   }, [id, type, router]);
+
+  const handleAddComment = async () => {
+    if (!commentInput.trim()) return;
+    if (!currentUserId) { router.push("/login"); return; }
+    setCommentSubmit(true);
+    const { error: err } = await createClient().from("comments").insert({
+      post_id: id,
+      user_id: currentUserId,
+      author_name: authorName,
+      content: commentInput.trim(),
+    });
+    if (!err) {
+      setCommentInput("");
+      await loadComments();
+    }
+    setCommentSubmit(false);
+  };
+
+  const handleDeleteComment = async (commentId: string) => {
+    if (!confirm("댓글을 삭제하시겠습니까?")) return;
+    await createClient().from("comments").update({ is_active: false }).eq("id", commentId);
+    await loadComments();
+  };
 
   const handleDelete = async () => {
     if (!confirm("게시글을 삭제하시겠습니까?")) return;
@@ -170,6 +212,52 @@ export default function PostDetailPage() {
                 )}
               </div>
             ) : null}
+
+            {/* 댓글 */}
+            {post && (
+              <div className="bg-white rounded-2xl border border-neutral-100 mt-4 px-5 md:px-7 py-6">
+                <p className="text-sm font-bold text-neutral-800 mb-4">댓글 {comments.length}</p>
+
+                <div className="space-y-3 mb-5">
+                  {comments.length === 0 ? (
+                    <p className="text-sm text-neutral-400 py-4 text-center">첫 댓글을 남겨보세요.</p>
+                  ) : comments.map(c => (
+                    <div key={c.id} className="flex items-start justify-between gap-3 py-2.5 border-b border-neutral-50 last:border-0">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 mb-1">
+                          <span className="text-xs font-semibold text-neutral-600">{c.author_name[0]}**</span>
+                          <span className="text-[11px] text-neutral-400">
+                            {new Date(c.created_at).toLocaleDateString("ko-KR")}
+                          </span>
+                        </div>
+                        <p className="text-sm text-neutral-800 whitespace-pre-wrap break-words">{c.content}</p>
+                      </div>
+                      {(currentUserId === c.user_id || isAdmin) && (
+                        <button onClick={() => handleDeleteComment(c.id)}
+                          className="text-neutral-300 hover:text-red-500 transition-colors flex-shrink-0 mt-0.5">
+                          <Trash2 size={13} />
+                        </button>
+                      )}
+                    </div>
+                  ))}
+                </div>
+
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={commentInput}
+                    onChange={e => setCommentInput(e.target.value)}
+                    onKeyDown={e => e.key === "Enter" && handleAddComment()}
+                    placeholder={currentUserId ? "댓글을 입력하세요." : "로그인 후 댓글을 작성할 수 있습니다."}
+                    className="flex-1 px-4 py-2.5 rounded-xl border border-neutral-200 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400"
+                  />
+                  <button onClick={handleAddComment} disabled={commentSubmit || !commentInput.trim()}
+                    className="flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl bg-brand-600 hover:bg-brand-700 text-white text-sm font-semibold transition-colors disabled:opacity-50 active:scale-95">
+                    {commentSubmit ? <Loader2 size={14} className="animate-spin" /> : <Send size={14} />}
+                  </button>
+                </div>
+              </div>
+            )}
 
             <div className="mt-4">
               <Link href={`/board/${type}`}

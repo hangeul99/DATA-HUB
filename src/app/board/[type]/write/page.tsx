@@ -59,7 +59,11 @@ export default function WritePostPage() {
       const { data: uploadData, error: uploadErr } = await supabase.storage
         .from("post-attachments")
         .upload(storagePath, file);
-      if (uploadErr) { setError("파일 업로드에 실패했습니다."); setSubmitting(false); return; }
+      if (uploadErr) {
+        setError(`파일 업로드에 실패했습니다. ${uploadErr.message}`);
+        setSubmitting(false);
+        return;
+      }
       attachmentPath = uploadData.path;
       attachmentName = file.name;
     }
@@ -74,7 +78,11 @@ export default function WritePostPage() {
       attachment_name: attachmentName,
     }).select("id").single();
 
-    if (err || !post) { setError("글 등록에 실패했습니다."); setSubmitting(false); return; }
+    if (err || !post) {
+      setError(`글 등록에 실패했습니다. ${err?.message ?? ""}`);
+      setSubmitting(false);
+      return;
+    }
     router.replace(`/board/${type}/${post.id}`);
   };
 

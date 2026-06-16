@@ -9,8 +9,9 @@ import { createClient } from "@/lib/supabase/client";
 import { ChevronLeft, Trash2, Pencil, Loader2 } from "lucide-react";
 
 const BOARDS = [
-  { type: "free",     label: "자유게시판" },
-  { type: "feedback", label: "요구 및 개선사항" },
+  { type: "free",      label: "자유게시판" },
+  { type: "feedback",  label: "요구 및 개선사항" },
+  { type: "resources", label: "자료 게시판" },
 ];
 
 interface Post {
@@ -67,7 +68,7 @@ export default function PostDetailPage() {
           <div className="flex bg-white rounded-xl border border-neutral-100 overflow-hidden">
             {BOARDS.map(b => (
               <Link key={b.type} href={`/board/${b.type}`}
-                className={`flex-1 text-center py-3 text-sm font-medium transition-colors ${
+                className={`flex-1 text-center py-2.5 text-xs font-medium transition-colors ${
                   type === b.type ? "bg-brand-600 text-white" : "text-neutral-600 hover:bg-neutral-50"
                 }`}>
                 {b.label}

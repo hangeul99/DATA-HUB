@@ -9,13 +9,15 @@ import { createClient } from "@/lib/supabase/client";
 import { Search, Loader2, ChevronLeft, ChevronRight } from "lucide-react";
 
 const BOARDS = [
-  { type: "free",     label: "자유게시판" },
-  { type: "feedback", label: "요구 및 개선사항" },
+  { type: "free",      label: "자유게시판" },
+  { type: "feedback",  label: "요구 및 개선사항" },
+  { type: "resources", label: "자료 게시판" },
 ];
 
 const BOARD_LABELS: Record<string, string> = {
-  free: "자유게시판",
-  feedback: "요구 및 개선사항",
+  free:      "자유게시판",
+  feedback:  "요구 및 개선사항",
+  resources: "자료 게시판",
 };
 
 const PER_PAGE = 10;
@@ -80,7 +82,7 @@ export default function BoardListPage() {
           <div className="flex bg-white rounded-xl border border-neutral-100 overflow-hidden">
             {BOARDS.map(b => (
               <Link key={b.type} href={`/board/${b.type}`}
-                className={`flex-1 text-center py-3 text-sm font-medium transition-colors ${
+                className={`flex-1 text-center py-2.5 text-xs font-medium transition-colors ${
                   type === b.type ? "bg-brand-600 text-white" : "text-neutral-600 hover:bg-neutral-50"
                 }`}>
                 {b.label}

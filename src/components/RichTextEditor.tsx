@@ -9,13 +9,13 @@ interface Props {
 }
 
 const FONTS = [
-  { label: "기본�?,  value: "Arial, sans-serif" },
-  { label: "명조�?,  value: "Georgia, serif" },
-  { label: "고정??,  value: "'Courier New', monospace" },
-  { label: "?��???,  value: "cursive" },
+  { label: "기본체",  value: "Arial, sans-serif" },
+  { label: "명조체",  value: "Georgia, serif" },
+  { label: "고정폭",  value: "'Courier New', monospace" },
+  { label: "손글씨",  value: "cursive" },
 ];
 
-export default function RichTextEditor({ value, onChange, placeholder = "?�용???�력?�세??" }: Props) {
+export default function RichTextEditor({ value, onChange, placeholder = "내용을 입력하세요." }: Props) {
   const editorRef   = useRef<HTMLDivElement>(null);
   const initialized = useRef(false);
 
@@ -78,7 +78,7 @@ export default function RichTextEditor({ value, onChange, placeholder = "?�용??
           defaultValue=""
           className="text-xs border border-neutral-200 rounded px-1.5 py-1 bg-white focus:outline-none cursor-pointer"
         >
-          <option value="" disabled>글?�체</option>
+          <option value="" disabled>글자체</option>
           {FONTS.map(f => <option key={f.value} value={f.value}>{f.label}</option>)}
         </select>
 
@@ -88,23 +88,23 @@ export default function RichTextEditor({ value, onChange, placeholder = "?�용??
           defaultValue=""
           className="text-xs border border-neutral-200 rounded px-1.5 py-1 bg-white focus:outline-none cursor-pointer"
         >
-          <option value="" disabled>?�기</option>
-          <option value="10px">??/option>
-          <option value="14px">�?/option>
-          <option value="20px">?�</option>
-          <option value="28px">?��?</option>
+          <option value="" disabled>크기</option>
+          <option value="10px">소</option>
+          <option value="14px">중</option>
+          <option value="20px">대</option>
+          <option value="28px">특대</option>
         </select>
 
         <span className="w-px h-4 bg-neutral-300" />
 
         <Btn title="굵게" onClick={() => exec("bold")} className="font-bold">B</Btn>
-        <Btn title="기울�? onClick={() => exec("italic")} className="italic">I</Btn>
+        <Btn title="기울기" onClick={() => exec("italic")} className="italic">I</Btn>
         <Btn title="밑줄" onClick={() => exec("underline")} className="underline">U</Btn>
-        <Btn title="취소?? onClick={() => exec("strikeThrough")} className="line-through">S</Btn>
+        <Btn title="취소선" onClick={() => exec("strikeThrough")} className="line-through">S</Btn>
 
         <span className="w-px h-4 bg-neutral-300" />
 
-        <label title="글???? className="inline-flex items-center gap-0.5 cursor-pointer px-2 py-1 text-xs hover:bg-neutral-200 rounded transition-colors select-none">
+        <label title="글자 색" className="inline-flex items-center gap-0.5 cursor-pointer px-2 py-1 text-xs hover:bg-neutral-200 rounded transition-colors select-none">
           A
           <input
             type="color"
@@ -117,25 +117,25 @@ export default function RichTextEditor({ value, onChange, placeholder = "?�용??
         <span className="w-px h-4 bg-neutral-300" />
 
         <Btn title="번호 목록" onClick={() => exec("insertOrderedList")}>1.</Btn>
-        <Btn title="글머리 목록" onClick={() => exec("insertUnorderedList")}>??/Btn>
+        <Btn title="글머리 목록" onClick={() => exec("insertUnorderedList")}>•</Btn>
 
         <span className="w-px h-4 bg-neutral-300" />
 
-        <Btn title="?�쪽 ?�렬" onClick={() => exec("justifyLeft")}>
+        <Btn title="왼쪽 정렬" onClick={() => exec("justifyLeft")}>
           <svg width="13" height="13" fill="currentColor" viewBox="0 0 13 13">
             <rect x="0" y="1"   width="13" height="2" rx="1"/>
             <rect x="0" y="5.5" width="8"  height="2" rx="1"/>
             <rect x="0" y="10"  width="13" height="2" rx="1"/>
           </svg>
         </Btn>
-        <Btn title="가?�데 ?�렬" onClick={() => exec("justifyCenter")}>
+        <Btn title="가운데 정렬" onClick={() => exec("justifyCenter")}>
           <svg width="13" height="13" fill="currentColor" viewBox="0 0 13 13">
             <rect x="0"   y="1"   width="13" height="2" rx="1"/>
             <rect x="2.5" y="5.5" width="8"  height="2" rx="1"/>
             <rect x="0"   y="10"  width="13" height="2" rx="1"/>
           </svg>
         </Btn>
-        <Btn title="?�른�??�렬" onClick={() => exec("justifyRight")}>
+        <Btn title="오른쪽 정렬" onClick={() => exec("justifyRight")}>
           <svg width="13" height="13" fill="currentColor" viewBox="0 0 13 13">
             <rect x="0" y="1"   width="13" height="2" rx="1"/>
             <rect x="5" y="5.5" width="8"  height="2" rx="1"/>
@@ -145,7 +145,7 @@ export default function RichTextEditor({ value, onChange, placeholder = "?�용??
 
         <span className="w-px h-4 bg-neutral-300" />
 
-        <Btn title="?�식 ?�거" onClick={() => exec("removeFormat")}>??/Btn>
+        <Btn title="서식 제거" onClick={() => exec("removeFormat")}>✕</Btn>
       </div>
 
       {/* Editable area */}

@@ -10,8 +10,9 @@ import { ChevronLeft, Loader2 } from "lucide-react";
 import RichTextEditor from "@/components/RichTextEditor";
 
 const BOARD_LABELS: Record<string, string> = {
-  free: "자유게시판",
-  feedback: "요구 및 개선사항",
+  free:      "자유게시판",
+  feedback:  "요구 및 개선사항",
+  resources: "자료 게시판",
 };
 
 export default function WritePostPage() {

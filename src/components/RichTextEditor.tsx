@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useEffect } from "react";
+import { useRef, useEffect, useState } from "react";
 
 interface Props {
   value: string;
@@ -15,10 +15,13 @@ const FONTS = [
   { label: "손글씨",  value: "cursive" },
 ];
 
+const PRESET_SIZES = [8, 10, 12, 14, 16, 18, 20, 24, 28, 36, 48, 72];
+
 export default function RichTextEditor({ value, onChange, placeholder = "내용을 입력하세요." }: Props) {
-  const editorRef   = useRef<HTMLDivElement>(null);
-  const initialized = useRef(false);
-  const savedRange  = useRef<Range | null>(null);
+  const editorRef      = useRef<HTMLDivElement>(null);
+  const initialized    = useRef(false);
+  const savedRange     = useRef<Range | null>(null);
+  const [sizeVal, setSizeVal] = useState("");
 
   useEffect(() => {
     if (!initialized.current && editorRef.current) {
@@ -139,23 +142,40 @@ export default function RichTextEditor({ value, onChange, placeholder = "내용�
           {FONTS.map(f => <option key={f.value} value={f.value}>{f.label}</option>)}
         </select>
 
-        <select
-          onMouseDown={saveRange}
-          onChange={e => { applyFontSize(e.target.value); (e.target as HTMLSelectElement).value = ""; }}
-          defaultValue=""
-          className="text-xs border border-neutral-200 rounded px-1.5 py-1 bg-white focus:outline-none cursor-pointer"
-        >
-          <option value="" disabled>크기</option>
-          <option value="10px">10</option>
-          <option value="12px">12</option>
-          <option value="14px">14</option>
-          <option value="16px">16</option>
-          <option value="18px">18</option>
-          <option value="20px">20</option>
-          <option value="24px">24</option>
-          <option value="28px">28</option>
-          <option value="36px">36</option>
-        </select>
+        {/* 글자 크기: 직접 입력 + 프리셋 드롭다운 콤보 */}
+        <div className="flex items-center border border-neutral-200 rounded bg-white overflow-hidden">
+          <input
+            type="number"
+            min={6} max={200}
+            placeholder="크기"
+            value={sizeVal}
+            onMouseDown={saveRange}
+            onFocus={saveRange}
+            onChange={e => setSizeVal(e.target.value)}
+            onKeyDown={e => {
+              if (e.key === "Enter" && sizeVal) {
+                e.preventDefault();
+                applyFontSize(`${sizeVal}px`);
+              }
+            }}
+            className="w-12 text-xs px-1.5 py-1 text-center focus:outline-none bg-transparent [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+          />
+          <select
+            onMouseDown={saveRange}
+            onChange={e => {
+              const v = e.target.value;
+              if (!v) return;
+              setSizeVal(v.replace("px", ""));
+              applyFontSize(v);
+              (e.target as HTMLSelectElement).value = "";
+            }}
+            defaultValue=""
+            className="text-xs border-l border-neutral-200 py-1 pl-0.5 pr-1 focus:outline-none cursor-pointer bg-white text-neutral-500"
+          >
+            <option value="" disabled>▾</option>
+            {PRESET_SIZES.map(s => <option key={s} value={`${s}px`}>{s}</option>)}
+          </select>
+        </div>
 
         <span className="w-px h-4 bg-neutral-300" />
 

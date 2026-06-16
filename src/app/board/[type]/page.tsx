@@ -75,10 +75,24 @@ export default function BoardListPage() {
     <>
       <Navbar />
       <main className="min-h-screen bg-neutral-50 pt-16">
-        <div className="max-w-6xl mx-auto px-6 py-10 flex gap-6 items-start">
+        {/* 모바일: 상단 탭 */}
+        <div className="md:hidden max-w-6xl mx-auto px-4 pt-6">
+          <div className="flex bg-white rounded-xl border border-neutral-100 overflow-hidden">
+            {BOARDS.map(b => (
+              <Link key={b.type} href={`/board/${b.type}`}
+                className={`flex-1 text-center py-3 text-sm font-medium transition-colors ${
+                  type === b.type ? "bg-brand-600 text-white" : "text-neutral-600 hover:bg-neutral-50"
+                }`}>
+                {b.label}
+              </Link>
+            ))}
+          </div>
+        </div>
 
-          {/* ── 왼쪽 사이드바 ── */}
-          <aside className="w-44 flex-shrink-0">
+        <div className="max-w-6xl mx-auto px-4 md:px-6 py-6 md:py-10 flex flex-col md:flex-row gap-6 items-start">
+
+          {/* ── 왼쪽 사이드바 (데스크탑만) ── */}
+          <aside className="hidden md:block w-44 flex-shrink-0">
             <div className="bg-white rounded-2xl border border-neutral-100 overflow-hidden sticky top-24">
               <div className="bg-brand-600 px-4 py-3">
                 <p className="text-white font-bold text-sm">게시판</p>
@@ -126,7 +140,7 @@ export default function BoardListPage() {
             </div>
 
             {/* 목록 테이블 */}
-            <div className="bg-white rounded-2xl border border-neutral-100 overflow-hidden">
+            <div className="bg-white rounded-2xl border border-neutral-100 overflow-x-auto">
               {loading ? (
                 <div className="flex justify-center py-16">
                   <Loader2 size={24} className="animate-spin text-brand-400" />

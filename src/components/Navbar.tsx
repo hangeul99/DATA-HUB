@@ -87,8 +87,8 @@ export default function Navbar() {
           {/* 로고 — 왼쪽 고정 */}
           <Link href="/" className="flex items-center gap-3 group flex-shrink-0 justify-self-start">
             {!logoError ? (
-              <div className="relative h-10 w-10 flex-shrink-0">
-                <Image src="/logo.png" alt="인제대학교 글로컬대학 로고" fill sizes="40px"
+              <div className="relative h-12 w-12 flex-shrink-0">
+                <Image src="/logo.png" alt="인제대학교 글로컬대학 로고" fill sizes="48px"
                   style={{ objectFit: "contain" }} priority draggable={false}
                   onError={() => setLogoError(true)} />
               </div>
@@ -101,7 +101,7 @@ export default function Navbar() {
           </Link>
 
           {/* 데스크탑 네비게이션 — 가운데 정렬 */}
-          <nav className="hidden md:flex items-center justify-center gap-8">
+          <nav className="hidden md:flex items-center justify-center gap-5">
             {navLinks.map((link) => (
               <Link key={link.href} href={link.href}
                 className={`text-sm font-medium transition-colors duration-200 hover:opacity-70 ${linkColor} ${

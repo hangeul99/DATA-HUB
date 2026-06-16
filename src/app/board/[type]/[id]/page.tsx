@@ -7,16 +7,12 @@ import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import { createClient } from "@/lib/supabase/client";
 import { ChevronLeft, Trash2, Loader2 } from "lucide-react";
+import "react-quill/dist/quill.snow.css";
 
 const BOARDS = [
   { type: "free",     label: "자유게시판" },
   { type: "feedback", label: "요구 및 개선사항" },
 ];
-
-const BOARD_LABELS: Record<string, string> = {
-  free: "자유게시판",
-  feedback: "요구 및 개선사항",
-};
 
 interface Post {
   id: string; created_at: string; title: string;
@@ -28,7 +24,6 @@ export default function PostDetailPage() {
   const router = useRouter();
   const type   = params.type as string;
   const id     = params.id as string;
-  const label  = BOARD_LABELS[type] ?? "게시판";
 
   const [post,          setPost]          = useState<Post | null>(null);
   const [loading,       setLoading]       = useState(true);
@@ -67,10 +62,25 @@ export default function PostDetailPage() {
     <>
       <Navbar />
       <main className="min-h-screen bg-neutral-50 pt-16">
-        <div className="max-w-6xl mx-auto px-6 py-10 flex gap-6 items-start">
 
-          {/* 왼쪽 사이드바 */}
-          <aside className="w-44 flex-shrink-0">
+        {/* 모바일 상단 탭 */}
+        <div className="md:hidden max-w-6xl mx-auto px-4 pt-6">
+          <div className="flex bg-white rounded-xl border border-neutral-100 overflow-hidden">
+            {BOARDS.map(b => (
+              <Link key={b.type} href={`/board/${b.type}`}
+                className={`flex-1 text-center py-3 text-sm font-medium transition-colors ${
+                  type === b.type ? "bg-brand-600 text-white" : "text-neutral-600 hover:bg-neutral-50"
+                }`}>
+                {b.label}
+              </Link>
+            ))}
+          </div>
+        </div>
+
+        <div className="max-w-6xl mx-auto px-4 md:px-6 py-6 md:py-10 flex flex-col md:flex-row gap-6 items-start">
+
+          {/* 왼쪽 사이드바 (데스크탑) */}
+          <aside className="hidden md:block w-44 flex-shrink-0">
             <div className="bg-white rounded-2xl border border-neutral-100 overflow-hidden sticky top-24">
               <div className="bg-brand-600 px-4 py-3">
                 <p className="text-white font-bold text-sm">게시판</p>
@@ -98,10 +108,9 @@ export default function PostDetailPage() {
               </div>
             ) : post ? (
               <div className="bg-white rounded-2xl border border-neutral-100 overflow-hidden">
-                {/* 글 제목 */}
-                <div className="px-7 py-5 border-b border-neutral-100">
+                <div className="px-5 md:px-7 py-5 border-b border-neutral-100">
                   <h2 className="text-lg font-bold text-neutral-900 mb-3">{post.title}</h2>
-                  <div className="flex items-center justify-between">
+                  <div className="flex items-center justify-between flex-wrap gap-2">
                     <div className="flex items-center gap-3 text-xs text-neutral-400">
                       <span>{post.author_name[0]}**</span>
                       <span>·</span>
@@ -118,14 +127,17 @@ export default function PostDetailPage() {
                     )}
                   </div>
                 </div>
-                {/* 본문 */}
-                <div className="px-7 py-8 min-h-[240px]">
-                  <p className="text-sm text-neutral-700 leading-relaxed whitespace-pre-wrap">{post.content}</p>
+                {/* 본문 — Quill HTML 렌더링 */}
+                <div className="px-5 md:px-7 py-8 min-h-[240px] ql-snow">
+                  <div
+                    className="ql-editor prose prose-sm max-w-none !p-0"
+                    dangerouslySetInnerHTML={{ __html: post.content }}
+                  />
                 </div>
               </div>
             ) : null}
 
-            <div className="flex items-center justify-between mt-4">
+            <div className="mt-4">
               <Link href={`/board/${type}`}
                 className="inline-flex items-center gap-1.5 text-sm text-neutral-500 hover:text-brand-600 transition-colors">
                 <ChevronLeft size={14} /> 목록으로

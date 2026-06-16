@@ -6,7 +6,7 @@ import Link from "next/link";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import { createClient } from "@/lib/supabase/client";
-import { Plus, Loader2, X, ChevronLeft } from "lucide-react";
+import { Plus, Loader2, ChevronLeft } from "lucide-react";
 
 const BOARD_LABELS: Record<string, string> = {
   free: "자유게시판",
@@ -29,11 +29,7 @@ export default function BoardListPage() {
 
   const [posts, setPosts] = useState<Post[]>([]);
   const [loading, setLoading] = useState(true);
-  const [user, setUser] = useState<{ id: string } | null>(null);
-  const [showWrite, setShowWrite] = useState(false);
-  const [form, setForm] = useState({ title: "", content: "" });
-  const [submitting, setSubmitting] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [loggedIn, setLoggedIn] = useState(false);
 
   const fetchPosts = useCallback(async () => {
     setLoading(true);
@@ -51,39 +47,8 @@ export default function BoardListPage() {
   useEffect(() => {
     if (!label) { router.replace("/board"); return; }
     fetchPosts();
-    createClient().auth.getUser().then(({ data }) =>
-      setUser(data.user ? { id: data.user.id } : null)
-    );
+    createClient().auth.getUser().then(({ data }) => setLoggedIn(!!data.user));
   }, [fetchPosts, label, router]);
-
-  const handleSubmit = async () => {
-    if (!form.title.trim()) { setError("제목을 입력해주세요."); return; }
-    if (!form.content.trim()) { setError("내용을 입력해주세요."); return; }
-    setSubmitting(true);
-    setError(null);
-
-    const supabase = createClient();
-    const { data: { user: u } } = await supabase.auth.getUser();
-    if (!u) { setError("로그인이 필요합니다."); setSubmitting(false); return; }
-
-    const { data: profile } = await supabase
-      .from("profiles").select("name").eq("id", u.id).single();
-
-    const { error: err } = await supabase.from("posts").insert({
-      board_type: type,
-      title: form.title.trim(),
-      content: form.content.trim(),
-      user_id: u.id,
-      author_name: profile?.name ?? u.email?.split("@")[0] ?? "익명",
-    });
-
-    if (err) { setError("글 등록에 실패했습니다."); setSubmitting(false); return; }
-
-    setForm({ title: "", content: "" });
-    setShowWrite(false);
-    setSubmitting(false);
-    fetchPosts();
-  };
 
   return (
     <>
@@ -102,11 +67,11 @@ export default function BoardListPage() {
 
         <div className="max-w-4xl mx-auto px-6 py-8">
           <div className="flex justify-end mb-4">
-            {user ? (
-              <button onClick={() => setShowWrite(true)}
+            {loggedIn ? (
+              <Link href={`/board/${type}/write`}
                 className="flex items-center gap-2 bg-brand-600 hover:bg-brand-700 text-white text-sm font-semibold px-4 py-2.5 rounded-xl transition-colors active:scale-95">
                 <Plus size={15} /> 글쓰기
-              </button>
+              </Link>
             ) : (
               <Link href="/login"
                 className="flex items-center gap-2 bg-brand-600 hover:bg-brand-700 text-white text-sm font-semibold px-4 py-2.5 rounded-xl transition-colors">
@@ -157,45 +122,6 @@ export default function BoardListPage() {
         </div>
       </main>
       <Footer />
-
-      {showWrite && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm px-4"
-          onClick={() => setShowWrite(false)}>
-          <div className="bg-white rounded-2xl shadow-xl p-6 w-full max-w-lg"
-            onClick={e => e.stopPropagation()}>
-            <div className="flex items-center justify-between mb-5">
-              <h2 className="text-base font-bold text-neutral-900">글쓰기 — {label}</h2>
-              <button onClick={() => setShowWrite(false)}
-                className="p-1.5 rounded-lg text-neutral-400 hover:bg-neutral-100 transition-colors">
-                <X size={18} />
-              </button>
-            </div>
-            <div className="space-y-3">
-              <input type="text" placeholder="제목" value={form.title}
-                onChange={e => { setForm(p => ({ ...p, title: e.target.value })); setError(null); }}
-                className="w-full px-4 py-3 rounded-xl border border-neutral-200 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400"
-              />
-              <textarea placeholder="내용을 입력하세요." value={form.content}
-                onChange={e => { setForm(p => ({ ...p, content: e.target.value })); setError(null); }}
-                rows={6}
-                className="w-full px-4 py-3 rounded-xl border border-neutral-200 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400 resize-none"
-              />
-              {error && <p className="text-xs text-red-500">{error}</p>}
-            </div>
-            <div className="flex gap-3 mt-5">
-              <button onClick={() => setShowWrite(false)}
-                className="flex-1 py-3 rounded-xl bg-neutral-100 hover:bg-neutral-200 text-sm font-medium text-neutral-700 transition-colors">
-                취소
-              </button>
-              <button onClick={handleSubmit} disabled={submitting}
-                className="flex-1 py-3 rounded-xl bg-brand-600 hover:bg-brand-700 text-white text-sm font-semibold transition-colors disabled:opacity-60 flex items-center justify-center gap-2">
-                {submitting && <Loader2 size={14} className="animate-spin" />}
-                {submitting ? "등록 중..." : "등록"}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </>
   );
 }

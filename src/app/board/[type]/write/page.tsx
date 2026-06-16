@@ -65,7 +65,7 @@ export default function WritePostPage() {
   return (
     <>
       <Navbar />
-      <main className="min-h-screen bg-neutral-50 pt-16">
+      <main className="min-h-screen bg-neutral-50 pt-20">
         <div className="bg-white border-b border-neutral-100">
           <div className="max-w-4xl mx-auto px-6 py-10">
             <Link href={`/board/${type}`}

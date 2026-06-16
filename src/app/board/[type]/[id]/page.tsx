@@ -60,10 +60,10 @@ export default function PostDetailPage() {
   return (
     <>
       <Navbar />
-      <main className="min-h-screen bg-neutral-50 pt-16">
+      <main className="min-h-screen bg-neutral-50 pt-20">
 
         {/* 모바일 상단 탭 */}
-        <div className="md:hidden max-w-6xl mx-auto px-4 pt-6">
+        <div className="md:hidden px-4 pt-6">
           <div className="flex bg-white rounded-xl border border-neutral-100 overflow-hidden">
             {BOARDS.map(b => (
               <Link key={b.type} href={`/board/${b.type}`}
@@ -76,7 +76,7 @@ export default function PostDetailPage() {
           </div>
         </div>
 
-        <div className="max-w-6xl mx-auto px-4 md:px-6 py-6 md:py-10 flex flex-col md:flex-row gap-6 items-start">
+        <div className="w-full px-4 md:px-10 lg:px-16 py-6 md:py-10 flex flex-col md:flex-row gap-6 items-start">
 
           {/* 왼쪽 사이드바 (데스크탑) */}
           <aside className="hidden md:block w-44 flex-shrink-0">

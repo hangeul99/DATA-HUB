@@ -14,7 +14,7 @@ export default async function DatasetDetailPage({
   return (
     <>
       <Navbar />
-      <main className="flex-1 pt-16">
+      <main className="flex-1 pt-20">
         <DatasetDetailClient id={id} />
       </main>
       <Footer />

@@ -6,8 +6,7 @@ import type { Map as LeafletMap } from "leaflet";
 
 interface Point { lat: number; lng: number; label?: string }
 
-// latCol / lngCol 은 위도경도 모드에서만 사용, 주소 모드에서는 생략 가능
-export default function MapView({ points, latCol, lngCol }: {
+// latCol / lngCol ?� ?�도경도 모드?�서�??�용, 주소 모드?�서???�략 가??export default function MapView({ points, latCol, lngCol }: {
   points: Point[];
   latCol?: string;
   lngCol?: string;
@@ -23,7 +22,7 @@ export default function MapView({ points, latCol, lngCol }: {
     import("leaflet").then((L) => {
       if (cancelled || !containerRef.current) return;
 
-      // 이미 초기화된 컨테이너 강제 정리
+      // ?��? 초기?�된 컨테?�너 강제 ?�리
       const el = containerRef.current as HTMLDivElement & { _leaflet_id?: number };
       if (el._leaflet_id) {
         mapRef.current?.remove();
@@ -75,11 +74,10 @@ export default function MapView({ points, latCol, lngCol }: {
   return (
     <div className="bg-white rounded-2xl border border-neutral-200 overflow-hidden">
       <div className="px-5 py-4 border-b border-neutral-100">
-        <h2 className="font-semibold text-neutral-800">지도 시각화</h2>
+        <h2 className="font-semibold text-neutral-800">지???�각??/h2>
         <p className="text-xs text-neutral-400 mt-0.5">
-          {latCol && lngCol ? `${latCol}(위도) · ${lngCol}(경도) · ` : "주소 지오코딩 · "}
-          {points.length.toLocaleString()}개 지점
-          {points.length > 500 && <span className="text-amber-500 ml-1">· 최대 500개 표시</span>}
+          {latCol && lngCol ? `${latCol}(?�도) · ${lngCol}(경도) · ` : "주소 지?�코??· "}
+          {points.length.toLocaleString()}�?지??          {points.length > 500 && <span className="text-amber-500 ml-1">· 최�? 500�??�시</span>}
         </p>
       </div>
       <div ref={containerRef} style={{ height: 520, width: "100%" }} />

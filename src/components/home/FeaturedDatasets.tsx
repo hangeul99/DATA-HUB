@@ -5,12 +5,12 @@ import Link from "next/link";
 import { BarChart2, BookOpen, TrendingUp, MapPin, ArrowRight, Download } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 
-// â”€â”€ ì¹´í…Œê³ ë¦¬ë³„ ì•„ì´ì½˜ ì„¤ì • â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ?€?€ ì¹´í…Œê³ ë¦¬ë³??„ì´ì½??¤ì • ?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€
 const CATEGORY_STYLE: Record<string, { icon: React.ElementType; iconBg: string }> = {
-  "í†µê³„/ê³µê³µ ë°ì´í„°": { icon: BarChart2,  iconBg: "bg-blue-50 text-blue-600" },
-  "ì—°êµ¬/í•™ìˆ  ë°ì´í„°": { icon: BookOpen,   iconBg: "bg-brand-50 text-brand-600" },
-  "ê¸ˆìœµ/ê²½ì œ ë°ì´í„°": { icon: TrendingUp, iconBg: "bg-emerald-50 text-emerald-600" },
-  "ì§€ì—­/ì—…ì²´ ë°ì´í„°": { icon: MapPin,     iconBg: "bg-orange-50 text-orange-600" },
+  "?µê³„/ê³µê³µ ?°ì´??: { icon: BarChart2,  iconBg: "bg-blue-50 text-blue-600" },
+  "?°êµ¬/?™ìˆ  ?°ì´??: { icon: BookOpen,   iconBg: "bg-brand-50 text-brand-600" },
+  "ê¸ˆìœµ/ê²½ì œ ?°ì´??: { icon: TrendingUp, iconBg: "bg-emerald-50 text-emerald-600" },
+  "ì§€???…ì²´ ?°ì´??: { icon: MapPin,     iconBg: "bg-orange-50 text-orange-600" },
 };
 
 interface Dataset {
@@ -28,7 +28,7 @@ export default function FeaturedDatasets() {
   const gridRef = useRef<HTMLDivElement>(null);
   const [datasets, setDatasets] = useState<Dataset[]>([]);
 
-  // â”€â”€ ë‹¤ìš´ë¡œë“œ ìˆ˜ ìƒìœ„ 6ê°œ fetch â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ?€?€ ?¤ìš´ë¡œë“œ ???ìœ„ 6ê°?fetch ?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€
   useEffect(() => {
     const supabase = createClient();
     supabase
@@ -40,7 +40,7 @@ export default function FeaturedDatasets() {
       .then(({ data }) => setDatasets(data ?? []));
   }, []);
 
-  // â”€â”€ ìŠ¤í¬ë¡¤ í˜ì´ë“œì¸ ì• ë‹ˆë©”ì´ì…˜ â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ?€?€ ?¤í¬ë¡??˜ì´?œì¸ ? ë‹ˆë©”ì´???€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€
   useEffect(() => {
     const targets = [headerRef.current, gridRef.current];
     targets.forEach((el, i) => {
@@ -65,7 +65,7 @@ export default function FeaturedDatasets() {
     });
   }, []);
 
-  // â”€â”€ ë°°ì§€: ìµœë‹¤ ì¡°íšŒ 1ê°œ â†’ ì¸ê¸°, ìµœì‹  2ê°œ â†’ ì‹ ê·œ â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ?€?€ ë°°ì?: ìµœë‹¤ ì¡°íšŒ 1ê°????¸ê¸°, ìµœì‹  2ê°???? ê·œ ?€?€?€?€?€?€?€?€?€?€
   const topDownloadsId = datasets.length > 0 ? datasets[0].id : null;
   const newest2 = new Set(
     [...datasets]
@@ -75,8 +75,8 @@ export default function FeaturedDatasets() {
   );
 
   const getBadge = (ds: Dataset) => {
-    if (newest2.has(ds.id)) return "ì‹ ê·œ";
-    if (ds.id === topDownloadsId) return "ì¸ê¸°";
+    if (newest2.has(ds.id)) return "? ê·œ";
+    if (ds.id === topDownloadsId) return "?¸ê¸°";
     return null;
   };
 
@@ -86,13 +86,13 @@ export default function FeaturedDatasets() {
         <div ref={headerRef} className="flex items-end justify-between mb-12">
           <div>
             <p className="text-brand-600 font-semibold text-sm uppercase tracking-widest mb-3">Featured</p>
-            <h2 className="text-3xl md:text-4xl font-bold text-neutral-900">ì£¼ëª©í•  ë§Œí•œ ë°ì´í„°ì…‹</h2>
+            <h2 className="text-3xl md:text-4xl font-bold text-neutral-900">ì£¼ëª©??ë§Œí•œ ?°ì´?°ì…‹</h2>
           </div>
           <Link
             href="/datasets"
             className="hidden sm:flex items-center gap-1.5 text-sm font-semibold text-brand-600 hover:text-brand-700 transition-colors"
           >
-            ì „ì²´ ë³´ê¸°
+            ?„ì²´ ë³´ê¸°
             <ArrowRight size={14} />
           </Link>
         </div>
@@ -115,7 +115,7 @@ export default function FeaturedDatasets() {
                     </div>
                     {badge && (
                       <span className={`text-xs font-bold px-2.5 py-1 rounded-full ${
-                        badge === "ì‹ ê·œ" ? "bg-brand-500 text-white" : "bg-amber-400 text-amber-900"
+                        badge === "? ê·œ" ? "bg-brand-500 text-white" : "bg-amber-400 text-amber-900"
                       }`}>
                         {badge}
                       </span>
@@ -144,7 +144,7 @@ export default function FeaturedDatasets() {
 
                 <div className="px-5 pb-5">
                   <span className="block w-full text-center text-sm font-semibold text-brand-600 bg-brand-50 hover:bg-brand-500 hover:text-white py-2.5 rounded-xl transition-all duration-200 active:scale-95">
-                    ì‹ ì²­í•˜ê¸°
+                    ? ì²­?˜ê¸°
                   </span>
                 </div>
               </Link>
@@ -157,7 +157,7 @@ export default function FeaturedDatasets() {
             href="/datasets"
             className="inline-flex items-center gap-2 text-sm font-semibold text-brand-600 hover:text-brand-700"
           >
-            ì „ì²´ ë°ì´í„°ì…‹ ë³´ê¸° <ArrowRight size={14} />
+            ?„ì²´ ?°ì´?°ì…‹ ë³´ê¸° <ArrowRight size={14} />
           </Link>
         </div>
       </div>

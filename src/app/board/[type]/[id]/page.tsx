@@ -7,7 +7,6 @@ import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import { createClient } from "@/lib/supabase/client";
 import { ChevronLeft, Trash2, Pencil, Loader2 } from "lucide-react";
-import "react-quill/dist/quill.snow.css";
 
 const BOARDS = [
   { type: "free",     label: "자유게시판" },
@@ -133,10 +132,10 @@ export default function PostDetailPage() {
                     )}
                   </div>
                 </div>
-                {/* 본문 — Quill HTML 렌더링 */}
-                <div className="px-5 md:px-7 py-8 min-h-[240px] ql-snow">
+                {/* 본문 */}
+                <div className="px-5 md:px-7 py-8 min-h-[240px]">
                   <div
-                    className="ql-editor prose prose-sm max-w-none !p-0"
+                    className="text-sm text-neutral-800 leading-relaxed [&_ul]:list-disc [&_ul]:pl-5 [&_ol]:list-decimal [&_ol]:pl-5 [&_li]:my-0.5 [&_b]:font-bold [&_strong]:font-bold [&_i]:italic [&_em]:italic [&_u]:underline [&_s]:line-through"
                     dangerouslySetInnerHTML={{ __html: post.content }}
                   />
                 </div>

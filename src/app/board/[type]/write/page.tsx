@@ -1,40 +1,18 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import { createClient } from "@/lib/supabase/client";
 import { ChevronLeft, Loader2 } from "lucide-react";
-import dynamic from "next/dynamic";
-import "react-quill/dist/quill.snow.css";
-
-const ReactQuill = dynamic(() => import("react-quill"), { ssr: false });
+import RichTextEditor from "@/components/RichTextEditor";
 
 const BOARD_LABELS: Record<string, string> = {
   free: "자유게시판",
   feedback: "요구 및 개선사항",
 };
-
-const QUILL_MODULES = {
-  toolbar: [
-    [{ font: [] }, { size: ["small", false, "large", "huge"] }],
-    ["bold", "italic", "underline", "strike"],
-    [{ color: [] }, { background: [] }],
-    [{ list: "ordered" }, { list: "bullet" }],
-    [{ align: [] }],
-    ["clean"],
-  ],
-};
-
-const QUILL_FORMATS = [
-  "font", "size",
-  "bold", "italic", "underline", "strike",
-  "color", "background",
-  "list", "bullet",
-  "align",
-];
 
 export default function WritePostPage() {
   const params = useParams();
@@ -112,16 +90,10 @@ export default function WritePostPage() {
               </div>
               <div>
                 <label className="block text-sm font-semibold text-neutral-700 mb-2">내용</label>
-                <div className="rounded-xl border border-neutral-200 overflow-hidden [&_.ql-toolbar]:rounded-t-xl [&_.ql-container]:rounded-b-xl [&_.ql-container]:min-h-[280px] [&_.ql-editor]:min-h-[260px] [&_.ql-editor]:text-sm">
-                  <ReactQuill
-                    theme="snow"
-                    value={content}
-                    onChange={v => { setContent(v); setError(null); }}
-                    modules={QUILL_MODULES}
-                    formats={QUILL_FORMATS}
-                    placeholder="내용을 입력하세요."
-                  />
-                </div>
+                <RichTextEditor
+                  value={content}
+                  onChange={v => { setContent(v); setError(null); }}
+                />
               </div>
               {error && <p className="text-sm text-red-500">{error}</p>}
             </div>

@@ -11,6 +11,9 @@ CREATE TABLE IF NOT EXISTS public.comments (
   created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
+GRANT SELECT, INSERT, UPDATE ON public.comments TO authenticated;
+GRANT SELECT ON public.comments TO anon;
+
 ALTER TABLE public.comments ENABLE ROW LEVEL SECURITY;
 
 CREATE POLICY "comments: 전체 공개 조회" ON public.comments

@@ -24,6 +24,18 @@ BEGIN
   END IF;
 END $$;
 
+-- 테이블 권한 (GRANT 누락 시 "permission denied for table posts" 발생)
+GRANT SELECT, INSERT, UPDATE ON public.posts TO authenticated;
+GRANT SELECT ON public.posts TO anon;
+
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema='public' AND table_name='comments') THEN
+    GRANT SELECT, INSERT, UPDATE ON public.comments TO authenticated;
+    GRANT SELECT ON public.comments TO anon;
+  END IF;
+END $$;
+
 -- RLS 재정비
 ALTER TABLE public.posts ENABLE ROW LEVEL SECURITY;
 

@@ -119,11 +119,11 @@ export default function PostDetailPage() {
 
   const handleDownload = async () => {
     if (!post?.attachment_path || !post?.attachment_name) return;
-    const { data } = await createClient().storage
+    const { data } = createClient().storage
       .from("post-attachments")
-      .createSignedUrl(post.attachment_path, 60);
-    if (!data?.signedUrl) return;
-    const res  = await fetch(data.signedUrl);
+      .getPublicUrl(post.attachment_path);
+    if (!data?.publicUrl) return;
+    const res  = await fetch(data.publicUrl);
     const blob = await res.blob();
     const url  = URL.createObjectURL(blob);
     const a    = document.createElement("a");

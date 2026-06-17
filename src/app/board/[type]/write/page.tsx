@@ -24,6 +24,7 @@ export default function WritePostPage() {
   const [title,       setTitle]       = useState("");
   const [content,     setContent]     = useState("");
   const [file,        setFile]        = useState<File | null>(null);
+  const [dragging,    setDragging]    = useState(false);
   const [submitting,  setSubmitting]  = useState(false);
   const [error,       setError]       = useState<string | null>(null);
   const [authChecked, setAuthChecked] = useState(false);
@@ -36,6 +37,10 @@ export default function WritePostPage() {
       else setAuthChecked(true);
     });
   }, [label, router]);
+
+  const pickFile = (f: File | undefined | null) => {
+    if (f) setFile(f);
+  };
 
   const handleSubmit = async () => {
     if (!title.trim()) { setError("제목을 입력해주세요."); return; }
@@ -55,7 +60,8 @@ export default function WritePostPage() {
     let attachmentName: string | null = null;
 
     if (type === "resources" && file) {
-      const storagePath = `${user.id}/${Date.now()}_${file.name}`;
+      const ext = file.name.split(".").pop() ?? "bin";
+      const storagePath = `${user.id}/${Date.now()}.${ext}`;
       const { data: uploadData, error: uploadErr } = await supabase.storage
         .from("post-attachments")
         .upload(storagePath, file);
@@ -139,14 +145,28 @@ export default function WritePostPage() {
                       </button>
                     </div>
                   ) : (
-                    <button type="button" onClick={() => fileRef.current?.click()}
-                      className="flex items-center gap-2 px-4 py-3 border border-dashed border-neutral-300 rounded-xl text-sm text-neutral-500 hover:border-brand-400 hover:text-brand-600 hover:bg-brand-50 transition-colors w-full">
-                      <Paperclip size={14} />
-                      파일을 선택하세요
-                    </button>
+                    <div
+                      onClick={() => fileRef.current?.click()}
+                      onDragOver={e => { e.preventDefault(); setDragging(true); }}
+                      onDragLeave={() => setDragging(false)}
+                      onDrop={e => {
+                        e.preventDefault();
+                        setDragging(false);
+                        pickFile(e.dataTransfer.files?.[0]);
+                      }}
+                      className={`flex flex-col items-center justify-center gap-2 px-4 py-8 border-2 border-dashed rounded-xl cursor-pointer transition-colors ${
+                        dragging
+                          ? "border-brand-400 bg-brand-50 text-brand-600"
+                          : "border-neutral-300 text-neutral-500 hover:border-brand-400 hover:text-brand-600 hover:bg-brand-50"
+                      }`}
+                    >
+                      <Paperclip size={20} />
+                      <p className="text-sm font-medium">파일을 드래그하거나 클릭해서 선택하세요</p>
+                      <p className="text-xs text-neutral-400">PPT, PDF, Excel, Word 등 모든 파일 형식</p>
+                    </div>
                   )}
                   <input ref={fileRef} type="file" className="hidden"
-                    onChange={e => setFile(e.target.files?.[0] ?? null)} />
+                    onChange={e => pickFile(e.target.files?.[0])} />
                 </div>
               )}
 

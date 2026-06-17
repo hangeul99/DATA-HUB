@@ -54,7 +54,7 @@ export default function WritePostPage() {
     if (!user) { router.replace("/login"); return; }
 
     const { data: profile } = await supabase
-      .from("profiles").select("name").eq("id", user.id).single();
+      .from("profiles").select("name, role").eq("id", user.id).single();
 
     let attachmentPath: string | null = null;
     let attachmentName: string | null = null;
@@ -79,7 +79,7 @@ export default function WritePostPage() {
       title: title.trim(),
       content,
       user_id: user.id,
-      author_name: profile?.name ?? user.email?.split("@")[0] ?? "익명",
+      author_name: profile?.role === "admin" ? "관리자" : (profile?.name ?? user.email?.split("@")[0] ?? "익명"),
       attachment_path: attachmentPath,
       attachment_name: attachmentName,
     }).select("id").single();

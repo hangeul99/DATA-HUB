@@ -25,6 +25,14 @@ interface Comment {
   author_name: string; user_id: string;
 }
 
+const maskName = (name: string) => `${name[0]}**`;
+
+const AdminBadge = () => (
+  <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold bg-brand-600 text-white leading-none">
+    관리자
+  </span>
+);
+
 export default function PostDetailPage() {
   const params = useParams();
   const router = useRouter();
@@ -36,11 +44,12 @@ export default function PostDetailPage() {
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [isAdmin,       setIsAdmin]       = useState(false);
   const [deleting,      setDeleting]      = useState(false);
+  const [deleteError,   setDeleteError]   = useState<string | null>(null);
 
-  const [comments,       setComments]       = useState<Comment[]>([]);
-  const [commentInput,   setCommentInput]   = useState("");
-  const [commentSubmit,  setCommentSubmit]  = useState(false);
-  const [authorName,     setAuthorName]     = useState("");
+  const [comments,      setComments]      = useState<Comment[]>([]);
+  const [commentInput,  setCommentInput]  = useState("");
+  const [commentSubmit, setCommentSubmit] = useState(false);
+  const [authorName,    setAuthorName]    = useState("");
 
   const loadComments = async () => {
     const { data } = await createClient()
@@ -61,8 +70,9 @@ export default function PostDetailPage() {
       if (user) {
         setCurrentUserId(user.id);
         const { data: profile } = await supabase.from("profiles").select("role, name").eq("id", user.id).single();
-        setIsAdmin(profile?.role === "admin");
-        setAuthorName(profile?.name ?? user.email?.split("@")[0] ?? "익명");
+        const admin = profile?.role === "admin";
+        setIsAdmin(admin);
+        setAuthorName(admin ? "관리자" : (profile?.name ?? user.email?.split("@")[0] ?? "익명"));
       }
       await loadComments();
       setLoading(false);
@@ -95,7 +105,13 @@ export default function PostDetailPage() {
   const handleDelete = async () => {
     if (!confirm("게시글을 삭제하시겠습니까?")) return;
     setDeleting(true);
-    await createClient().from("posts").update({ is_active: false }).eq("id", id);
+    setDeleteError(null);
+    const { error: err } = await createClient().from("posts").update({ is_active: false }).eq("id", id);
+    if (err) {
+      setDeleteError(`삭제 실패: ${err.message}`);
+      setDeleting(false);
+      return;
+    }
     router.replace(`/board/${type}`);
   };
 
@@ -169,8 +185,8 @@ export default function PostDetailPage() {
                 <div className="px-5 md:px-7 py-5 border-b border-neutral-100">
                   <h2 className="text-lg font-bold text-neutral-900 mb-3">{post.title}</h2>
                   <div className="flex items-center justify-between flex-wrap gap-2">
-                    <div className="flex items-center gap-3 text-xs text-neutral-400">
-                      <span>{post.author_name[0]}**</span>
+                    <div className="flex items-center gap-2 text-xs text-neutral-400">
+                      {post.author_name === "관리자" ? <AdminBadge /> : <span>{maskName(post.author_name)}</span>}
                       <span>·</span>
                       <span>{new Date(post.created_at).toLocaleDateString("ko-KR")}</span>
                       <span>·</span>
@@ -190,7 +206,9 @@ export default function PostDetailPage() {
                       </div>
                     )}
                   </div>
+                  {deleteError && <p className="text-xs text-red-500 mt-2">{deleteError}</p>}
                 </div>
+
                 {/* 본문 */}
                 <div className="px-5 md:px-7 py-8 min-h-[240px]">
                   <div
@@ -225,7 +243,10 @@ export default function PostDetailPage() {
                     <div key={c.id} className="flex items-start justify-between gap-3 py-2.5 border-b border-neutral-50 last:border-0">
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 mb-1">
-                          <span className="text-xs font-semibold text-neutral-600">{c.author_name[0]}**</span>
+                          {c.author_name === "관리자"
+                            ? <AdminBadge />
+                            : <span className="text-xs font-semibold text-neutral-600">{maskName(c.author_name)}</span>
+                          }
                           <span className="text-[11px] text-neutral-400">
                             {new Date(c.created_at).toLocaleDateString("ko-KR")}
                           </span>

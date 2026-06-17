@@ -22,7 +22,7 @@ const BOARD_LABELS: Record<string, string> = {
 
 const PER_PAGE = 10;
 
-const maskName = (name: string) => name ? name[0] + "**" : "-";
+const maskName = (name: string) => name === "관리자" ? "관리자" : (name ? name[0] + "**" : "-");
 
 const fmtDate = (iso: string) =>
   new Date(iso).toLocaleDateString("ko-KR", { year: "numeric", month: "2-digit", day: "2-digit" })

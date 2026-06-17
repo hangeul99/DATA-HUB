@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
   ArrowLeft, Download, Lock, CheckCircle, Loader2, Eye,
-  X, ArrowRight, Shield, FileText, AlertTriangle,
+  X, ArrowRight, Shield, AlertTriangle,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 
@@ -358,8 +358,6 @@ export default function DatasetDetailClient({ id }: { id: string }) {
       setDownloading(false);
       return;
     }
-    await supabase.from("download_logs").insert({ user_id: userInfo.id, dataset_id: dataset.id });
-
     // 숫자 prefix 제거: "127832_heart.csv" → "heart.csv"
     const rawName = dataset.file_path.split("/").pop() ?? "download";
     const cleanName = rawName.replace(/^\d+_/, "");
@@ -375,6 +373,11 @@ export default function DatasetDetailClient({ id }: { id: string }) {
       a.click();
       document.body.removeChild(a);
       URL.revokeObjectURL(blobUrl);
+
+      // 다운로드 성공 시 카운트 증가
+      await supabase.from("download_logs").insert({ user_id: userInfo.id, dataset_id: dataset.id });
+      await supabase.rpc("increment_dataset_downloads", { dataset_id: dataset.id });
+      setDataset(prev => prev ? { ...prev, downloads: prev.downloads + 1 } : prev);
     } catch {
       setDownloadError("다운로드에 실패했습니다. 다시 시도해주세요.");
     }

@@ -40,6 +40,20 @@ function isNumeric(val: unknown): val is number {
   return typeof val === "number" && !isNaN(val);
 }
 
+// 큰 배열에서도 안전한 min/max
+// Math.max(...arr)는 배열이 약 10만 개를 넘으면 "Maximum call stack size exceeded"로
+// 터지므로(50MB 파일 지원), 스프레드 대신 루프로 직접 계산한다.
+function arrMin(arr: number[]): number {
+  let m = Infinity;
+  for (const v of arr) if (v < m) m = v;
+  return m;
+}
+function arrMax(arr: number[]): number {
+  let m = -Infinity;
+  for (const v of arr) if (v > m) m = v;
+  return m;
+}
+
 // YYYYMMDD 8자리 정수 패턴 (한국 공공데이터에서 흔함)
 const YYYYMMDD_RE = /^\d{8}$/;
 function isYYYYMMDD(v: unknown): boolean {
@@ -117,8 +131,8 @@ function calcStats(vals: (number | null)[]): NumericStats {
 
 function makeHistogram(vals: number[], bins = 10): { label: string; count: number }[] {
   if (vals.length === 0) return [];
-  const min = Math.min(...vals);
-  const max = Math.max(...vals);
+  const min = arrMin(vals);
+  const max = arrMax(vals);
   const range = max - min || 1;
   const binSize = range / bins;
   const counts = Array(bins).fill(0);
@@ -223,8 +237,8 @@ function detectLatLng(cols: ColMeta[]): { latCol: string; lngCol: string } | nul
       if (lat.name === lng.name) continue;
       const latNums = (lat.values as (number | null)[]).filter((v): v is number => v !== null);
       const lngNums = (lng.values as (number | null)[]).filter((v): v is number => v !== null);
-      const latMax = Math.max(...latNums.map(Math.abs));
-      const lngMax = Math.max(...lngNums.map(Math.abs));
+      const latMax = arrMax(latNums.map(Math.abs));
+      const lngMax = arrMax(lngNums.map(Math.abs));
       if (lngMax > latMax) return { latCol: lat.name, lngCol: lng.name };
     }
   }
@@ -461,6 +475,7 @@ export default function AnalysisClient() {
           .select("id")
           .eq("user_id", user.id)
           .eq("file_name", name)
+          .limit(1)            // 동일 파일 로그가 2개 이상이면 maybeSingle이 에러나므로 1개로 제한
           .maybeSingle();
         if (dup) return;
       }
@@ -506,7 +521,8 @@ export default function AnalysisClient() {
       const reader = new FileReader();
       reader.onload = (e) => {
         try {
-          const wb = XLSX.read(e.target?.result, { type: "binary" });
+          // readAsBinaryString(구식)/type:"binary" 대신 ArrayBuffer 방식 사용
+          const wb = XLSX.read(e.target?.result, { type: "array" });
           if (wb.SheetNames.length > 1) {
             // 시트가 여러 개면 사용자가 선택하도록 대기
             setSheetNames(wb.SheetNames);
@@ -522,7 +538,7 @@ export default function AnalysisClient() {
           setError("Excel 파일을 읽을 수 없습니다.");
         }
       };
-      reader.readAsBinaryString(file);
+      reader.readAsArrayBuffer(file);
     } else {
       setError("CSV 또는 Excel(.xlsx/.xls) 파일만 지원합니다.");
     }
@@ -588,11 +604,11 @@ export default function AnalysisClient() {
   }, [selectedCol]);
 
   // ── 통계 계산 ─────────────────────────────────────────────
-  // isId 열 제외 후 시각화용 열 목록
-  const numericCols = cols.filter((c) => c.type === "numeric");
-  const vizCols = cols.filter((c) => !c.isId); // 미니차트/차트에서 사용
-  const catCols = cols.filter((c) => c.type === "categorical");
-  const numericVizCols = numericCols.filter((c) => !c.isId);
+  // isId 열 제외 후 시각화용 열 목록 — cols가 바뀔 때만 재계산(렌더링마다 필터 방지)
+  const numericCols = useMemo(() => cols.filter((c) => c.type === "numeric"), [cols]);
+  const vizCols = useMemo(() => cols.filter((c) => !c.isId), [cols]); // 미니차트/차트에서 사용
+  const catCols = useMemo(() => cols.filter((c) => c.type === "categorical"), [cols]);
+  const numericVizCols = useMemo(() => numericCols.filter((c) => !c.isId), [numericCols]);
 
   // Pearson 상관행렬 (수치형 비-ID 열 2개 이상 시)
   const corrMatrix = useMemo(() => {
@@ -680,7 +696,8 @@ export default function AnalysisClient() {
           <AlertCircle size={15} className="text-amber-500 flex-shrink-0 mt-0.5" />
           <p className="text-xs text-amber-700 leading-relaxed">
             <span className="font-semibold">주의:</span> 개인정보(이름, 주민번호, 연락처 등)가 포함된 파일은 업로드하지 마세요.
-            업로드된 파일은 분석 목적으로만 처리되며 서버에 저장되지 않습니다.
+            업로드된 파일 내용은 분석 목적으로만 처리되며 서버에 저장되지 않습니다.
+            단, 지도 기능 사용 시 주소 데이터는 좌표 변환을 위해 외부 지도 서비스(OpenStreetMap)로 전송될 수 있습니다.
           </p>
         </div>
 
@@ -1443,6 +1460,15 @@ export default function AnalysisClient() {
                   z: zMeta ? (zMeta.values[i] as number | null) ?? 1 : 1,
                 })).filter((p) => p.x !== null && p.y !== null) as { x: number; y: number; z: number }[];
 
+                // 유효 데이터가 없으면 0으로 나누기(NaN) 방지 — 안내만 표시하고 종료
+                if (scatterData.length === 0) {
+                  return (
+                    <div className="bg-neutral-50 border border-neutral-200 rounded-2xl p-8 text-center text-sm text-neutral-400">
+                      선택한 두 열에 유효한 좌표 데이터가 없습니다.
+                    </div>
+                  );
+                }
+
                 // 회귀선 계산
                 const n = scatterData.length;
                 const sx  = scatterData.reduce((s, p) => s + p.x, 0);
@@ -1459,15 +1485,16 @@ export default function AnalysisClient() {
                 const corrLabel = Math.abs(r) < 0.1 ? "거의 없음"
                   : `${r > 0 ? "양의" : "음의"} ${Math.abs(r) >= 0.7 ? "강한" : Math.abs(r) >= 0.4 ? "중간" : "약한"} 상관관계`;
 
-                const xMin = Math.min(...scatterData.map((p) => p.x));
-                const xMax = Math.max(...scatterData.map((p) => p.x));
+                const xVals = scatterData.map((p) => p.x);
+                const xMin = arrMin(xVals);
+                const xMax = arrMax(xVals);
                 const trendData = [
                   { x: xMin, trend: slope * xMin + intercept },
                   { x: xMax, trend: slope * xMax + intercept },
                 ];
 
                 const zVals = zMeta ? scatterData.map((p) => p.z) : [];
-                const zRange: [number, number] = zMeta && Math.max(...zVals) > Math.min(...zVals)
+                const zRange: [number, number] = zMeta && zVals.length > 0 && arrMax(zVals) > arrMin(zVals)
                   ? [20, 500] : [60, 60];
 
                 return (

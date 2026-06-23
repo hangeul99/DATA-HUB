@@ -2,6 +2,7 @@
 
 import { useState, useMemo, useEffect } from "react";
 import Link from "next/link";
+import { useRouter, useSearchParams } from "next/navigation";
 import {
   Search, Grid3X3, List, Download, X,
   FileText, Eye, ShoppingCart, CheckSquare, Trash2,
@@ -146,6 +147,9 @@ function Toast({ message, onClose }: { message: string; onClose: () => void }) {
 }
 
 export default function DatasetsClient() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+
   // ── 탭 / 필터 상태 ─────────────────────────────────────────
   const [activeTab, setActiveTab]   = useState<TabId>("browse");
   const [query, setQuery]           = useState("");
@@ -200,6 +204,12 @@ export default function DatasetsClient() {
     });
     return () => subscription.unsubscribe();
   }, []);
+
+  // ── URL ?category= 파라미터로 초기 필터 적용 ─────────────
+  useEffect(() => {
+    const cat = searchParams.get("category");
+    if (cat && CATEGORIES.includes(cat)) setCategory(cat);
+  }, [searchParams]);
 
   // ── 지역/업체 접근 권한 + 신청 여부 확인 ─────────────────
   useEffect(() => {
@@ -786,7 +796,8 @@ export default function DatasetsClient() {
                   const isLocked = isLocal && !localDataApproved;
                   return (
                     <div key={ds.id}
-                      className={`group bg-white rounded-2xl border transition-all duration-200 flex flex-col overflow-hidden
+                      onClick={() => !isLocked && router.push(`/datasets/${ds.id}`)}
+                      className={`group bg-white rounded-2xl border transition-all duration-200 flex flex-col overflow-hidden cursor-pointer
                         ${isLocked ? "border-orange-200" : isSelected ? "border-brand-400 ring-2 ring-brand-200 shadow-brand" : "border-neutral-100 hover:border-brand-200 hover:shadow-brand"}`}>
 
                       {/* 잠금 배너 */}
@@ -800,6 +811,7 @@ export default function DatasetsClient() {
                       {/* 체크박스 + 배지 */}
                       <div className="flex items-start justify-between px-4 pt-4 pb-2">
                         <input type="checkbox" checked={isSelected} onChange={() => toggleSelect(ds.id)}
+                          onClick={e => e.stopPropagation()}
                           disabled={isLocked}
                           className="w-4 h-4 rounded border-neutral-300 text-brand-600 focus:ring-brand-400 cursor-pointer mt-0.5 disabled:opacity-30" />
                         {new Date().getTime() - new Date(ds.created_at).getTime() < 7 * 24 * 60 * 60 * 1000 ? (
@@ -836,7 +848,7 @@ export default function DatasetsClient() {
                         {isLocked ? (
                           // 잠금 상태: 접근 권한 신청 버튼
                           <button
-                            onClick={() => user ? setShowAccessModal(true) : window.location.href = "/login"}
+                            onClick={e => { e.stopPropagation(); user ? setShowAccessModal(true) : window.location.href = "/login"; }}
                             className="flex-1 text-center text-xs font-semibold flex items-center justify-center gap-1.5 py-2 rounded-lg transition-colors active:scale-95 bg-orange-500 hover:bg-orange-600 text-white"
                           >
                             {alreadyRequested ? (
@@ -847,20 +859,22 @@ export default function DatasetsClient() {
                           </button>
                         ) : (
                           <>
-                            <button title="설명자료 내려받기" onClick={() => downloadDescription(ds)}
+                            <button title="설명자료 내려받기" onClick={e => { e.stopPropagation(); downloadDescription(ds); }}
                               className="flex items-center justify-center w-8 h-8 rounded-lg bg-neutral-100 hover:bg-neutral-200 text-neutral-500 transition-colors">
                               <FileText size={14} />
                             </button>
-                            <button title="장바구니 담기" onClick={() => addToCart(ds.id)}
+                            <button title="장바구니 담기" onClick={e => { e.stopPropagation(); addToCart(ds.id); }}
                               className={`flex items-center justify-center w-8 h-8 rounded-lg transition-colors
                                 ${inCart ? "bg-brand-100 text-brand-600" : "bg-neutral-100 hover:bg-neutral-200 text-neutral-500"}`}>
                               <ShoppingCart size={14} />
                             </button>
                             <Link href={`/datasets/${ds.id}`} title="미리보기"
+                              onClick={e => e.stopPropagation()}
                               className="flex items-center justify-center w-8 h-8 rounded-lg bg-neutral-100 hover:bg-neutral-200 text-neutral-500 transition-colors">
                               <Eye size={14} />
                             </Link>
                             <Link href={`/datasets/${ds.id}`}
+                              onClick={e => e.stopPropagation()}
                               className="flex-1 text-center text-xs font-semibold text-white bg-brand-600 hover:bg-brand-700 py-2 rounded-lg transition-colors active:scale-95">
                               신청하기
                             </Link>
@@ -879,9 +893,11 @@ export default function DatasetsClient() {
                   const inCart = cart.has(ds.id);
                   return (
                     <div key={ds.id}
-                      className={`group bg-white rounded-2xl border transition-all duration-200 flex items-center gap-4 px-5 py-4
+                      onClick={() => router.push(`/datasets/${ds.id}`)}
+                      className={`group bg-white rounded-2xl border transition-all duration-200 flex items-center gap-4 px-5 py-4 cursor-pointer
                         ${isSelected ? "border-brand-400 ring-2 ring-brand-200" : "border-neutral-100 hover:border-brand-200 hover:shadow-brand"}`}>
                       <input type="checkbox" checked={isSelected} onChange={() => toggleSelect(ds.id)}
+                        onClick={e => e.stopPropagation()}
                         className="w-4 h-4 rounded border-neutral-300 text-brand-600 focus:ring-brand-400 cursor-pointer flex-shrink-0" />
                       <div className={`w-11 h-11 rounded-xl flex-shrink-0 flex items-center justify-center font-bold text-sm ${iconColor[ds.category] ?? "bg-neutral-100 text-neutral-500"}`}>
                         {ds.category[0]}
@@ -901,16 +917,18 @@ export default function DatasetsClient() {
                       </div>
                       <div className="flex items-center gap-1.5 flex-shrink-0">
                         {/* 설명자료 내려받기: 리스트 뷰 */}
-                        <button title="설명자료 내려받기" onClick={() => downloadDescription(ds)} className="flex items-center justify-center w-8 h-8 rounded-lg bg-neutral-100 hover:bg-neutral-200 text-neutral-500 transition-colors"><FileText size={14} /></button>
-                        <button title="장바구니" onClick={() => addToCart(ds.id)}
+                        <button title="설명자료 내려받기" onClick={e => { e.stopPropagation(); downloadDescription(ds); }} className="flex items-center justify-center w-8 h-8 rounded-lg bg-neutral-100 hover:bg-neutral-200 text-neutral-500 transition-colors"><FileText size={14} /></button>
+                        <button title="장바구니" onClick={e => { e.stopPropagation(); addToCart(ds.id); }}
                           className={`flex items-center justify-center w-8 h-8 rounded-lg transition-colors ${inCart ? "bg-brand-100 text-brand-600" : "bg-neutral-100 hover:bg-neutral-200 text-neutral-500"}`}>
                           <ShoppingCart size={14} />
                         </button>
                         <Link href={`/datasets/${ds.id}`} title="미리보기"
+                          onClick={e => e.stopPropagation()}
                           className="flex items-center justify-center w-8 h-8 rounded-lg bg-neutral-100 hover:bg-neutral-200 text-neutral-500 transition-colors">
                           <Eye size={14} />
                         </Link>
                         <Link href={`/datasets/${ds.id}`}
+                          onClick={e => e.stopPropagation()}
                           className="text-xs font-semibold text-white bg-brand-600 hover:bg-brand-700 px-4 py-2 rounded-lg transition-colors active:scale-95">
                           신청하기
                         </Link>

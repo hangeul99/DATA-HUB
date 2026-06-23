@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import DatasetsClient from "./DatasetsClient";
@@ -12,7 +13,9 @@ export default function DatasetsPage() {
     <>
       <Navbar />
       <main className="flex-1 pt-20">
-        <DatasetsClient />
+        <Suspense>
+          <DatasetsClient />
+        </Suspense>
       </main>
       <Footer />
     </>

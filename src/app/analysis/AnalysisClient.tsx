@@ -3,11 +3,11 @@
 import { useState, useCallback, useRef, useMemo, useEffect } from "react";
 import {
   BarChart, Bar, LineChart, Line, AreaChart, Area, PieChart, Pie, Cell,
-  ComposedChart, ScatterChart, Scatter, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, ZAxis,
+  ComposedChart, Scatter, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, ZAxis,
   RadarChart, Radar, PolarGrid, PolarAngleAxis, PolarRadiusAxis,
   Treemap,
 } from "recharts";
-import { Upload, FileText, X, TrendingUp, Table2, BarChart2, AlertCircle, Map as MapIcon, Download } from "lucide-react";
+import { Upload, FileText, X, TrendingUp, Table2, BarChart2, AlertCircle, Map as MapIcon, Download, Activity, PieChart as PieChartIcon, Crosshair, Grid, Layers } from "lucide-react";
 import Papa from "papaparse";
 import * as XLSX from "xlsx";
 import { createClient } from "@/lib/supabase/client";
@@ -199,6 +199,39 @@ function pearsonCorr(a: number[], b: number[]): number {
 // ── 컬러 팔레트 ───────────────────────────────────────────────
 const COLORS = ["#0D7377", "#2A9898", "#4FAFAF", "#0E253C", "#2D5F8F", "#4D7FB1", "#7A9FC5"];
 
+// ── 차트 종류 정의 ──────────────────────────────────────────────
+const CHART_TYPES = [
+  { id: "bar",       label: "막대",       Icon: BarChart2,    desc: "카테고리 비교" },
+  { id: "bar-h",     label: "가로 막대",  Icon: BarChart2,    desc: "긴 레이블 적합" },
+  { id: "line",      label: "선",         Icon: TrendingUp,   desc: "추세 변화" },
+  { id: "area",      label: "영역",       Icon: Activity,     desc: "면적 강조 추세" },
+  { id: "pie",       label: "파이",       Icon: PieChartIcon, desc: "전체 대비 비율" },
+  { id: "donut",     label: "도넛",       Icon: PieChartIcon, desc: "비율+중앙 강조" },
+  { id: "scatter",   label: "산점도",     Icon: Crosshair,    desc: "두 수치 상관관계" },
+  { id: "bubble",    label: "버블",       Icon: Crosshair,    desc: "3변수 관계" },
+  { id: "histogram", label: "히스토그램", Icon: BarChart2,    desc: "분포 확인" },
+  { id: "radar",     label: "레이더",     Icon: Activity,     desc: "다항목 비교" },
+  { id: "heatmap",   label: "히트맵",     Icon: Grid,         desc: "교차 패턴" },
+  { id: "treemap",   label: "트리맵",     Icon: Layers,       desc: "비율·계층 구조" },
+] as const;
+type ChartTypeId = (typeof CHART_TYPES)[number]["id"];
+
+// 각 차트 타입에 대한 상세 설명
+const CHART_DESC: Record<string, string> = {
+  bar:       "막대 차트는 카테고리별 수치를 직관적으로 비교합니다. X축이 항목, 막대 높이로 Y축 값을 나타냅니다.",
+  "bar-h":   "가로 막대 차트는 레이블이 길거나 항목이 많을 때 적합합니다. 항목을 세로로 나열해 읽기 쉽게 표시합니다.",
+  line:      "선 차트는 시간 흐름이나 순서에 따른 연속 추세를 표현합니다. X축이 날짜/순서일 때 효과적입니다.",
+  area:      "영역 차트는 선 차트에 면적을 채워 시각적 임팩트를 추가한 형태입니다.",
+  pie:       "파이 차트는 전체 대비 각 항목의 비율을 원형으로 나타냅니다. 항목이 5개 이하일 때 효과적입니다.",
+  donut:     "도넛 차트는 파이 차트와 동일합니다. 가운데 공간에 총합 등 추가 정보를 표시할 수 있습니다.",
+  scatter:   "산점도는 두 수치 변수의 상관관계를 점으로 나타냅니다. 점의 패턴으로 음/양의 상관관계를 파악합니다.",
+  bubble:    "버블 차트는 산점도에 세 번째 변수를 점의 크기로 표현해 3변수의 관계를 보여줍니다.",
+  histogram: "히스토그램은 수치 데이터의 분포를 구간별로 나타냅니다. 어느 범위에 데이터가 많은지 파악합니다.",
+  radar:     "레이더(거미줄) 차트는 여러 수치 항목을 방사형으로 비교합니다. 제품이나 대상의 강점/약점을 파악하기에 좋습니다.",
+  heatmap:   "히트맵은 두 범주형 변수의 교차값을 색상 강도로 나타냅니다. 패턴과 집중도를 직관적으로 파악합니다.",
+  treemap:   "트리맵은 항목의 크기를 면적으로 비율·계층 구조를 나타냅니다. 전체 구성 요소 비중을 한눈에 봅니다.",
+};
+
 // ── 위도/경도 열 자동 감지 ─────────────────────────────────────
 const LAT_NAMES = ["위도", "lat", "latitude", "y", "y좌표", "위치y", "ycoord"];
 const LNG_NAMES = ["경도", "lng", "lon", "longitude", "x", "x좌표", "위치x", "xcoord"];
@@ -273,11 +306,12 @@ export default function AnalysisClient() {
   const [rows, setRows] = useState<Record<string, unknown>[]>([]);
   const [cols, setCols] = useState<ColMeta[]>([]);
   const [activeTab, setActiveTab] = useState<"overview" | "charts" | "table" | "map">("overview");
-  const [selectedCol, setSelectedCol] = useState<string | null>(null);
-  const [chartMode, setChartMode] = useState<"single" | "scatter">("single");
+  const [selectedChartType, setSelectedChartType] = useState<ChartTypeId | null>(null);
   const [xCol, setXCol] = useState<string | null>(null);
   const [yCol, setYCol] = useState<string | null>(null);
   const [zCol, setZCol] = useState<string | null>(null);
+  const [radarCols, setRadarCols] = useState<string[]>([]);
+  const [chartGenerated, setChartGenerated] = useState(false);
   const [MapView, setMapView] = useState<React.ComponentType<{ points: {lat:number;lng:number;label?:string}[]; latCol?:string; lngCol?:string }> | null>(null);
   const [dragOver, setDragOver] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -436,7 +470,6 @@ export default function AnalysisClient() {
     setRows(data);
     setCols(colMetas);
     setFileName(name);
-    setSelectedCol(colMetas[0]?.name ?? null);
     setActiveTab("overview");
     setError(null);
     // 새 파일 로드 시 지오코딩 + 시트 상태 초기화
@@ -557,7 +590,7 @@ export default function AnalysisClient() {
   };
 
   const reset = () => {
-    setFileName(null); setRows([]); setCols([]); setSelectedCol(null); setError(null);
+    setFileName(null); setRows([]); setCols([]); setError(null);
     setGeocodedPts([]); setGeocodeCount(0); setGeocodeTotal(0); setGeocoding(false);
     geocodingStartedRef.current = false;
     setSheetNames([]); setSelectedSheet(null); setPendingWb(null);
@@ -596,12 +629,12 @@ export default function AnalysisClient() {
       ctx.drawImage(img, 0, 0);
       URL.revokeObjectURL(url);
       const link = document.createElement("a");
-      link.download = `chart_${selectedCol ?? "export"}.png`;
+      link.download = `chart_${selectedChartType ?? "export"}.png`;
       link.href = canvas.toDataURL("image/png");
       link.click();
     };
     img.src = url;
-  }, [selectedCol]);
+  }, [selectedChartType]);
 
   // ── 통계 계산 ─────────────────────────────────────────────
   // isId 열 제외 후 시각화용 열 목록 — cols가 바뀔 때만 재계산(렌더링마다 필터 방지)
@@ -624,20 +657,130 @@ export default function AnalysisClient() {
     }));
   }, [numericVizCols]);
 
-  const selectedMeta = cols.find((c) => c.name === selectedCol);
-  const selectedStats = selectedMeta?.type === "numeric"
-    ? calcStats(selectedMeta.values as (number | null)[])
-    : null;
-  const selectedHist = selectedMeta?.type === "numeric"
-    ? makeHistogram((selectedMeta.values as (number | null)[]).filter(isNumeric) as number[])
-    : null;
-  const selectedFreq = selectedMeta?.type === "categorical"
-    ? makeFrequency(selectedMeta.values)
-    : null;
-  // 날짜형 열: 월별 집계
-  const selectedDateFreq = selectedMeta?.type === "date"
-    ? makeDateFrequency(selectedMeta.values)
-    : null;
+  // ── 차트 탭 데이터 useMemo ──────────────────────────────────
+
+  // 막대/선/영역 — X별 Y 평균 집계 (상위 30개 항목)
+  const aggChartData = useMemo(() => {
+    if (!xCol || !yCol) return [];
+    const xMeta = cols.find((c) => c.name === xCol);
+    const yMeta = cols.find((c) => c.name === yCol);
+    if (!xMeta || !yMeta) return [];
+    const map = new Map<string, number[]>();
+    rows.forEach((_, i) => {
+      const xv = String(xMeta.values[i] ?? "");
+      const yv = parseNumeric(yMeta.values[i]);
+      if (!xv || yv === null) return;
+      if (!map.has(xv)) map.set(xv, []);
+      map.get(xv)!.push(yv);
+    });
+    return [...map.entries()]
+      .slice(0, 30)
+      .map(([label, vals]) => ({ label, value: parseFloat((vals.reduce((s, v) => s + v, 0) / vals.length).toFixed(2)) }));
+  }, [cols, rows, xCol, yCol]);
+
+  // 파이/도넛 — 항목별 빈도 or 합계
+  const pieChartData = useMemo(() => {
+    if (!xCol) return [];
+    const xMeta = cols.find((c) => c.name === xCol);
+    if (!xMeta) return [];
+    if (yCol) {
+      const yMeta = cols.find((c) => c.name === yCol);
+      if (!yMeta) return [];
+      const map = new Map<string, number>();
+      rows.forEach((_, i) => {
+        const xv = String(xMeta.values[i] ?? "");
+        const yv = parseNumeric(yMeta.values[i]);
+        if (!xv || yv === null) return;
+        map.set(xv, (map.get(xv) ?? 0) + yv);
+      });
+      return [...map.entries()].slice(0, 12).map(([name, value]) => ({ name, value }));
+    }
+    return makeFrequency(xMeta.values, 12).map(({ label, count }) => ({ name: label, value: count }));
+  }, [cols, rows, xCol, yCol]);
+
+  // 산점도/버블 — 유효 좌표 포인트
+  const scatterChartData = useMemo(() => {
+    if (!xCol || !yCol) return [];
+    const xMeta = cols.find((c) => c.name === xCol);
+    const yMeta = cols.find((c) => c.name === yCol);
+    const zMeta = zCol ? cols.find((c) => c.name === zCol) : null;
+    if (!xMeta || !yMeta) return [];
+    return rows
+      .map((_, i) => ({ x: parseNumeric(xMeta.values[i]), y: parseNumeric(yMeta.values[i]), z: zMeta ? (parseNumeric(zMeta.values[i]) ?? 1) : 1 }))
+      .filter((p): p is { x: number; y: number; z: number } => p.x !== null && p.y !== null);
+  }, [cols, rows, xCol, yCol, zCol]);
+
+  // 히스토그램 — 선택 수치 열 분포
+  const histChartData = useMemo(() => {
+    if (!xCol) return [];
+    const meta = cols.find((c) => c.name === xCol);
+    if (!meta || meta.type !== "numeric") return [];
+    return makeHistogram((meta.values as (number | null)[]).filter(isNumeric) as number[]);
+  }, [cols, xCol]);
+
+  // 레이더 — 수치 열 정규화 평균 (0~100%)
+  const radarChartData = useMemo(() => {
+    return radarCols.map((colName) => {
+      const meta = cols.find((c) => c.name === colName);
+      if (!meta) return { col: colName, value: 0 };
+      const vals = (meta.values as (number | null)[]).filter((v): v is number => v !== null);
+      if (!vals.length) return { col: colName, value: 0 };
+      const mn = arrMin(vals), mx = arrMax(vals);
+      const avg = vals.reduce((s, v) => s + v, 0) / vals.length;
+      const normalized = mx > mn ? parseFloat((((avg - mn) / (mx - mn)) * 100).toFixed(1)) : 50;
+      return { col: colName, value: normalized };
+    });
+  }, [cols, radarCols]);
+
+  // 히트맵 — X×Y 교차 빈도 or Z 평균
+  const heatmapChartData = useMemo(() => {
+    if (!xCol || !yCol) return { xLabels: [] as string[], yLabels: [] as string[], matrix: [] as number[][], maxVal: 0 };
+    const xMeta = cols.find((c) => c.name === xCol);
+    const yMeta = cols.find((c) => c.name === yCol);
+    const zMeta = zCol ? cols.find((c) => c.name === zCol) : null;
+    if (!xMeta || !yMeta) return { xLabels: [], yLabels: [], matrix: [], maxVal: 0 };
+    const xLabels = makeFrequency(xMeta.values, 10).map((f) => f.label);
+    const yLabels = makeFrequency(yMeta.values, 10).map((f) => f.label);
+    const countMap = new Map<string, number[]>();
+    rows.forEach((_, i) => {
+      const xv = String(xMeta.values[i] ?? "");
+      const yv = String(yMeta.values[i] ?? "");
+      if (!xLabels.includes(xv) || !yLabels.includes(yv)) return;
+      const key = `${xv}|${yv}`;
+      if (!countMap.has(key)) countMap.set(key, []);
+      const zv = zMeta ? (parseNumeric(zMeta.values[i]) ?? 1) : 1;
+      countMap.get(key)!.push(zv);
+    });
+    const matrix = yLabels.map((yl) =>
+      xLabels.map((xl) => {
+        const vals = countMap.get(`${xl}|${yl}`) ?? [];
+        return vals.length ? (zMeta ? vals.reduce((s, v) => s + v, 0) / vals.length : vals.length) : 0;
+      })
+    );
+    const maxVal = Math.max(0, ...matrix.flat());
+    return { xLabels, yLabels, matrix, maxVal };
+  }, [cols, rows, xCol, yCol, zCol]);
+
+  // 트리맵 — 항목별 비중
+  const treemapChartData = useMemo(() => {
+    if (!xCol) return [];
+    const xMeta = cols.find((c) => c.name === xCol);
+    if (!xMeta) return [];
+    if (yCol) {
+      const yMeta = cols.find((c) => c.name === yCol);
+      if (yMeta) {
+        const map = new Map<string, number>();
+        rows.forEach((_, i) => {
+          const xv = String(xMeta.values[i] ?? "");
+          const yv = parseNumeric(yMeta.values[i]);
+          if (!xv || yv === null) return;
+          map.set(xv, (map.get(xv) ?? 0) + yv);
+        });
+        return [...map.entries()].sort((a, b) => b[1] - a[1]).slice(0, 20).map(([name, size], i) => ({ name, size, fill: COLORS[i % COLORS.length] }));
+      }
+    }
+    return makeFrequency(xMeta.values, 20).map((d, i) => ({ name: d.label, size: d.count, fill: COLORS[i % COLORS.length] }));
+  }, [cols, rows, xCol, yCol]);
 
   // ── Excel 멀티시트 선택 화면 ──────────────────────────────
   if (sheetNames.length > 0 && pendingWb) {
@@ -1047,596 +1190,416 @@ export default function AnalysisClient() {
       {activeTab === "charts" && (
         <div className="space-y-5">
 
-          {/* 모드 선택 */}
-          <div className="flex gap-2">
-            {(["single", "scatter"] as const).filter((m) => m === "single" || numericCols.length >= 2).map((m) => (
-              <button key={m} onClick={() => setChartMode(m)}
-                className={`px-4 py-2 rounded-xl text-sm font-semibold transition-all border-2
-                  ${chartMode === m ? "border-brand-500 bg-brand-50 text-brand-700" : "border-neutral-200 text-neutral-500 hover:border-brand-300"}`}>
-                {m === "single" ? "단일 열 분석" : "산점도 (X vs Y)"}
-              </button>
-            ))}
+          {/* STEP 1: 차트 종류 선택 */}
+          <div className="bg-white rounded-2xl border border-neutral-200 p-6">
+            <p className="text-xs font-semibold text-neutral-500 uppercase tracking-wider mb-4">① 차트 종류 선택</p>
+            <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-3">
+              {CHART_TYPES.map(({ id, label, Icon, desc }) => (
+                <button
+                  key={id}
+                  onClick={() => {
+                    setSelectedChartType(id);
+                    setChartGenerated(false);
+                    setXCol(null); setYCol(null); setZCol(null); setRadarCols([]);
+                  }}
+                  className={`flex flex-col items-center gap-2 p-3 rounded-xl border-2 transition-all text-center
+                    ${selectedChartType === id
+                      ? "border-brand-500 bg-brand-50"
+                      : "border-neutral-200 hover:border-brand-300 hover:bg-neutral-50"}`}
+                >
+                  <Icon size={20} className={selectedChartType === id ? "text-brand-600" : "text-neutral-400"} />
+                  <span className={`text-xs font-semibold leading-tight ${selectedChartType === id ? "text-brand-700" : "text-neutral-700"}`}>{label}</span>
+                  <span className="text-[10px] text-neutral-400 leading-tight">{desc}</span>
+                </button>
+              ))}
+            </div>
           </div>
 
-          {/* ── 단일 열 모드 ── */}
-          {chartMode === "single" && (
-            <>
-              {/* 열 선택 */}
-              <div className="bg-white rounded-2xl border border-neutral-200 p-5">
-                <p className="text-xs font-semibold text-neutral-500 uppercase tracking-wider mb-2.5">분석할 열</p>
+          {/* STEP 2: 컬럼 선택 */}
+          {selectedChartType && (() => {
+            const ct = selectedChartType;
+            const isXY = ["bar", "bar-h", "line", "area"].includes(ct);
+            const isPie = ["pie", "donut"].includes(ct);
+            const isScatter = ct === "scatter";
+            const isBubble = ct === "bubble";
+            const isHist = ct === "histogram";
+            const isRadar = ct === "radar";
+            const isHeatmap = ct === "heatmap";
+            const isTreemap = ct === "treemap";
+            const anyCols = cols.filter((c) => !c.isId);
+            const numOnly = numericVizCols;
+            const catOnly = vizCols.filter((c) => c.type === "categorical");
+
+            const ColPicker = ({ label, value, onChange, options, note }: {
+              label: string; value: string | null; onChange: (v: string) => void;
+              options: ColMeta[]; note?: string;
+            }) => (
+              <div>
+                <p className="text-xs text-neutral-500 mb-2 font-medium">
+                  {label} {note && <span className="text-neutral-400 font-normal">({note})</span>}
+                </p>
                 <div className="flex flex-wrap gap-2">
-                  {cols.map((col) => (
-                    <button key={col.name} onClick={() => setSelectedCol(col.name)}
+                  {options.map((col) => (
+                    <button key={col.name} onClick={() => onChange(col.name)}
                       className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all
-                        ${selectedCol === col.name ? "bg-brand-600 text-white" : "bg-neutral-100 text-neutral-600 hover:bg-neutral-200"}`}>
+                        ${value === col.name ? "bg-brand-600 text-white" : "bg-neutral-100 text-neutral-600 hover:bg-neutral-200"}`}>
                       {col.name}
-                      <span className={`ml-1.5 text-[10px] px-1 py-0.5 rounded ${selectedCol === col.name ? "bg-white/20 text-white" : "bg-neutral-200 text-neutral-400"}`}>
+                      <span className={`ml-1 text-[10px] ${value === col.name ? "opacity-70" : "text-neutral-400"}`}>
                         {col.type === "numeric" ? "수치" : col.type === "date" ? "날짜" : "범주"}
                       </span>
                     </button>
                   ))}
+                  {options.length === 0 && <p className="text-xs text-neutral-400">해당하는 컬럼이 없습니다.</p>}
                 </div>
               </div>
+            );
 
-              {/* 차트 + 통계 — 선택한 열에 해당하는 모든 차트 동시 표시 */}
-              {selectedMeta && (
-                <div className="space-y-5" ref={chartRef}>
+            const canGen =
+              (isXY && xCol && yCol) ||
+              (isPie && xCol) ||
+              (isScatter && xCol && yCol && xCol !== yCol) ||
+              (isBubble && xCol && yCol && zCol) ||
+              (isHist && xCol) ||
+              (isRadar && radarCols.length >= 2) ||
+              (isHeatmap && xCol && yCol) ||
+              (isTreemap && xCol);
 
-                  {/* 수치형 통계 요약 */}
-                  {selectedStats && (
-                    <div className="bg-white rounded-2xl border border-neutral-200 p-5">
-                      <div className="flex items-center justify-between mb-4">
-                        <h2 className="font-semibold text-neutral-800">{selectedMeta.name} — 기초 통계</h2>
-                        <button onClick={downloadChart}
-                          className="flex items-center gap-1.5 text-xs text-neutral-400 hover:text-brand-600 transition-colors border border-neutral-200 hover:border-brand-300 rounded-lg px-3 py-1.5"
-                          title="차트 PNG 저장">
-                          <Download size={12} /> PNG 저장
-                        </button>
-                      </div>
-                      <div className="grid grid-cols-4 md:grid-cols-7 gap-3">
-                        {[
-                          { label: "평균",    val: selectedStats.mean,         warn: false },
-                          { label: "중앙값",  val: selectedStats.median,       warn: false },
-                          { label: "표준편차",val: selectedStats.std,          warn: false },
-                          { label: "최솟값",  val: selectedStats.min,          warn: false },
-                          { label: "최댓값",  val: selectedStats.max,          warn: false },
-                          { label: "결측값",  val: selectedStats.nullCount,    warn: selectedStats.nullCount > 0 },
-                          { label: "이상값",  val: selectedStats.outlierCount, warn: selectedStats.outlierCount > 0 },
-                        ].map(({ label, val, warn }) => (
-                          <div key={label} className={`rounded-xl p-3 text-center ${warn && val > 0 ? "bg-amber-50" : "bg-neutral-50"}`}>
-                            <p className="text-[10px] text-neutral-400 mb-1">{label}</p>
-                            <p className={`font-bold text-sm ${warn && val > 0 ? "text-amber-600" : "text-brand-600"}`}>{val}</p>
-                          </div>
-                        ))}
-                      </div>
+            return (
+              <div className="bg-white rounded-2xl border border-neutral-200 p-6 space-y-5">
+                <p className="text-xs font-semibold text-neutral-500 uppercase tracking-wider">② 컬럼 선택</p>
+
+                {isXY && (
+                  <>
+                    <ColPicker label="X축 컬럼" value={xCol} onChange={setXCol} options={anyCols} />
+                    <ColPicker label="Y축 컬럼" value={yCol} onChange={setYCol} options={numOnly} note="수치형만" />
+                  </>
+                )}
+                {isPie && (
+                  <>
+                    <ColPicker label="항목 컬럼" value={xCol} onChange={setXCol} options={catOnly} note="범주형 권장" />
+                    <ColPicker label="값 컬럼" value={yCol} onChange={setYCol} options={numOnly} note="수치형, 선택사항" />
+                    {yCol && <button onClick={() => setYCol(null)} className="text-xs text-neutral-400 hover:text-red-500 transition-colors">값 컬럼 제거 (빈도수 사용)</button>}
+                  </>
+                )}
+                {isScatter && (
+                  <>
+                    <ColPicker label="X축 컬럼" value={xCol} onChange={setXCol} options={numOnly} note="수치형만" />
+                    <ColPicker label="Y축 컬럼" value={yCol} onChange={setYCol} options={numOnly} note="수치형만" />
+                  </>
+                )}
+                {isBubble && (
+                  <>
+                    <ColPicker label="X축 컬럼" value={xCol} onChange={setXCol} options={numOnly} note="수치형만" />
+                    <ColPicker label="Y축 컬럼" value={yCol} onChange={setYCol} options={numOnly} note="수치형만" />
+                    <ColPicker label="버블 크기 컬럼" value={zCol} onChange={setZCol} options={numOnly} note="수치형만" />
+                  </>
+                )}
+                {isHist && (
+                  <ColPicker label="수치 컬럼" value={xCol} onChange={setXCol} options={numOnly} note="수치형만" />
+                )}
+                {isRadar && (
+                  <div>
+                    <p className="text-xs text-neutral-500 mb-2 font-medium">수치 컬럼 선택 <span className="text-neutral-400 font-normal">(2개 이상)</span></p>
+                    <div className="flex flex-wrap gap-2">
+                      {numOnly.map((col) => {
+                        const checked = radarCols.includes(col.name);
+                        return (
+                          <button key={col.name}
+                            onClick={() => setRadarCols((prev) => checked ? prev.filter((c) => c !== col.name) : [...prev, col.name])}
+                            className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all
+                              ${checked ? "bg-brand-600 text-white" : "bg-neutral-100 text-neutral-600 hover:bg-neutral-200"}`}>
+                            {col.name}
+                          </button>
+                        );
+                      })}
                     </div>
-                  )}
+                    {radarCols.length > 0 && <p className="text-xs text-neutral-400 mt-2">{radarCols.length}개 선택됨</p>}
+                  </div>
+                )}
+                {isHeatmap && (
+                  <>
+                    <ColPicker label="X축 컬럼" value={xCol} onChange={setXCol} options={catOnly} note="범주형 권장" />
+                    <ColPicker label="Y축 컬럼" value={yCol} onChange={setYCol} options={catOnly} note="범주형 권장" />
+                    <ColPicker label="값 컬럼" value={zCol} onChange={setZCol} options={numOnly} note="수치형, 선택사항" />
+                    {zCol && <button onClick={() => setZCol(null)} className="text-xs text-neutral-400 hover:text-red-500 transition-colors">값 컬럼 제거 (빈도수 사용)</button>}
+                  </>
+                )}
+                {isTreemap && (
+                  <>
+                    <ColPicker label="항목 컬럼" value={xCol} onChange={setXCol} options={catOnly} note="범주형 권장" />
+                    <ColPicker label="값 컬럼" value={yCol} onChange={setYCol} options={numOnly} note="수치형, 선택사항" />
+                    {yCol && <button onClick={() => setYCol(null)} className="text-xs text-neutral-400 hover:text-red-500 transition-colors">값 컬럼 제거 (빈도수 사용)</button>}
+                  </>
+                )}
 
-                  {/* 수치형: 히스토그램 (막대) */}
-                  {selectedHist && (
-                    <div className="bg-white rounded-2xl border border-neutral-200 p-5">
-                      <p className="text-sm font-semibold text-neutral-700 mb-4">막대 (히스토그램)</p>
-                      <ResponsiveContainer width="100%" height={300}>
-                        <BarChart data={selectedHist} margin={{ top: 5, right: 20, left: 0, bottom: 5 }}>
+                <button
+                  onClick={() => setChartGenerated(true)}
+                  disabled={!canGen}
+                  className="flex items-center gap-2 px-6 py-3 rounded-xl text-sm font-semibold transition-all active:scale-95
+                    bg-brand-600 hover:bg-brand-700 text-white disabled:bg-neutral-200 disabled:text-neutral-400 disabled:cursor-not-allowed"
+                >
+                  <BarChart2 size={15} /> 차트 생성
+                </button>
+              </div>
+            );
+          })()}
+
+          {/* STEP 3: 생성된 차트 */}
+          {chartGenerated && selectedChartType && (() => {
+            const ct = selectedChartType;
+            const isXY = ["bar", "bar-h", "line", "area"].includes(ct);
+            const isPie = ["pie", "donut"].includes(ct);
+            const isScatter = ct === "scatter";
+            const isBubble = ct === "bubble";
+
+            const chartTitle = CHART_TYPES.find((c) => c.id === ct)?.label ?? "";
+            const desc = CHART_DESC[ct] ?? "";
+
+            const valid =
+              (isXY && aggChartData.length > 0) ||
+              (isPie && pieChartData.length > 0) ||
+              ((isScatter || isBubble) && scatterChartData.length > 0) ||
+              (ct === "histogram" && histChartData.length > 0) ||
+              (ct === "radar" && radarChartData.length >= 2) ||
+              (ct === "heatmap" && heatmapChartData.xLabels.length > 0) ||
+              (ct === "treemap" && treemapChartData.length > 0);
+
+            if (!valid) return (
+              <div className="bg-neutral-50 border border-neutral-200 rounded-2xl p-10 text-center text-sm text-neutral-400">
+                선택한 컬럼에 유효한 데이터가 없습니다. 다른 컬럼을 선택해주세요.
+              </div>
+            );
+
+            return (
+              <div className="bg-white rounded-2xl border border-neutral-200 p-6 space-y-4" ref={chartRef}>
+                <div className="flex items-start justify-between">
+                  <div>
+                    <h2 className="font-bold text-neutral-900 text-base">{chartTitle}</h2>
+                    <p className="text-xs text-neutral-400 mt-1 max-w-2xl leading-relaxed">{desc}</p>
+                  </div>
+                  <button onClick={downloadChart}
+                    className="flex items-center gap-1.5 text-xs text-neutral-400 hover:text-brand-600 transition-colors border border-neutral-200 hover:border-brand-300 rounded-lg px-3 py-1.5 flex-shrink-0">
+                    <Download size={12} /> PNG 저장
+                  </button>
+                </div>
+
+                {ct === "bar" && (
+                  <ResponsiveContainer width="100%" height={360}>
+                    <BarChart data={aggChartData} margin={{ top: 10, right: 20, left: 0, bottom: 40 }}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                      <XAxis dataKey="label" tick={{ fontSize: 11 }} angle={-35} textAnchor="end" interval={0} />
+                      <YAxis tick={{ fontSize: 11 }} />
+                      <Tooltip formatter={(v) => [v, yCol ?? ""]} />
+                      <Bar dataKey="value" radius={[4, 4, 0, 0]}>
+                        {aggChartData.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
+                      </Bar>
+                    </BarChart>
+                  </ResponsiveContainer>
+                )}
+
+                {ct === "bar-h" && (
+                  <ResponsiveContainer width="100%" height={Math.max(300, aggChartData.length * 36)}>
+                    <BarChart data={aggChartData} layout="vertical" margin={{ top: 5, right: 30, left: 10, bottom: 5 }}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                      <XAxis type="number" tick={{ fontSize: 11 }} />
+                      <YAxis type="category" dataKey="label" tick={{ fontSize: 11 }} width={140}
+                        tickFormatter={(v: string) => v.length > 18 ? v.slice(0, 18) + "\u2026" : v} />
+                      <Tooltip formatter={(v) => [v, yCol ?? ""]} />
+                      <Bar dataKey="value" radius={[0, 4, 4, 0]} barSize={22}>
+                        {aggChartData.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
+                      </Bar>
+                    </BarChart>
+                  </ResponsiveContainer>
+                )}
+
+                {ct === "line" && (
+                  <ResponsiveContainer width="100%" height={360}>
+                    <LineChart data={aggChartData} margin={{ top: 10, right: 20, left: 0, bottom: 40 }}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                      <XAxis dataKey="label" tick={{ fontSize: 11 }} angle={-35} textAnchor="end" interval={0} />
+                      <YAxis tick={{ fontSize: 11 }} />
+                      <Tooltip formatter={(v) => [v, yCol ?? ""]} />
+                      <Line type="monotone" dataKey="value" stroke="#0D7377" strokeWidth={2} dot={{ r: 4, fill: "#0D7377" }} />
+                    </LineChart>
+                  </ResponsiveContainer>
+                )}
+
+                {ct === "area" && (
+                  <ResponsiveContainer width="100%" height={360}>
+                    <AreaChart data={aggChartData} margin={{ top: 10, right: 20, left: 0, bottom: 40 }}>
+                      <defs>
+                        <linearGradient id="chartAreaGrad" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="5%" stopColor="#0D7377" stopOpacity={0.35} />
+                          <stop offset="95%" stopColor="#0D7377" stopOpacity={0} />
+                        </linearGradient>
+                      </defs>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                      <XAxis dataKey="label" tick={{ fontSize: 11 }} angle={-35} textAnchor="end" interval={0} />
+                      <YAxis tick={{ fontSize: 11 }} />
+                      <Tooltip formatter={(v) => [v, yCol ?? ""]} />
+                      <Area type="monotone" dataKey="value" stroke="#0D7377" fill="url(#chartAreaGrad)" strokeWidth={2} />
+                    </AreaChart>
+                  </ResponsiveContainer>
+                )}
+
+                {ct === "pie" && (
+                  <ResponsiveContainer width="100%" height={380}>
+                    <PieChart>
+                      <Pie data={pieChartData} dataKey="value" nameKey="name" cx="50%" cy="50%"
+                        outerRadius={pieChartData.length <= 6 ? 130 : 110}
+                        label={pieChartData.length <= 6 ? (({ name, percent }) => `${name} ${((percent ?? 0) * 100).toFixed(1)}%`) : undefined}
+                        labelLine={pieChartData.length <= 6}>
+                        {pieChartData.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
+                      </Pie>
+                      <Tooltip formatter={(v, name) => [v, name]} />
+                      <Legend />
+                    </PieChart>
+                  </ResponsiveContainer>
+                )}
+
+                {ct === "donut" && (() => {
+                  const total = pieChartData.reduce((s, d) => s + d.value, 0);
+                  return (
+                    <ResponsiveContainer width="100%" height={380}>
+                      <PieChart>
+                        <Pie data={pieChartData} dataKey="value" nameKey="name" cx="50%" cy="50%"
+                          innerRadius={80} outerRadius={130}>
+                          {pieChartData.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
+                        </Pie>
+                        <text x="50%" y="50%" textAnchor="middle" dominantBaseline="middle" fontSize={18} fontWeight={700} fill="#1a1a1a">
+                          {total.toLocaleString()}
+                        </text>
+                        <text x="50%" y="58%" textAnchor="middle" dominantBaseline="middle" fontSize={11} fill="#6b7280">합계</text>
+                        <Tooltip formatter={(v, name) => [v, name]} />
+                        <Legend />
+                      </PieChart>
+                    </ResponsiveContainer>
+                  );
+                })()}
+
+                {(isScatter || isBubble) && (() => {
+                  const zVals = isBubble ? scatterChartData.map((p) => p.z) : [];
+                  const zRange: [number, number] = isBubble && zVals.length > 0 && arrMax(zVals) > arrMin(zVals) ? [20, 500] : [60, 60];
+                  const n = scatterChartData.length;
+                  const sx = scatterChartData.reduce((s, p) => s + p.x, 0);
+                  const sy = scatterChartData.reduce((s, p) => s + p.y, 0);
+                  const sxy = scatterChartData.reduce((s, p) => s + p.x * p.y, 0);
+                  const sx2 = scatterChartData.reduce((s, p) => s + p.x * p.x, 0);
+                  const sy2 = scatterChartData.reduce((s, p) => s + p.y * p.y, 0);
+                  const xDenom = n * sx2 - sx * sx;
+                  const slope = xDenom !== 0 ? (n * sxy - sx * sy) / xDenom : 0;
+                  const intercept = (sy - slope * sx) / n;
+                  const rDenom = Math.sqrt((n * sx2 - sx * sx) * (n * sy2 - sy * sy));
+                  const r = rDenom !== 0 ? (n * sxy - sx * sy) / rDenom : 0;
+                  const r2 = r * r;
+                  const corrLabel = Math.abs(r) < 0.1 ? "거의 없음"
+                    : `${r > 0 ? "양의" : "음의"} ${Math.abs(r) >= 0.7 ? "강한" : Math.abs(r) >= 0.4 ? "중간" : "약한"} 상관관계`;
+                  const xMin = arrMin(scatterChartData.map((p) => p.x));
+                  const xMax = arrMax(scatterChartData.map((p) => p.x));
+                  const trendData = [{ x: xMin, trend: slope * xMin + intercept }, { x: xMax, trend: slope * xMax + intercept }];
+                  return (
+                    <>
+                      <ResponsiveContainer width="100%" height={400}>
+                        <ComposedChart data={trendData} margin={{ top: 10, right: 30, left: 10, bottom: 30 }}>
                           <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-                          <XAxis dataKey="label" tick={{ fontSize: 11 }} />
-                          <YAxis tick={{ fontSize: 11 }} />
-                          <Tooltip formatter={(v) => [`${v}건`, "빈도"]} />
-                          <Bar dataKey="count" fill="#0D7377" radius={[4, 4, 0, 0]} />
-                        </BarChart>
-                      </ResponsiveContainer>
-                    </div>
-                  )}
-
-                  {/* 수치형: 선 차트 */}
-                  {selectedHist && (
-                    <div className="bg-white rounded-2xl border border-neutral-200 p-5">
-                      <p className="text-sm font-semibold text-neutral-700 mb-4">선 차트</p>
-                      <ResponsiveContainer width="100%" height={300}>
-                        <LineChart data={selectedHist} margin={{ top: 5, right: 20, left: 0, bottom: 5 }}>
-                          <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-                          <XAxis dataKey="label" tick={{ fontSize: 11 }} />
-                          <YAxis tick={{ fontSize: 11 }} />
-                          <Tooltip formatter={(v) => [`${v}건`, "빈도"]} />
-                          <Line type="monotone" dataKey="count" stroke="#2D5F8F" strokeWidth={2} dot={{ r: 3, fill: "#2D5F8F" }} />
-                        </LineChart>
-                      </ResponsiveContainer>
-                    </div>
-                  )}
-
-                  {/* 수치형: 영역 차트 */}
-                  {selectedHist && (
-                    <div className="bg-white rounded-2xl border border-neutral-200 p-5">
-                      <p className="text-sm font-semibold text-neutral-700 mb-4">영역 차트</p>
-                      <ResponsiveContainer width="100%" height={300}>
-                        <AreaChart data={selectedHist} margin={{ top: 5, right: 20, left: 0, bottom: 5 }}>
-                          <defs>
-                            <linearGradient id="areaGrad" x1="0" y1="0" x2="0" y2="1">
-                              <stop offset="5%" stopColor="#4FAFAF" stopOpacity={0.4} />
-                              <stop offset="95%" stopColor="#4FAFAF" stopOpacity={0} />
-                            </linearGradient>
-                          </defs>
-                          <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-                          <XAxis dataKey="label" tick={{ fontSize: 11 }} />
-                          <YAxis tick={{ fontSize: 11 }} />
-                          <Tooltip formatter={(v) => [`${v}건`, "빈도"]} />
-                          <Area type="monotone" dataKey="count" stroke="#4FAFAF" fill="url(#areaGrad)" strokeWidth={2} />
-                        </AreaChart>
-                      </ResponsiveContainer>
-                    </div>
-                  )}
-
-                  {/* 수치형: 박스플롯 */}
-                  {selectedMeta.type === "numeric" && selectedStats && (() => {
-                    const { min, max, mean } = selectedStats;
-                    const vals = (selectedMeta.values as (number|null)[]).filter((v): v is number => v !== null);
-                    const sorted = [...vals].sort((a, b) => a - b);
-                    const q1 = sorted[Math.floor(sorted.length * 0.25)] ?? min;
-                    const q3 = sorted[Math.floor(sorted.length * 0.75)] ?? max;
-                    const median = sorted[Math.floor(sorted.length * 0.5)] ?? mean;
-                    const range = max - min || 1;
-                    const toX = (v: number) => ((v - min) / range) * 560 + 40;
-                    const outliers = vals.filter(v => v < q1 - 1.5 * (q3 - q1) || v > q3 + 1.5 * (q3 - q1));
-                    return (
-                      <div className="bg-white rounded-2xl border border-neutral-200 p-5">
-                        <p className="text-sm font-semibold text-neutral-700 mb-4">박스플롯</p>
-                        <div className="overflow-x-auto py-4">
-                          <svg width={640} height={140} className="mx-auto">
-                            <line x1={toX(min)} y1={70} x2={toX(q1)} y2={70} stroke="#94a3b8" strokeWidth={2} />
-                            <line x1={toX(q3)} y1={70} x2={toX(max)} y2={70} stroke="#94a3b8" strokeWidth={2} />
-                            <line x1={toX(min)} y1={55} x2={toX(min)} y2={85} stroke="#94a3b8" strokeWidth={2} />
-                            <line x1={toX(max)} y1={55} x2={toX(max)} y2={85} stroke="#94a3b8" strokeWidth={2} />
-                            <rect x={toX(q1)} y={45} width={toX(q3) - toX(q1)} height={50} fill="#0D737720" stroke="#0D7377" strokeWidth={2} rx={4} />
-                            <line x1={toX(median)} y1={45} x2={toX(median)} y2={95} stroke="#0D7377" strokeWidth={3} />
-                            <polygon points={`${toX(mean)},40 ${toX(mean)-6},52 ${toX(mean)+6},52`} fill="#f97316" opacity={0.8} />
-                            {outliers.slice(0, 60).map((v, i) => (
-                              <circle key={i} cx={toX(v)} cy={70} r={4} fill="#ef444480" />
-                            ))}
-                            <text x={toX(min)} y={115} textAnchor="middle" fontSize={10} fill="#64748b">{Number(min).toLocaleString()}</text>
-                            <text x={toX(q1)} y={115} textAnchor="middle" fontSize={10} fill="#64748b">Q1</text>
-                            <text x={toX(median)} y={115} textAnchor="middle" fontSize={10} fill="#0D7377" fontWeight={600}>중앙값</text>
-                            <text x={toX(q3)} y={115} textAnchor="middle" fontSize={10} fill="#64748b">Q3</text>
-                            <text x={toX(max)} y={115} textAnchor="middle" fontSize={10} fill="#64748b">{Number(max).toLocaleString()}</text>
-                            <text x={toX(mean)} y={35} textAnchor="middle" fontSize={10} fill="#f97316">평균</text>
-                          </svg>
-                          <div className="flex justify-center gap-6 mt-2 text-xs text-neutral-500">
-                            <span><span className="inline-block w-3 h-3 rounded bg-[#0D737720] border border-[#0D7377] mr-1" />IQR (Q1–Q3)</span>
-                            <span><span className="inline-block w-3 h-0.5 bg-[#0D7377] mr-1 align-middle" />중앙값</span>
-                            <span><span className="inline-block w-2 h-2 bg-orange-400 mr-1 rotate-45 align-middle" />평균</span>
-                            <span><span className="inline-block w-2 h-2 rounded-full bg-red-400 mr-1 align-middle" />이상값</span>
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })()}
-
-                  {/* 수치형: 누적 분포 */}
-                  {selectedMeta.type === "numeric" && selectedHist && (() => {
-                    let cum = 0;
-                    const total = selectedHist.reduce((s, d) => s + d.count, 0);
-                    const cumData = selectedHist.map(d => { cum += d.count; return { label: d.label, pct: parseFloat(((cum / total) * 100).toFixed(1)) }; });
-                    return (
-                      <div className="bg-white rounded-2xl border border-neutral-200 p-5">
-                        <p className="text-sm font-semibold text-neutral-700 mb-4">누적 분포 (CDF)</p>
-                        <ResponsiveContainer width="100%" height={300}>
-                          <AreaChart data={cumData} margin={{ top: 5, right: 20, left: 0, bottom: 5 }}>
-                            <defs>
-                              <linearGradient id="cumGrad" x1="0" y1="0" x2="0" y2="1">
-                                <stop offset="5%" stopColor="#6366f1" stopOpacity={0.25} />
-                                <stop offset="95%" stopColor="#6366f1" stopOpacity={0} />
-                              </linearGradient>
-                            </defs>
-                            <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-                            <XAxis dataKey="label" tick={{ fontSize: 11 }} />
-                            <YAxis tick={{ fontSize: 11 }} domain={[0, 100]} tickFormatter={(v) => `${v}%`} />
-                            <Tooltip formatter={(v) => [`${v}%`, "누적 비율"]} />
-                            <Area type="monotone" dataKey="pct" stroke="#6366f1" fill="url(#cumGrad)" strokeWidth={2} />
-                          </AreaChart>
-                        </ResponsiveContainer>
-                      </div>
-                    );
-                  })()}
-
-                  {/* 범주형: 막대 차트 */}
-                  {selectedFreq && selectedFreq.length > 0 && (
-                    <div className="bg-white rounded-2xl border border-neutral-200 p-5">
-                      <p className="text-sm font-semibold text-neutral-700 mb-4">막대 차트 (빈도 상위 15개)</p>
-                      <ResponsiveContainer width="100%" height={Math.max(300, selectedFreq.length * 38)}>
-                        <BarChart data={selectedFreq} layout="vertical" margin={{ top: 5, right: 30, left: 10, bottom: 5 }}>
-                          <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-                          <XAxis type="number" tick={{ fontSize: 11 }} />
-                          <YAxis type="category" dataKey="label" tick={{ fontSize: 11 }} width={160}
-                            tickFormatter={(v: string) => v.length > 18 ? v.slice(0, 18) + "…" : v} />
+                          <XAxis dataKey="x" type="number" tick={{ fontSize: 11 }}
+                            label={{ value: xCol ?? "", position: "insideBottom", offset: -15, fontSize: 12, fill: "#0D7377", fontWeight: 600 }} />
+                          <YAxis type="number" tick={{ fontSize: 11 }}
+                            label={{ value: yCol ?? "", angle: -90, position: "insideLeft", offset: 15, fontSize: 12, fill: "#10b981", fontWeight: 600 }} />
+                          <ZAxis dataKey="z" range={zRange} />
                           <Tooltip content={({ payload }) => {
                             if (!payload?.length) return null;
-                            const d = payload[0]?.payload as { label: string; count: number };
+                            const p = payload[0]?.payload as { x: number; y: number; z?: number };
                             return (
-                              <div className="bg-white border border-neutral-200 rounded-xl p-3 text-xs shadow-md max-w-[220px]">
-                                <p className="font-semibold text-neutral-800 mb-1 break-words">{d.label}</p>
-                                <p className="text-brand-600">{d.count.toLocaleString()}건</p>
+                              <div className="bg-white border border-neutral-200 rounded-xl p-3 text-xs shadow-md">
+                                <p><span className="font-semibold text-brand-600">{xCol}</span>: {p.x}</p>
+                                <p><span className="font-semibold text-emerald-600">{yCol}</span>: {p.y}</p>
+                                {isBubble && p.z !== undefined && <p><span className="font-semibold text-purple-600">{zCol}</span>: {p.z}</p>}
                               </div>
                             );
                           }} />
-                          <Bar dataKey="count" radius={[0, 4, 4, 0]} barSize={22}>
-                            {selectedFreq.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
-                          </Bar>
-                        </BarChart>
+                          <Scatter data={scatterChartData} fill="#0D7377" fillOpacity={0.55} />
+                          {isScatter && <Line dataKey="trend" stroke="#f59e0b" strokeWidth={2} dot={false} type="linear" isAnimationActive={false} strokeDasharray="6 3" />}
+                        </ComposedChart>
                       </ResponsiveContainer>
-                    </div>
-                  )}
-
-                  {/* 범주형: 파이 차트 */}
-                  {selectedFreq && selectedFreq.length > 0 && (() => {
-                    const pieData = selectedFreq.slice(0, 12);
-                    const showLabel = pieData.length <= 6;
-                    const total = pieData.reduce((s, r) => s + r.count, 0);
-                    return (
-                      <div className="bg-white rounded-2xl border border-neutral-200 p-5">
-                        <p className="text-sm font-semibold text-neutral-700 mb-1">파이 차트</p>
-                        {pieData.length < selectedFreq.length && (
-                          <p className="text-xs text-neutral-400 mb-3">상위 {pieData.length}개 항목 표시 (전체 {selectedFreq.length}개)</p>
-                        )}
-                        <ResponsiveContainer width="100%" height={showLabel ? 360 : 300}>
-                          <PieChart>
-                            <Pie data={pieData} dataKey="count" nameKey="label" cx="50%" cy="50%"
-                              outerRadius={showLabel ? 110 : 100}
-                              label={showLabel ? (({ name, percent }) => `${name} ${((percent ?? 0) * 100).toFixed(1)}%`) : undefined}
-                              labelLine={showLabel}>
-                              {pieData.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
-                            </Pie>
-                            <Tooltip content={({ payload }) => {
-                              if (!payload?.length) return null;
-                              const d = payload[0]?.payload as { label: string; count: number };
-                              return (
-                                <div className="bg-white border border-neutral-200 rounded-xl p-3 text-xs shadow-md max-w-[220px]">
-                                  <p className="font-semibold text-neutral-800 mb-1 break-words">{d.label}</p>
-                                  <p className="text-brand-600">{d.count.toLocaleString()}건</p>
-                                  <p className="text-neutral-400">{((d.count / total) * 100).toFixed(1)}%</p>
-                                </div>
-                              );
-                            }} />
-                            <Legend formatter={(v: string) => v.length > 14 ? v.slice(0, 14) + "…" : v} />
-                          </PieChart>
-                        </ResponsiveContainer>
-                      </div>
-                    );
-                  })()}
-
-                  {/* 범주형: 트리맵 */}
-                  {selectedFreq && selectedFreq.length > 0 && (() => {
-                    const tmData = selectedFreq.slice(0, 20).map((d, i) => ({ name: d.label, size: d.count, fill: COLORS[i % COLORS.length] }));
-                    return (
-                      <div className="bg-white rounded-2xl border border-neutral-200 p-5">
-                        <p className="text-sm font-semibold text-neutral-700 mb-4">트리맵</p>
-                        <ResponsiveContainer width="100%" height={360}>
-                          <Treemap data={tmData} dataKey="size" nameKey="name"
-                            content={({ x, y, width, height, name, fill }: { x?: number; y?: number; width?: number; height?: number; name?: string; fill?: string }) => {
-                              const w = width ?? 0; const h = height ?? 0;
-                              if (w < 30 || h < 20) return <rect x={x} y={y} width={w} height={h} fill={fill} rx={2} />;
-                              return (
-                                <g>
-                                  <rect x={x} y={y} width={w} height={h} fill={fill} rx={4} stroke="white" strokeWidth={2} />
-                                  {w > 50 && h > 28 && (
-                                    <text x={(x ?? 0) + w / 2} y={(y ?? 0) + h / 2} textAnchor="middle" dominantBaseline="middle"
-                                      fontSize={Math.min(13, w / 7)} fill="white" fontWeight={600}>
-                                      {(name ?? "").length > 10 ? (name ?? "").slice(0, 10) + "…" : name}
-                                    </text>
-                                  )}
-                                </g>
-                              );
-                            }}
-                          />
-                        </ResponsiveContainer>
-                      </div>
-                    );
-                  })()}
-
-                  {/* 날짜형: 월별 막대 */}
-                  {selectedDateFreq && selectedDateFreq.length > 0 && (
-                    <div className="bg-white rounded-2xl border border-neutral-200 p-5">
-                      <p className="text-sm font-semibold text-neutral-700 mb-4">월별 막대 차트</p>
-                      <ResponsiveContainer width="100%" height={300}>
-                        <BarChart data={selectedDateFreq} margin={{ top: 5, right: 20, left: 0, bottom: 30 }}>
-                          <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-                          <XAxis dataKey="label" tick={{ fontSize: 10 }} angle={-35} textAnchor="end" interval={0} />
-                          <YAxis tick={{ fontSize: 11 }} />
-                          <Tooltip formatter={(v) => [`${v}건`, "건수"]} />
-                          <Bar dataKey="count" fill="#0D7377" radius={[4, 4, 0, 0]} />
-                        </BarChart>
-                      </ResponsiveContainer>
-                    </div>
-                  )}
-
-                  {/* 날짜형: 월별 선 차트 */}
-                  {selectedDateFreq && selectedDateFreq.length > 0 && (
-                    <div className="bg-white rounded-2xl border border-neutral-200 p-5">
-                      <p className="text-sm font-semibold text-neutral-700 mb-4">월별 선 차트</p>
-                      <ResponsiveContainer width="100%" height={300}>
-                        <LineChart data={selectedDateFreq} margin={{ top: 5, right: 20, left: 0, bottom: 30 }}>
-                          <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-                          <XAxis dataKey="label" tick={{ fontSize: 10 }} angle={-35} textAnchor="end" interval={0} />
-                          <YAxis tick={{ fontSize: 11 }} />
-                          <Tooltip formatter={(v) => [`${v}건`, "건수"]} />
-                          <Line type="monotone" dataKey="count" stroke="#2D5F8F" strokeWidth={2} dot={{ r: 3 }} />
-                        </LineChart>
-                      </ResponsiveContainer>
-                    </div>
-                  )}
-
-                  {/* 날짜형: 월별 영역 차트 */}
-                  {selectedDateFreq && selectedDateFreq.length > 0 && (
-                    <div className="bg-white rounded-2xl border border-neutral-200 p-5">
-                      <p className="text-sm font-semibold text-neutral-700 mb-4">월별 영역 차트</p>
-                      <ResponsiveContainer width="100%" height={300}>
-                        <AreaChart data={selectedDateFreq} margin={{ top: 5, right: 20, left: 0, bottom: 30 }}>
-                          <defs>
-                            <linearGradient id="dateAreaGrad" x1="0" y1="0" x2="0" y2="1">
-                              <stop offset="5%" stopColor="#4FAFAF" stopOpacity={0.4} />
-                              <stop offset="95%" stopColor="#4FAFAF" stopOpacity={0} />
-                            </linearGradient>
-                          </defs>
-                          <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-                          <XAxis dataKey="label" tick={{ fontSize: 10 }} angle={-35} textAnchor="end" interval={0} />
-                          <YAxis tick={{ fontSize: 11 }} />
-                          <Tooltip formatter={(v) => [`${v}건`, "건수"]} />
-                          <Area type="monotone" dataKey="count" stroke="#4FAFAF" fill="url(#dateAreaGrad)" strokeWidth={2} />
-                        </AreaChart>
-                      </ResponsiveContainer>
-                    </div>
-                  )}
-
-                  {/* 날짜형: 데이터 없음 */}
-                  {selectedMeta.type === "date" && selectedDateFreq?.length === 0 && (
-                    <div className="bg-white rounded-2xl border border-neutral-200 py-12 text-center text-sm text-neutral-400">
-                      날짜로 인식된 값이 없습니다.
-                    </div>
-                  )}
-
-                </div>
-              )}
-            </>
-          )}
-
-          {/* ── 산점도 모드 ── */}
-          {chartMode === "scatter" && (
-            <div className="space-y-5">
-              {/* 축 선택 */}
-              <div className="bg-white rounded-2xl border border-neutral-200 p-5">
-                <p className="text-xs font-semibold text-neutral-500 uppercase tracking-wider mb-3">축 선택 (수치형 열만)</p>
-                <div className="grid grid-cols-3 gap-4">
-                  <div>
-                    <p className="text-xs text-neutral-500 mb-2">X축</p>
-                    <div className="flex flex-wrap gap-2">
-                      {numericCols.map((col) => (
-                        <button key={col.name} onClick={() => setXCol(col.name)}
-                          className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors
-                            ${xCol === col.name ? "bg-brand-600 text-white" : "bg-neutral-100 text-neutral-600 hover:bg-neutral-200"}`}>
-                          {col.name}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                  <div>
-                    <p className="text-xs text-neutral-500 mb-2">Y축</p>
-                    <div className="flex flex-wrap gap-2">
-                      {numericCols.map((col) => (
-                        <button key={col.name} onClick={() => setYCol(col.name)}
-                          className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors
-                            ${yCol === col.name ? "bg-emerald-600 text-white" : "bg-neutral-100 text-neutral-600 hover:bg-neutral-200"}`}>
-                          {col.name}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                  <div>
-                    <p className="text-xs text-neutral-500 mb-2">버블 크기 <span className="text-neutral-400 font-normal">(선택)</span></p>
-                    <div className="flex flex-wrap gap-2">
-                      <button onClick={() => setZCol(null)}
-                        className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors
-                          ${zCol === null ? "bg-neutral-700 text-white" : "bg-neutral-100 text-neutral-600 hover:bg-neutral-200"}`}>
-                        없음
-                      </button>
-                      {numericCols.map((col) => (
-                        <button key={col.name} onClick={() => setZCol(col.name)}
-                          className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors
-                            ${zCol === col.name ? "bg-purple-600 text-white" : "bg-neutral-100 text-neutral-600 hover:bg-neutral-200"}`}>
-                          {col.name}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* 산점도 + 회귀선 / 버블 차트 */}
-              {xCol && yCol && xCol !== yCol && (() => {
-                const xMeta = cols.find((c) => c.name === xCol)!;
-                const yMeta = cols.find((c) => c.name === yCol)!;
-                const zMeta = zCol ? cols.find((c) => c.name === zCol) ?? null : null;
-
-                const scatterData = rows.map((_, i) => ({
-                  x: xMeta.values[i] as number | null,
-                  y: yMeta.values[i] as number | null,
-                  z: zMeta ? (zMeta.values[i] as number | null) ?? 1 : 1,
-                })).filter((p) => p.x !== null && p.y !== null) as { x: number; y: number; z: number }[];
-
-                // 유효 데이터가 없으면 0으로 나누기(NaN) 방지 — 안내만 표시하고 종료
-                if (scatterData.length === 0) {
-                  return (
-                    <div className="bg-neutral-50 border border-neutral-200 rounded-2xl p-8 text-center text-sm text-neutral-400">
-                      선택한 두 열에 유효한 좌표 데이터가 없습니다.
-                    </div>
-                  );
-                }
-
-                // 회귀선 계산
-                const n = scatterData.length;
-                const sx  = scatterData.reduce((s, p) => s + p.x, 0);
-                const sy  = scatterData.reduce((s, p) => s + p.y, 0);
-                const sxy = scatterData.reduce((s, p) => s + p.x * p.y, 0);
-                const sx2 = scatterData.reduce((s, p) => s + p.x * p.x, 0);
-                const sy2 = scatterData.reduce((s, p) => s + p.y * p.y, 0);
-                const xDenom = n * sx2 - sx * sx;
-                const slope = xDenom !== 0 ? (n * sxy - sx * sy) / xDenom : 0;
-                const intercept = (sy - slope * sx) / n;
-                const rDenom = Math.sqrt((n * sx2 - sx * sx) * (n * sy2 - sy * sy));
-                const r = rDenom !== 0 ? (n * sxy - sx * sy) / rDenom : 0;
-                const r2 = r * r;
-                const corrLabel = Math.abs(r) < 0.1 ? "거의 없음"
-                  : `${r > 0 ? "양의" : "음의"} ${Math.abs(r) >= 0.7 ? "강한" : Math.abs(r) >= 0.4 ? "중간" : "약한"} 상관관계`;
-
-                const xVals = scatterData.map((p) => p.x);
-                const xMin = arrMin(xVals);
-                const xMax = arrMax(xVals);
-                const trendData = [
-                  { x: xMin, trend: slope * xMin + intercept },
-                  { x: xMax, trend: slope * xMax + intercept },
-                ];
-
-                const zVals = zMeta ? scatterData.map((p) => p.z) : [];
-                const zRange: [number, number] = zMeta && zVals.length > 0 && arrMax(zVals) > arrMin(zVals)
-                  ? [20, 500] : [60, 60];
-
-                return (
-                  <div className="bg-white rounded-2xl border border-neutral-200 p-6">
-                    <div className="flex items-start justify-between mb-3">
-                      <div>
-                        <h2 className="font-semibold text-neutral-800 mb-1">
-                          {zMeta ? "버블 차트" : "산점도 + 회귀선"}
-                        </h2>
-                        <div className="flex items-center gap-4 flex-wrap">
-                          <span className="flex items-center gap-1.5 text-xs text-neutral-600">
-                            <span className="inline-block w-3 h-3 rounded-sm bg-brand-600" /> X — <strong>{xCol}</strong>
-                          </span>
-                          <span className="flex items-center gap-1.5 text-xs text-neutral-600">
-                            <span className="inline-block w-3 h-3 rounded-sm bg-emerald-500" /> Y — <strong>{yCol}</strong>
-                          </span>
-                          {zMeta && (
-                            <span className="flex items-center gap-1.5 text-xs text-neutral-600">
-                              <span className="inline-block w-3 h-3 rounded-full bg-purple-500" /> 크기 — <strong>{zCol}</strong>
-                            </span>
-                          )}
-                          <span className="text-xs text-neutral-400 ml-auto">{scatterData.length.toLocaleString()}개</span>
-                        </div>
-                      </div>
-                    </div>
-                    <ResponsiveContainer width="100%" height={420}>
-                      <ComposedChart data={trendData} margin={{ top: 10, right: 30, left: 10, bottom: 30 }}>
-                        <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-                        <XAxis dataKey="x" type="number" tick={{ fontSize: 11 }}
-                          label={{ value: xCol, position: "insideBottom", offset: -15, fontSize: 12, fill: "#0D7377", fontWeight: 600 }} />
-                        <YAxis type="number" tick={{ fontSize: 11 }}
-                          label={{ value: yCol, angle: -90, position: "insideLeft", offset: 15, fontSize: 12, fill: "#10b981", fontWeight: 600 }} />
-                        <ZAxis dataKey="z" range={zRange} />
-                        <Tooltip cursor={{ strokeDasharray: "3 3" }} content={({ payload }) => {
-                          if (!payload?.length) return null;
-                          const p = payload[0]?.payload as { x: number; y: number; z?: number };
-                          return (
-                            <div className="bg-white border border-neutral-200 rounded-xl p-3 text-xs shadow-md">
-                              <p className="mb-1"><span className="font-semibold text-brand-600">{xCol}</span>: {p.x}</p>
-                              <p className="mb-1"><span className="font-semibold text-emerald-600">{yCol}</span>: {p.y}</p>
-                              {zMeta && p.z !== undefined && (
-                                <p><span className="font-semibold text-purple-600">{zCol}</span>: {p.z}</p>
-                              )}
+                      {isScatter && (
+                        <div className="grid grid-cols-3 gap-3">
+                          {[
+                            { label: "피어슨 r", value: r.toFixed(3), highlight: Math.abs(r) >= 0.7 },
+                            { label: "결정계수 R²", value: r2.toFixed(3), highlight: false },
+                            { label: "해석", value: corrLabel, highlight: false },
+                          ].map((s) => (
+                            <div key={s.label} className="bg-neutral-50 rounded-xl p-3 text-center">
+                              <p className="text-xs text-neutral-400 mb-1">{s.label}</p>
+                              <p className={`text-sm font-bold ${s.highlight ? "text-brand-600" : "text-neutral-700"}`}>{s.value}</p>
                             </div>
-                          );
-                        }} />
-                        <Scatter data={scatterData} fill="#0D7377" fillOpacity={0.55} />
-                        {!zMeta && (
-                          <Line dataKey="trend" stroke="#f59e0b" strokeWidth={2}
-                            dot={false} type="linear" isAnimationActive={false} strokeDasharray="6 3" />
-                        )}
-                      </ComposedChart>
-                    </ResponsiveContainer>
-                    {/* 상관 통계 */}
-                    <div className="mt-4 grid grid-cols-3 gap-3">
-                      <div className="bg-neutral-50 rounded-xl p-3 text-center">
-                        <p className="text-xs text-neutral-400 mb-1">피어슨 상관계수 (r)</p>
-                        <p className={`text-lg font-bold ${Math.abs(r) >= 0.7 ? "text-brand-600" : Math.abs(r) >= 0.4 ? "text-amber-500" : "text-neutral-500"}`}>
-                          {r.toFixed(3)}
-                        </p>
-                      </div>
-                      <div className="bg-neutral-50 rounded-xl p-3 text-center">
-                        <p className="text-xs text-neutral-400 mb-1">결정계수 (R²)</p>
-                        <p className="text-lg font-bold text-neutral-700">{r2.toFixed(3)}</p>
-                      </div>
-                      <div className="bg-neutral-50 rounded-xl p-3 text-center">
-                        <p className="text-xs text-neutral-400 mb-1">해석</p>
-                        <p className="text-sm font-semibold text-neutral-700">{corrLabel}</p>
-                      </div>
-                    </div>
-                  </div>
-                );
-              })()}
+                          ))}
+                        </div>
+                      )}
+                    </>
+                  );
+                })()}
 
-              {xCol && yCol && xCol === yCol && (
-                <div className="bg-amber-50 border border-amber-200 rounded-2xl p-5 text-sm text-amber-700">
-                  X축과 Y축에 서로 다른 열을 선택해주세요.
-                </div>
-              )}
-              {(!xCol || !yCol) && (
-                <div className="bg-neutral-50 border border-neutral-200 rounded-2xl p-8 text-center text-sm text-neutral-400">
-                  X축과 Y축 열을 모두 선택하면 산점도가 표시됩니다.
-                </div>
-              )}
+                {ct === "histogram" && (
+                  <ResponsiveContainer width="100%" height={360}>
+                    <BarChart data={histChartData} margin={{ top: 10, right: 20, left: 0, bottom: 5 }}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                      <XAxis dataKey="label" tick={{ fontSize: 11 }} />
+                      <YAxis tick={{ fontSize: 11 }} />
+                      <Tooltip formatter={(v) => [`${v}건`, "빈도"]} />
+                      <Bar dataKey="count" fill="#0D7377" radius={[4, 4, 0, 0]} />
+                    </BarChart>
+                  </ResponsiveContainer>
+                )}
 
-              {/* 상관관계 히트맵 — 수치형 열 2개 이상이면 항상 표시 */}
-              {numericCols.length >= 2 && (() => {
-                const nc = numericCols;
-                const cellSize = Math.min(64, Math.floor(480 / nc.length));
-                const getCorr = (i: number, j: number) => {
-                  const paired = rows.map((_, idx) => ({
-                    x: nc[i].values[idx], y: nc[j].values[idx],
-                  })).filter((p) => isNumeric(p.x) && isNumeric(p.y)) as { x: number; y: number }[];
-                  const pn = paired.length;
-                  if (pn < 2) return i === j ? 1 : 0;
-                  const sx = paired.reduce((s, p) => s + p.x, 0);
-                  const sy = paired.reduce((s, p) => s + p.y, 0);
-                  const sxy = paired.reduce((s, p) => s + p.x * p.y, 0);
-                  const sx2 = paired.reduce((s, p) => s + p.x * p.x, 0);
-                  const sy2 = paired.reduce((s, p) => s + p.y * p.y, 0);
-                  const d = Math.sqrt((pn * sx2 - sx * sx) * (pn * sy2 - sy * sy));
-                  return d !== 0 ? (pn * sxy - sx * sy) / d : (i === j ? 1 : 0);
-                };
-                const getColor = (r: number) => {
-                  const a = Math.abs(r);
-                  return r >= 0
-                    ? `rgba(13,115,119,${0.08 + a * 0.92})`
-                    : `rgba(239,68,68,${0.08 + a * 0.92})`;
-                };
-                return (
-                  <div className="bg-white rounded-2xl border border-neutral-200 p-6">
-                    <h2 className="font-semibold text-neutral-800 mb-1">상관관계 히트맵</h2>
-                    <p className="text-xs text-neutral-400 mb-5">수치형 열 간의 피어슨 상관계수 (−1 ~ +1)</p>
+                {ct === "radar" && (
+                  <ResponsiveContainer width="100%" height={360}>
+                    <RadarChart data={radarChartData}>
+                      <PolarGrid stroke="#e5e7eb" />
+                      <PolarAngleAxis dataKey="col" tick={{ fontSize: 11, fill: "#6b7280" }} />
+                      <PolarRadiusAxis angle={30} domain={[0, 100]} tick={{ fontSize: 10 }} tickFormatter={(v) => `${v}%`} />
+                      <Radar name="평균(정규화)" dataKey="value" stroke="#0D7377" fill="#0D7377" fillOpacity={0.25} dot={{ r: 4, fill: "#0D7377" }} />
+                      <Tooltip formatter={(v) => [`${v}%`, "정규화 평균"]} />
+                      <Legend />
+                    </RadarChart>
+                  </ResponsiveContainer>
+                )}
+
+                {ct === "heatmap" && (() => {
+                  const { xLabels, yLabels, matrix, maxVal } = heatmapChartData;
+                  const cellSize = Math.min(72, Math.max(40, Math.floor(560 / Math.max(xLabels.length, 1))));
+                  return (
                     <div className="overflow-x-auto">
                       <table className="border-collapse mx-auto">
                         <thead>
                           <tr>
-                            <td style={{ width: cellSize, minWidth: cellSize }} />
-                            {nc.map((col) => (
-                              <td key={col.name} style={{ width: cellSize, minWidth: cellSize, height: cellSize }} className="text-center pb-1">
+                            <td style={{ width: 120 }} />
+                            {xLabels.map((xl) => (
+                              <td key={xl} style={{ width: cellSize, minWidth: cellSize }} className="text-center pb-2">
                                 <span className="text-xs text-neutral-500 font-medium block truncate px-1"
-                                  style={{ maxWidth: cellSize, writingMode: nc.length > 5 ? "vertical-rl" : "horizontal-tb" }}>
-                                  {col.name}
+                                  style={{ maxWidth: cellSize, writingMode: xLabels.length > 6 ? ("vertical-rl" as const) : ("horizontal-tb" as const) }}>
+                                  {xl}
                                 </span>
                               </td>
                             ))}
                           </tr>
                         </thead>
                         <tbody>
-                          {nc.map((rowCol, i) => (
-                            <tr key={rowCol.name}>
-                              <td className="pr-2 text-right" style={{ maxWidth: cellSize }}>
-                                <span className="text-xs text-neutral-500 font-medium block truncate">{rowCol.name}</span>
+                          {yLabels.map((yl, ri) => (
+                            <tr key={yl}>
+                              <td className="pr-3 text-right text-xs text-neutral-500 font-medium" style={{ maxWidth: 120 }}>
+                                <span className="block truncate">{yl}</span>
                               </td>
-                              {nc.map((_, j) => {
-                                const rv = getCorr(i, j);
+                              {matrix[ri].map((val, ci) => {
+                                const alpha = maxVal > 0 ? val / maxVal : 0;
+                                const bg = `rgba(13,115,119,${0.06 + alpha * 0.94})`;
+                                const textColor = alpha > 0.55 ? "white" : "#374151";
                                 return (
-                                  <td key={j} title={`${nc[i].name} × ${nc[j].name}: ${rv.toFixed(3)}`}
-                                    style={{ width: cellSize, height: cellSize, backgroundColor: getColor(rv), border: "2px solid white" }}>
+                                  <td key={ci} title={`${yl} × ${xLabels[ci]}: ${val.toFixed(1)}`}
+                                    style={{ width: cellSize, height: cellSize, backgroundColor: bg, border: "2px solid white" }}>
                                     <div className="flex items-center justify-center w-full h-full">
-                                      <span style={{ fontSize: cellSize < 50 ? 9 : 11, fontWeight: 700, color: Math.abs(rv) > 0.5 ? "white" : "#374151" }}>
-                                        {rv.toFixed(2)}
+                                      <span style={{ fontSize: cellSize < 50 ? 9 : 11, fontWeight: 700, color: textColor }}>
+                                        {val > 0 ? (val >= 1000 ? `${(val / 1000).toFixed(1)}k` : val.toFixed(val < 10 ? 1 : 0)) : ""}
                                       </span>
                                     </div>
                                   </td>
@@ -1647,19 +1610,39 @@ export default function AnalysisClient() {
                         </tbody>
                       </table>
                     </div>
-                    <div className="flex items-center justify-center gap-8 mt-5">
-                      <div className="flex items-center gap-2 text-xs text-neutral-500">
-                        <div className="w-16 h-3 rounded" style={{ background: "linear-gradient(to right, rgba(13,115,119,0.08), rgba(13,115,119,1))" }} />
-                        양의 상관 (+1)
-                      </div>
-                      <div className="flex items-center gap-2 text-xs text-neutral-500">
-                        <div className="w-16 h-3 rounded" style={{ background: "linear-gradient(to right, rgba(239,68,68,0.08), rgba(239,68,68,1))" }} />
-                        음의 상관 (−1)
-                      </div>
-                    </div>
-                  </div>
-                );
-              })()}
+                  );
+                })()}
+
+                {ct === "treemap" && (
+                  <ResponsiveContainer width="100%" height={400}>
+                    <Treemap data={treemapChartData} dataKey="size" nameKey="name"
+                      content={({ x, y, width, height, name, fill }: { x?: number; y?: number; width?: number; height?: number; name?: string; fill?: string }) => {
+                        const w = width ?? 0; const h = height ?? 0;
+                        if (w < 30 || h < 20) return <rect x={x} y={y} width={w} height={h} fill={fill} rx={2} />;
+                        return (
+                          <g>
+                            <rect x={x} y={y} width={w} height={h} fill={fill} rx={4} stroke="white" strokeWidth={2} />
+                            {w > 50 && h > 28 && (
+                              <text x={(x ?? 0) + w / 2} y={(y ?? 0) + h / 2} textAnchor="middle" dominantBaseline="middle"
+                                fontSize={Math.min(13, w / 7)} fill="white" fontWeight={600}>
+                                {(name ?? "").length > 10 ? (name ?? "").slice(0, 10) + "…" : name}
+                              </text>
+                            )}
+                          </g>
+                        );
+                      }}
+                    />
+                  </ResponsiveContainer>
+                )}
+              </div>
+            );
+          })()}
+
+          {!selectedChartType && (
+            <div className="bg-neutral-50 border border-dashed border-neutral-300 rounded-2xl p-12 text-center text-neutral-400">
+              <BarChart2 size={40} className="mx-auto mb-3 opacity-30" />
+              <p className="text-sm font-medium">위에서 차트 종류를 선택하세요.</p>
+              <p className="text-xs mt-1">컬럼을 선택하고 차트 생성 버튼을 누르면 원하는 차트 하나가 표시됩니다.</p>
             </div>
           )}
         </div>

@@ -489,30 +489,41 @@ export default function AdminPage() {
     fetchTab(t);
   };
 
+  // 관리자 작업은 서버 라우트에서 role 검증 후 처리한다(클라이언트 직접 DB 수정 금지).
+  const callAdminAction = async (payload: Record<string, unknown>) => {
+    const res = await fetch("/api/admin/actions", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+    return res.ok;
+  };
+
   // ── 데이터셋 비활성화 (소프트 삭제) ─────────────────────────
   const deactivateDataset = async (id: string) => {
-    const supabase = createClient();
-    await supabase.from("datasets").update({ is_active: false }).eq("id", id);
+    const ok = await callAdminAction({ action: "deactivate-dataset", id });
+    if (!ok) { alert("삭제 처리에 실패했습니다."); return; }
     setDatasetRows((prev) => prev.filter((d) => d.id !== id));
     fetchSummary();
   };
 
   // ── 데이터 신청 승인/반려 ────────────────────────────────────
   const handleApplication = async (id: string, approve: boolean) => {
-    const supabase = createClient();
     const status = approve ? "approved" : "rejected";
-    await supabase.from("applications").update({ status }).eq("id", id);
+    const ok = await callAdminAction({ action: approve ? "approve-application" : "reject-application", id });
+    if (!ok) { alert("처리에 실패했습니다."); return; }
     setAppRows((prev) => prev.map((a) => a.id === id ? { ...a, status } : a));
   };
 
   // ── 지역/업체 접근 권한 승인/거절 ───────────────────────────
   const handleAccessRequest = async (requestId: string, userId: string, approve: boolean) => {
-    const supabase = createClient();
     const newStatus = approve ? "approved" : "rejected";
-    await supabase.from("access_requests").update({ status: newStatus }).eq("id", requestId);
-    if (approve) {
-      await supabase.from("profiles").update({ local_data_approved: true }).eq("id", userId);
-    }
+    const ok = await callAdminAction({
+      action: approve ? "approve-access" : "reject-access",
+      id: requestId,
+      userId,
+    });
+    if (!ok) { alert("처리에 실패했습니다."); return; }
     setAccessRows(prev => prev.map(r => r.id === requestId ? { ...r, status: newStatus } : r));
   };
 

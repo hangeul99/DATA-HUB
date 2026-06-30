@@ -346,35 +346,37 @@ export default function DatasetDetailClient({ id }: { id: string }) {
   }, [id, router]);
 
   // ── 다운로드 ──────────────────────────────────────────────────
+  // 서명 URL은 서버 라우트가 "승인 여부"를 검증한 뒤에만 발급한다.
+  // (화면 버튼만 막는 게 아니라 서버에서 권한을 강제 — 규칙 1-1)
   const handleDownload = async () => {
-    if (!dataset?.file_path || !userInfo) return;
+    if (!dataset || !userInfo) return;
     setDownloading(true);
     setDownloadError(null);
-    const supabase = createClient();
-    const { data: signedData, error } = await supabase.storage
-      .from("datasets").createSignedUrl(dataset.file_path, 3600);
-    if (error || !signedData?.signedUrl) {
-      setDownloadError("다운로드 URL 생성에 실패했습니다.");
-      setDownloading(false);
-      return;
-    }
-    // 숫자 prefix 제거: "127832_heart.csv" → "heart.csv"
-    const rawName = dataset.file_path.split("/").pop() ?? "download";
-    const cleanName = rawName.replace(/^\d+_/, "");
 
     try {
-      const res = await fetch(signedData.signedUrl);
-      const blob = await res.blob();
+      // 1. 서버에 다운로드 URL 요청 (승인 안 됐으면 403)
+      const res = await fetch(`/api/datasets/${dataset.id}/download`);
+      if (!res.ok) {
+        setDownloadError(res.status === 403 ? "다운로드 권한이 없습니다." : "다운로드 URL 생성에 실패했습니다.");
+        setDownloading(false);
+        return;
+      }
+      const { url, filename } = await res.json() as { url: string; filename: string };
+
+      // 2. 실제 파일 내려받기
+      const fileRes = await fetch(url);
+      const blob = await fileRes.blob();
       const blobUrl = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = blobUrl;
-      a.download = cleanName;
+      a.download = filename;
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
       URL.revokeObjectURL(blobUrl);
 
-      // 다운로드 성공 시 카운트 증가
+      // 3. 다운로드 로그 + 카운트 증가
+      const supabase = createClient();
       await supabase.from("download_logs").insert({ user_id: userInfo.id, dataset_id: dataset.id });
       await supabase.rpc("increment_dataset_downloads", { dataset_id: dataset.id });
       setDataset(prev => prev ? { ...prev, downloads: prev.downloads + 1 } : prev);

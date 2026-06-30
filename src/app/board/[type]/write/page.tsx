@@ -6,6 +6,7 @@ import Link from "next/link";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import { createClient } from "@/lib/supabase/client";
+import { sanitizeHtml } from "@/lib/sanitize";
 import { ChevronLeft, Loader2, Paperclip, X } from "lucide-react";
 import RichTextEditor from "@/components/RichTextEditor";
 
@@ -14,6 +15,15 @@ const BOARD_LABELS: Record<string, string> = {
   feedback:  "요구 및 개선사항",
   resources: "자료 게시판",
 };
+
+// ── 첨부파일 업로드 제한 ───────────────────────────────────────────
+// 용량 무제한이면 Storage 비용 폭탄·악성파일 유포 통로가 되므로 상한을 둔다.
+const MAX_ATTACHMENT_MB = 20;
+// 허용 확장자(문서·압축 위주). 실행파일(exe/js/html 등)은 차단.
+const ALLOWED_EXTS = [
+  "pdf", "ppt", "pptx", "doc", "docx", "xls", "xlsx",
+  "hwp", "hwpx", "csv", "txt", "zip", "png", "jpg", "jpeg", "gif",
+];
 
 export default function WritePostPage() {
   const params = useParams();
@@ -39,7 +49,20 @@ export default function WritePostPage() {
   }, [label, router]);
 
   const pickFile = (f: File | undefined | null) => {
-    if (f) setFile(f);
+    if (!f) return;
+    // 용량 검사
+    if (f.size > MAX_ATTACHMENT_MB * 1024 * 1024) {
+      setError(`파일은 최대 ${MAX_ATTACHMENT_MB}MB까지 첨부할 수 있습니다.`);
+      return;
+    }
+    // 확장자 검사 (허용 목록 외 차단)
+    const ext = f.name.split(".").pop()?.toLowerCase() ?? "";
+    if (!ALLOWED_EXTS.includes(ext)) {
+      setError(`허용되지 않는 파일 형식입니다. (${ALLOWED_EXTS.join(", ")})`);
+      return;
+    }
+    setError(null);
+    setFile(f);
   };
 
   const handleSubmit = async () => {
@@ -77,7 +100,7 @@ export default function WritePostPage() {
     const { data: post, error: err } = await supabase.from("posts").insert({
       board_type: type,
       title: title.trim(),
-      content,
+      content: sanitizeHtml(content), // 저장 단계에서도 소독 (이중 방어)
       user_id: user.id,
       author_name: profile?.role === "admin" ? "관리자" : (profile?.name ?? user.email?.split("@")[0] ?? "익명"),
       attachment_path: attachmentPath,

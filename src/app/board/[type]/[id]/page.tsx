@@ -6,6 +6,7 @@ import Link from "next/link";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import { createClient } from "@/lib/supabase/client";
+import { sanitizeHtml } from "@/lib/sanitize";
 import { ChevronLeft, Trash2, Pencil, Loader2, Download, Send } from "lucide-react";
 
 const BOARDS = [
@@ -211,9 +212,10 @@ export default function PostDetailPage() {
 
                 {/* 본문 */}
                 <div className="px-5 md:px-7 py-8 min-h-[240px]">
+                  {/* 본문 HTML은 표시 직전 sanitizeHtml로 소독해 XSS(악성 스크립트) 차단 */}
                   <div
                     className="text-sm text-neutral-800 leading-relaxed [&_ul]:list-disc [&_ul]:pl-5 [&_ol]:list-decimal [&_ol]:pl-5 [&_li]:my-0.5 [&_b]:font-bold [&_strong]:font-bold [&_i]:italic [&_em]:italic [&_u]:underline [&_s]:line-through"
-                    dangerouslySetInnerHTML={{ __html: post.content }}
+                    dangerouslySetInnerHTML={{ __html: sanitizeHtml(post.content) }}
                   />
                 </div>
 

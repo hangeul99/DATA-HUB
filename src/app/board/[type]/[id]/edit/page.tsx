@@ -6,6 +6,7 @@ import Link from "next/link";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import { createClient } from "@/lib/supabase/client";
+import { sanitizeHtml } from "@/lib/sanitize";
 import { ChevronLeft, Loader2 } from "lucide-react";
 import RichTextEditor from "@/components/RichTextEditor";
 
@@ -57,7 +58,7 @@ export default function EditPostPage() {
 
     const { error: err } = await createClient()
       .from("posts")
-      .update({ title: title.trim(), content })
+      .update({ title: title.trim(), content: sanitizeHtml(content) }) // 저장 단계 소독
       .eq("id", id);
 
     if (err) { setError("수정에 실패했습니다."); setSubmitting(false); return; }

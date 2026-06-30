@@ -144,7 +144,10 @@ export default function MyPage() {
     setDeleting(true);
     const res = await fetch("/api/delete-account", { method: "DELETE" });
     if (res.ok) {
+      // 서버에서 계정 삭제 후 브라우저에 남은 로그인 세션도 정리
+      await createClient().auth.signOut();
       router.push("/");
+      router.refresh();
     } else {
       alert("탈퇴 처리 중 오류가 발생했습니다. 다시 시도해주세요.");
       setDeleting(false);

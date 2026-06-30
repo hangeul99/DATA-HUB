@@ -31,13 +31,17 @@ export async function proxy(request: NextRequest) {
   const { data: { user } } = await supabase.auth.getUser();
   const isLoggedIn = !!user;
 
-  // 환경변수에서 관리자 이메일 목록 로드 (쉼표 구분)
-  const ADMIN_EMAILS = (process.env.ADMIN_EMAILS ?? "lhg9449@gmail.com")
-    .split(",").map((e) => e.trim());
-  const isAdmin = !!user && ADMIN_EMAILS.includes(user.email ?? "");
-
-  // ── 1. 관리자 전용 경로 — 비관리자는 /not-found 로 리라이트 ──
+  // ── 1. 관리자 전용 경로 — profiles.role 기준으로 통일 ──
+  // 기존엔 이메일 목록(하드코딩 포함) 기준이라 관리자 페이지(role 기준)와
+  // 판별 기준이 달랐다(규칙 6-1). role 하나로 통일해 기준 이원화 버그를 막는다.
+  // role 조회는 /admin 진입 시에만 수행해 일반 요청엔 추가 부하가 없다.
   if (ADMIN_PATHS.some((p) => pathname.startsWith(p))) {
+    let isAdmin = false;
+    if (user) {
+      const { data: profile } = await supabase
+        .from("profiles").select("role").eq("id", user.id).single();
+      isAdmin = profile?.role === "admin";
+    }
     if (!isAdmin) {
       return NextResponse.rewrite(new URL("/not-found", request.url));
     }

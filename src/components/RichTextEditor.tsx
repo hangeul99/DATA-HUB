@@ -242,7 +242,7 @@ export default function RichTextEditor({ value, onChange, placeholder = "내용�
           contentEditable
           suppressContentEditableWarning
           onInput={sync}
-          className="px-4 py-3 text-sm focus:outline-none"
+          className="px-4 py-3 text-sm focus:outline-none [&_ul]:list-disc [&_ul]:pl-5 [&_ol]:list-decimal [&_ol]:pl-5 [&_li]:my-0.5"
           style={{ minHeight: "260px" }}
         />
       </div>

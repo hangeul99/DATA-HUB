@@ -22,7 +22,7 @@ const TABS = [
 type TabId = (typeof TABS)[number]["id"];
 
 // ── 카테고리 / 연도 / 형식 목록 ──────────────────────────────
-const CATEGORIES = ["전체", "통계/공공 데이터", "연구/학술 데이터", "금융/경제 데이터", "지역/업체 데이터"];
+const CATEGORIES = ["전체 카테고리", "통계/공공 데이터", "연구/학술 데이터", "금융/경제 데이터", "지역/업체 데이터"];
 const YEARS      = ["전체 연도", "2025", "2024", "2023", "2022 이전"];
 const FILE_TYPES = ["전체 형식", "CSV", "Excel", "JSON", "Parquet", "TXT", "SAS/SPSS"];
 
@@ -153,7 +153,7 @@ export default function DatasetsClient() {
   // ── 탭 / 필터 상태 ─────────────────────────────────────────
   const [activeTab, setActiveTab]   = useState<TabId>("browse");
   const [query, setQuery]           = useState("");
-  const [category, setCategory]     = useState("전체");
+  const [category, setCategory]     = useState("전체 카테고리");
   const [year, setYear]             = useState("전체 연도");
   const [fileType, setFileType]     = useState("전체 형식");
   const [view, setView]             = useState<"grid" | "list">("grid");
@@ -257,14 +257,14 @@ export default function DatasetsClient() {
   const filtered = useMemo(() => {
     return datasets.filter((d) => {
       const matchQ    = d.title.includes(query) || d.description?.includes(query);
-      const matchCat  = category === "전체" || d.category === category;
+      const matchCat  = category === "전체 카테고리" || d.category === category;
       const matchYear = year === "전체 연도" || d.year === year;
       const matchFile = fileType === "전체 형식" || d.tags?.includes(fileType);
       return matchQ && matchCat && matchYear && matchFile;
     });
   }, [datasets, query, category, year, fileType]);
 
-  const hasFilter = category !== "전체" || year !== "전체 연도" || fileType !== "전체 형식" || query !== "";
+  const hasFilter = category !== "전체 카테고리" || year !== "전체 연도" || fileType !== "전체 형식" || query !== "";
 
   // ── 결과물 제출 핸들러 ────────────────────────────────────
   const submitResult = async () => {
@@ -741,8 +741,8 @@ export default function DatasetsClient() {
               {hasFilter && (
                 <div className="mt-3 flex items-center gap-2 flex-wrap">
                   <span className="text-xs text-neutral-500">필터:</span>
-                  {category !== "전체" && (
-                    <button onClick={() => setCategory("전체")} className="flex items-center gap-1 text-xs bg-brand-50 text-brand-700 px-2.5 py-1 rounded-full hover:bg-brand-100">
+                  {category !== "전체 카테고리" && (
+                    <button onClick={() => setCategory("전체 카테고리")} className="flex items-center gap-1 text-xs bg-brand-50 text-brand-700 px-2.5 py-1 rounded-full hover:bg-brand-100">
                       {category} <X size={10} />
                     </button>
                   )}
@@ -761,7 +761,7 @@ export default function DatasetsClient() {
                       &ldquo;{query}&rdquo; <X size={10} />
                     </button>
                   )}
-                  <button onClick={() => { setCategory("전체"); setYear("전체 연도"); setFileType("전체 형식"); setQuery(""); }}
+                  <button onClick={() => { setCategory("전체 카테고리"); setYear("전체 연도"); setFileType("전체 형식"); setQuery(""); }}
                     className="text-xs text-neutral-400 hover:text-neutral-600">초기화</button>
                 </div>
               )}

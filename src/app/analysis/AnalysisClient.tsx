@@ -213,7 +213,10 @@ const CHART_TYPES = [
   { id: "radar",     label: "레이더",     Icon: Activity,     desc: "다항목 비교" },
   { id: "heatmap",   label: "히트맵",     Icon: Grid,         desc: "교차 패턴" },
   { id: "treemap",   label: "트리맵",     Icon: Layers,       desc: "비율·계층 구조" },
-  { id: "box",       label: "박스플롯",   Icon: Activity,     desc: "분포·이상값 탐지" },
+  { id: "box",         label: "박스플롯",   Icon: Activity,     desc: "분포·이상값 탐지" },
+  { id: "stacked-bar", label: "누적 막대", Icon: BarChart2,    desc: "항목별 구성 비교" },
+  { id: "combo",       label: "콤보",      Icon: TrendingUp,   desc: "막대+선 혼합" },
+  { id: "waterfall",   label: "워터폴",    Icon: TrendingUp,   desc: "증감 누적 시각화" },
 ] as const;
 type ChartTypeId = (typeof CHART_TYPES)[number]["id"];
 
@@ -231,7 +234,10 @@ const CHART_DESC: Record<string, string> = {
   radar:     "레이더(거미줄) 차트는 여러 수치 항목을 방사형으로 비교합니다. 제품이나 대상의 강점/약점을 파악하기에 좋습니다.",
   heatmap:   "히트맵은 두 범주형 변수의 교차값을 색상 강도로 나타냅니다. 패턴과 집중도를 직관적으로 파악합니다.",
   treemap:   "트리맵은 항목의 크기를 면적으로 비율·계층 구조를 나타냅니다. 전체 구성 요소 비중을 한눈에 봅니다.",
-  box:       "박스플롯(Box Plot)은 수치 컬럼의 분포를 최솟값·Q1·중앙값·Q3·최댓값으로 요약합니다. 이상값 탐지와 여러 컬럼 분포 비교에 효과적입니다.",
+  box:           "박스플롯(Box Plot)은 수치 컬럼의 분포를 최솟값·Q1·중앙값·Q3·최댓값으로 요약합니다. 이상값 탐지와 여러 컬럼 분포 비교에 효과적입니다.",
+  "stacked-bar": "누적 막대 차트는 여러 수치 항목을 하나의 막대에 쌓아 전체 대비 각 항목의 구성 비율을 카테고리별로 비교합니다.",
+  combo:         "콤보 차트는 막대(수치 비교)와 선(추세)을 한 화면에 함께 표시합니다. 예: 건수(막대) + 평균값(선) 동시 확인.",
+  waterfall:     "워터폴 차트는 초기값에서 출발해 각 항목의 증감을 순서대로 누적해 최종 합계를 보여줍니다. 예산 변동·매출 구조 분석에 유용합니다.",
 };
 
 // ── 위도/경도 열 자동 감지 ─────────────────────────────────────
@@ -312,8 +318,9 @@ export default function AnalysisClient() {
   const [xCol, setXCol] = useState<string | null>(null);
   const [yCol, setYCol] = useState<string | null>(null);
   const [zCol, setZCol] = useState<string | null>(null);
-  const [radarCols, setRadarCols] = useState<string[]>([]);
-  const [boxCols, setBoxCols]     = useState<string[]>([]);
+  const [radarCols, setRadarCols]     = useState<string[]>([]);
+  const [boxCols, setBoxCols]         = useState<string[]>([]);
+  const [stackedCols, setStackedCols] = useState<string[]>([]);
   const [chartGenerated, setChartGenerated] = useState(false);
   const [MapView, setMapView] = useState<React.ComponentType<{ points: {lat:number;lng:number;label?:string}[]; latCol?:string; lngCol?:string }> | null>(null);
   const [dragOver, setDragOver] = useState(false);
@@ -821,6 +828,96 @@ export default function AnalysisClient() {
     }).filter((d): d is NonNullable<typeof d> => d !== null);
   }, [cols, boxCols, chartGenerated, selectedChartType, numericVizCols]);
 
+  // 누적 막대 — X별 다중 Y 컬럼 평균 집계
+  const stackedChartData = useMemo(() => {
+    if (!chartGenerated || selectedChartType !== "stacked-bar") return [];
+    if (!xCol || stackedCols.length === 0) return [];
+    const xMeta = cols.find((c) => c.name === xCol);
+    if (!xMeta) return [];
+    const xLabels = makeFrequency(xMeta.values, 20).map((f) => f.label);
+    return xLabels.map((xv) => {
+      const entry: Record<string, string | number> = { label: xv };
+      for (const colName of stackedCols) {
+        const yMeta = cols.find((c) => c.name === colName);
+        if (!yMeta) { entry[colName] = 0; continue; }
+        let sum = 0, count = 0;
+        rows.forEach((_, i) => {
+          if (String(xMeta.values[i] ?? "") !== xv) return;
+          const v = parseNumeric(yMeta.values[i]);
+          if (v !== null) { sum += v; count++; }
+        });
+        entry[colName] = count > 0 ? parseFloat((sum / count).toFixed(2)) : 0;
+      }
+      return entry;
+    });
+  }, [cols, rows, xCol, stackedCols, chartGenerated, selectedChartType]);
+
+  // 콤보 — X별 bar(Y) 평균 + line(Z) 평균
+  const comboChartData = useMemo(() => {
+    if (!chartGenerated || selectedChartType !== "combo") return [];
+    if (!xCol || !yCol) return [];
+    const xMeta = cols.find((c) => c.name === xCol);
+    const barMeta = cols.find((c) => c.name === yCol);
+    const lineMeta = zCol ? cols.find((c) => c.name === zCol) : null;
+    if (!xMeta || !barMeta) return [];
+    const xLabels = makeFrequency(xMeta.values, 20).map((f) => f.label);
+    return xLabels.map((xv) => {
+      let bSum = 0, bCnt = 0, lSum = 0, lCnt = 0;
+      rows.forEach((_, i) => {
+        if (String(xMeta.values[i] ?? "") !== xv) return;
+        const bv = parseNumeric(barMeta.values[i]);
+        if (bv !== null) { bSum += bv; bCnt++; }
+        if (lineMeta) {
+          const lv = parseNumeric(lineMeta.values[i]);
+          if (lv !== null) { lSum += lv; lCnt++; }
+        }
+      });
+      const entry: Record<string, string | number> = {
+        label: xv,
+        bar: bCnt > 0 ? parseFloat((bSum / bCnt).toFixed(2)) : 0,
+      };
+      if (lineMeta) entry.line = lCnt > 0 ? parseFloat((lSum / lCnt).toFixed(2)) : 0;
+      return entry;
+    });
+  }, [cols, rows, xCol, yCol, zCol, chartGenerated, selectedChartType]);
+
+  // 워터폴 — X별 합계 → 누적 계산
+  const waterfallChartData = useMemo(() => {
+    if (!chartGenerated || selectedChartType !== "waterfall") return [] as { name: string; invisible: number; amount: number; rawValue: number; isPositive: boolean }[];
+    if (!xCol || !yCol) return [];
+    const xMeta = cols.find((c) => c.name === xCol);
+    const yMeta = cols.find((c) => c.name === yCol);
+    if (!xMeta || !yMeta) return [];
+    const map = new Map<string, number>();
+    rows.forEach((_, i) => {
+      const xv = String(xMeta.values[i] ?? "");
+      const yv = parseNumeric(yMeta.values[i]);
+      if (!xv || yv === null) return;
+      map.set(xv, (map.get(xv) ?? 0) + yv);
+    });
+    let cumulative = 0;
+    const result = [...map.entries()].slice(0, 20).map(([name, value]) => {
+      const start = cumulative;
+      cumulative += value;
+      const isPositive = value >= 0;
+      return {
+        name,
+        invisible: isPositive ? start : start + value,
+        amount: Math.abs(value),
+        rawValue: value,
+        isPositive,
+      };
+    });
+    result.push({
+      name: "합계",
+      invisible: cumulative >= 0 ? 0 : cumulative,
+      amount: Math.abs(cumulative),
+      rawValue: cumulative,
+      isPositive: cumulative >= 0,
+    });
+    return result;
+  }, [cols, rows, xCol, yCol, chartGenerated, selectedChartType]);
+
   // 자동 시각화(개요 탭) 미니차트 데이터 — 렌더링마다 전 컬럼을 재집계하지 않도록
   // cols/rows가 바뀔 때만 1회 계산 (히스토그램/월별집계/빈도 + 고카디널리티 판정)
   const autoVizData = useMemo(() => {
@@ -1247,7 +1344,7 @@ export default function AnalysisClient() {
                   onClick={() => {
                     setSelectedChartType(id);
                     setChartGenerated(false);
-                    setXCol(null); setYCol(null); setZCol(null); setRadarCols([]);
+                    setXCol(null); setYCol(null); setZCol(null); setRadarCols([]); setStackedCols([]);
                   }}
                   className={`flex flex-col items-center gap-2 p-3 rounded-xl border-2 transition-all text-center
                     ${selectedChartType === id
@@ -1273,6 +1370,9 @@ export default function AnalysisClient() {
             const isRadar = ct === "radar";
             const isHeatmap = ct === "heatmap";
             const isTreemap = ct === "treemap";
+            const isStackedBar = ct === "stacked-bar";
+            const isCombo = ct === "combo";
+            const isWaterfall = ct === "waterfall";
             const anyCols = cols.filter((c) => !c.isId);
             const numOnly = numericVizCols;
             const catOnly = vizCols.filter((c) => c.type === "categorical");
@@ -1310,7 +1410,10 @@ export default function AnalysisClient() {
               (isRadar && radarCols.length >= 2) ||
               (isHeatmap && xCol && yCol) ||
               (isTreemap && xCol) ||
-              (ct === "box" && boxCols.length >= 1);
+              (ct === "box" && boxCols.length >= 1) ||
+              (isStackedBar && xCol && stackedCols.length >= 1) ||
+              (isCombo && xCol && yCol) ||
+              (isWaterfall && xCol && yCol);
 
             return (
               <div className="bg-white rounded-2xl border border-neutral-200 p-4 sm:p-6 space-y-5">
@@ -1398,6 +1501,42 @@ export default function AnalysisClient() {
                     {boxCols.length > 0 && <p className="text-xs text-neutral-400 mt-2">{boxCols.length}개 선택됨</p>}
                   </div>
                 )}
+                {isStackedBar && (
+                  <>
+                    <ColPicker label="X축 컬럼 (카테고리)" value={xCol} onChange={setXCol} options={anyCols} />
+                    <div>
+                      <p className="text-xs text-neutral-500 mb-2 font-medium">누적할 수치 컬럼 <span className="text-neutral-400 font-normal">(1개 이상 다중 선택)</span></p>
+                      <div className="flex flex-wrap gap-2">
+                        {numOnly.map((col) => {
+                          const checked = stackedCols.includes(col.name);
+                          return (
+                            <button key={col.name}
+                              onClick={() => setStackedCols((prev) => checked ? prev.filter((c) => c !== col.name) : [...prev, col.name])}
+                              className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors
+                                ${checked ? "bg-brand-600 text-white" : "bg-neutral-100 text-neutral-600 hover:bg-neutral-200"}`}>
+                              {col.name}
+                            </button>
+                          );
+                        })}
+                      </div>
+                      {stackedCols.length > 0 && <p className="text-xs text-neutral-400 mt-2">{stackedCols.length}개 선택됨</p>}
+                    </div>
+                  </>
+                )}
+                {isCombo && (
+                  <>
+                    <ColPicker label="X축 컬럼 (카테고리)" value={xCol} onChange={setXCol} options={anyCols} />
+                    <ColPicker label="막대 Y축 컬럼" value={yCol} onChange={setYCol} options={numOnly} note="수치형만" />
+                    <ColPicker label="선 Y축 컬럼" value={zCol} onChange={setZCol} options={numOnly} note="수치형만, 선택사항" />
+                    {zCol && <button onClick={() => setZCol(null)} className="text-xs text-neutral-400 hover:text-red-500 transition-colors">선 컬럼 제거</button>}
+                  </>
+                )}
+                {isWaterfall && (
+                  <>
+                    <ColPicker label="항목 컬럼 (X축)" value={xCol} onChange={setXCol} options={anyCols} />
+                    <ColPicker label="값 컬럼 (Y축)" value={yCol} onChange={setYCol} options={numOnly} note="수치형만, 음수 가능" />
+                  </>
+                )}
 
                 <button
                   onClick={() => setChartGenerated(true)}
@@ -1422,6 +1561,9 @@ export default function AnalysisClient() {
             const chartTitle = CHART_TYPES.find((c) => c.id === ct)?.label ?? "";
             const desc = CHART_DESC[ct] ?? "";
 
+            const isStackedBar2 = ct === "stacked-bar";
+            const isCombo2 = ct === "combo";
+            const isWaterfall2 = ct === "waterfall";
             const valid =
               (isXY && aggChartData.length > 0) ||
               (isPie && pieChartData.length > 0) ||
@@ -1430,7 +1572,10 @@ export default function AnalysisClient() {
               (ct === "radar" && radarChartData.length >= 2) ||
               (ct === "heatmap" && heatmapChartData.xLabels.length > 0) ||
               (ct === "treemap" && treemapChartData.length > 0) ||
-              (ct === "box" && boxChartData.length > 0);
+              (ct === "box" && boxChartData.length > 0) ||
+              (isStackedBar2 && stackedChartData.length > 0) ||
+              (isCombo2 && comboChartData.length > 0) ||
+              (isWaterfall2 && waterfallChartData.length > 0);
 
             if (!valid) return (
               <div className="bg-neutral-50 border border-neutral-200 rounded-2xl p-10 text-center text-sm text-neutral-400">
@@ -1775,6 +1920,67 @@ export default function AnalysisClient() {
                     />
                   </ResponsiveContainer>
                 )}
+
+                {isStackedBar2 && (
+                  <ResponsiveContainer width="100%" height={380}>
+                    <BarChart data={stackedChartData} margin={{ top: 10, right: 20, left: 0, bottom: 40 }}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                      <XAxis dataKey="label" tick={{ fontSize: 11 }} angle={-35} textAnchor="end" interval={0} />
+                      <YAxis tick={{ fontSize: 11 }} />
+                      <Tooltip />
+                      <Legend verticalAlign="top" height={36} />
+                      {stackedCols.map((colName, i) => (
+                        <Bar key={colName} dataKey={colName} stackId="a" fill={COLORS[i % COLORS.length]}
+                          radius={i === stackedCols.length - 1 ? [4, 4, 0, 0] : [0, 0, 0, 0]} />
+                      ))}
+                    </BarChart>
+                  </ResponsiveContainer>
+                )}
+
+                {isCombo2 && (
+                  <ResponsiveContainer width="100%" height={380}>
+                    <ComposedChart data={comboChartData} margin={{ top: 10, right: 30, left: 0, bottom: 40 }}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                      <XAxis dataKey="label" tick={{ fontSize: 11 }} angle={-35} textAnchor="end" interval={0} />
+                      <YAxis yAxisId="bar" tick={{ fontSize: 11 }} />
+                      {zCol && <YAxis yAxisId="line" orientation="right" tick={{ fontSize: 11 }} />}
+                      <Tooltip />
+                      <Legend verticalAlign="top" height={36} />
+                      <Bar yAxisId="bar" dataKey="bar" name={yCol ?? "막대"} fill={COLORS[0]} radius={[4, 4, 0, 0]} />
+                      {zCol && <Line yAxisId="line" type="monotone" dataKey="line" name={zCol} stroke={COLORS[4]} strokeWidth={2} dot={{ r: 3 }} />}
+                    </ComposedChart>
+                  </ResponsiveContainer>
+                )}
+
+                {isWaterfall2 && (() => {
+                  const POS_COLOR = "#0D7377";
+                  const NEG_COLOR = "#ef4444";
+                  const TOTAL_COLOR = "#0E253C";
+                  return (
+                    <ResponsiveContainer width="100%" height={380}>
+                      <BarChart data={waterfallChartData} margin={{ top: 10, right: 20, left: 0, bottom: 50 }}>
+                        <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                        <XAxis dataKey="name" tick={{ fontSize: 11 }} angle={-35} textAnchor="end" interval={0} />
+                        <YAxis tick={{ fontSize: 11 }} />
+                        <Tooltip
+                          formatter={(_: unknown, _name: unknown, props: { payload?: { rawValue?: number } }) => {
+                            const v = props?.payload?.rawValue;
+                            return [v !== undefined ? (v >= 0 ? `+${v.toLocaleString()}` : v.toLocaleString()) : "-", yCol ?? "값"];
+                          }}
+                        />
+                        <Bar dataKey="invisible" stackId="w" fill="transparent" legendType="none" />
+                        <Bar dataKey="amount" stackId="w" radius={[4, 4, 0, 0]} name={yCol ?? "값"}
+                        >
+                          {waterfallChartData.map((entry, i) => (
+                            <Cell key={i}
+                              fill={i === waterfallChartData.length - 1 ? TOTAL_COLOR : entry.isPositive ? POS_COLOR : NEG_COLOR}
+                            />
+                          ))}
+                        </Bar>
+                      </BarChart>
+                    </ResponsiveContainer>
+                  );
+                })()}
               </div>
             );
           })()}

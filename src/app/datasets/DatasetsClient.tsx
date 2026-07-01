@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useDeferredValue } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
@@ -254,15 +254,18 @@ export default function DatasetsClient() {
   }, [activeTab, user, historyFetched]);
 
   // ── 필터링 ─────────────────────────────────────────────────
+  // 검색어는 useDeferredValue로 지연 처리 — 입력창은 즉시 반응하고,
+  // 무거운 목록 재필터링은 한 박자 늦춰 타이핑 중 버벅임을 막는다.
+  const deferredQuery = useDeferredValue(query);
   const filtered = useMemo(() => {
     return datasets.filter((d) => {
-      const matchQ    = d.title.includes(query) || d.description?.includes(query);
+      const matchQ    = d.title.includes(deferredQuery) || d.description?.includes(deferredQuery);
       const matchCat  = category === "전체 카테고리" || d.category === category;
       const matchYear = year === "전체 연도" || d.year === year;
       const matchFile = fileType === "전체 형식" || d.tags?.includes(fileType);
       return matchQ && matchCat && matchYear && matchFile;
     });
-  }, [datasets, query, category, year, fileType]);
+  }, [datasets, deferredQuery, category, year, fileType]);
 
   const hasFilter = category !== "전체 카테고리" || year !== "전체 연도" || fileType !== "전체 형식" || query !== "";
 

@@ -666,6 +666,9 @@ export default function AnalysisClient() {
 
   // 막대/선/영역 — X별 Y 평균 집계 (상위 30개 항목)
   const aggChartData = useMemo(() => {
+    // 차트 생성 전이거나 막대/선/영역 계열이 아니면 계산 생략
+    // — 컬럼 선택/차트 종류 전환 시 안 보이는 차트까지 전체 행을 스캔하는 낭비 방지
+    if (!chartGenerated || !["bar", "bar-h", "line", "area"].includes(selectedChartType ?? "")) return [];
     if (!xCol || !yCol) return [];
     const xMeta = cols.find((c) => c.name === xCol);
     const yMeta = cols.find((c) => c.name === yCol);
@@ -681,10 +684,11 @@ export default function AnalysisClient() {
     return [...map.entries()]
       .slice(0, 30)
       .map(([label, vals]) => ({ label, value: parseFloat((vals.reduce((s, v) => s + v, 0) / vals.length).toFixed(2)) }));
-  }, [cols, rows, xCol, yCol]);
+  }, [cols, rows, xCol, yCol, chartGenerated, selectedChartType]);
 
   // 파이/도넛 — 항목별 빈도 or 합계
   const pieChartData = useMemo(() => {
+    if (!chartGenerated || !["pie", "donut"].includes(selectedChartType ?? "")) return [];
     if (!xCol) return [];
     const xMeta = cols.find((c) => c.name === xCol);
     if (!xMeta) return [];
@@ -701,10 +705,11 @@ export default function AnalysisClient() {
       return [...map.entries()].slice(0, 12).map(([name, value]) => ({ name, value }));
     }
     return makeFrequency(xMeta.values, 12).map(({ label, count }) => ({ name: label, value: count }));
-  }, [cols, rows, xCol, yCol]);
+  }, [cols, rows, xCol, yCol, chartGenerated, selectedChartType]);
 
   // 산점도/버블 — 유효 좌표 포인트
   const scatterChartData = useMemo(() => {
+    if (!chartGenerated || !["scatter", "bubble"].includes(selectedChartType ?? "")) return [];
     if (!xCol || !yCol) return [];
     const xMeta = cols.find((c) => c.name === xCol);
     const yMeta = cols.find((c) => c.name === yCol);
@@ -713,18 +718,20 @@ export default function AnalysisClient() {
     return rows
       .map((_, i) => ({ x: parseNumeric(xMeta.values[i]), y: parseNumeric(yMeta.values[i]), z: zMeta ? (parseNumeric(zMeta.values[i]) ?? 1) : 1 }))
       .filter((p): p is { x: number; y: number; z: number } => p.x !== null && p.y !== null);
-  }, [cols, rows, xCol, yCol, zCol]);
+  }, [cols, rows, xCol, yCol, zCol, chartGenerated, selectedChartType]);
 
   // 히스토그램 — 선택 수치 열 분포
   const histChartData = useMemo(() => {
+    if (!chartGenerated || selectedChartType !== "histogram") return [];
     if (!xCol) return [];
     const meta = cols.find((c) => c.name === xCol);
     if (!meta || meta.type !== "numeric") return [];
     return makeHistogram((meta.values as (number | null)[]).filter(isNumeric) as number[]);
-  }, [cols, xCol]);
+  }, [cols, xCol, chartGenerated, selectedChartType]);
 
   // 레이더 — 수치 열 정규화 평균 (0~100%)
   const radarChartData = useMemo(() => {
+    if (!chartGenerated || selectedChartType !== "radar") return [];
     return radarCols.map((colName) => {
       const meta = cols.find((c) => c.name === colName);
       if (!meta) return { col: colName, value: 0 };
@@ -735,10 +742,11 @@ export default function AnalysisClient() {
       const normalized = mx > mn ? parseFloat((((avg - mn) / (mx - mn)) * 100).toFixed(1)) : 50;
       return { col: colName, value: normalized };
     });
-  }, [cols, radarCols]);
+  }, [cols, radarCols, chartGenerated, selectedChartType]);
 
   // 히트맵 — X×Y 교차 빈도 or Z 평균
   const heatmapChartData = useMemo(() => {
+    if (!chartGenerated || selectedChartType !== "heatmap") return { xLabels: [] as string[], yLabels: [] as string[], matrix: [] as number[][], maxVal: 0 };
     if (!xCol || !yCol) return { xLabels: [] as string[], yLabels: [] as string[], matrix: [] as number[][], maxVal: 0 };
     const xMeta = cols.find((c) => c.name === xCol);
     const yMeta = cols.find((c) => c.name === yCol);
@@ -764,10 +772,11 @@ export default function AnalysisClient() {
     );
     const maxVal = Math.max(0, ...matrix.flat());
     return { xLabels, yLabels, matrix, maxVal };
-  }, [cols, rows, xCol, yCol, zCol]);
+  }, [cols, rows, xCol, yCol, zCol, chartGenerated, selectedChartType]);
 
   // 트리맵 — 항목별 비중
   const treemapChartData = useMemo(() => {
+    if (!chartGenerated || selectedChartType !== "treemap") return [];
     if (!xCol) return [];
     const xMeta = cols.find((c) => c.name === xCol);
     if (!xMeta) return [];
@@ -785,7 +794,27 @@ export default function AnalysisClient() {
       }
     }
     return makeFrequency(xMeta.values, 20).map((d, i) => ({ name: d.label, size: d.count, fill: COLORS[i % COLORS.length] }));
-  }, [cols, rows, xCol, yCol]);
+  }, [cols, rows, xCol, yCol, chartGenerated, selectedChartType]);
+
+  // 자동 시각화(개요 탭) 미니차트 데이터 — 렌더링마다 전 컬럼을 재집계하지 않도록
+  // cols/rows가 바뀔 때만 1회 계산 (히스토그램/월별집계/빈도 + 고카디널리티 판정)
+  const autoVizData = useMemo(() => {
+    return vizCols.map((col) => {
+      const isNum  = col.type === "numeric";
+      const isDate = col.type === "date";
+      const chartData = isNum
+        ? makeHistogram((col.values as (number | null)[]).filter(isNumeric) as number[], 8)
+        : isDate
+        ? makeDateFrequency(col.values, 12)
+        : makeFrequency(col.values, 8);
+      // 범주형 고카디널리티 감지 (고유값 > 50 또는 고유값/행수 > 50%)
+      const uniqueCount = !isNum && !isDate
+        ? new Set(col.values.filter(Boolean).map(String)).size
+        : 0;
+      const isHighCardinality = !isNum && !isDate && (uniqueCount > 50 || uniqueCount / rows.length > 0.5);
+      return { col, isNum, isDate, chartData, uniqueCount, isHighCardinality };
+    });
+  }, [vizCols, rows]);
 
   // ── Excel 멀티시트 선택 화면 ──────────────────────────────
   if (sheetNames.length > 0 && pendingWb) {
@@ -1111,20 +1140,7 @@ export default function AnalysisClient() {
           <div>
             <h2 className="font-semibold text-neutral-800 mb-4">자동 시각화</h2>
             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-              {vizCols.map((col) => {
-                const isNum  = col.type === "numeric";
-                const isDate = col.type === "date";
-                const chartData = isNum
-                  ? makeHistogram((col.values as (number | null)[]).filter(isNumeric) as number[], 8)
-                  : isDate
-                  ? makeDateFrequency(col.values, 12)
-                  : makeFrequency(col.values, 8);
-                // 범주형 고카디널리티 감지 (고유값 > 50 또는 고유값/행수 > 50%)
-                const uniqueCount = !isNum && !isDate
-                  ? new Set(col.values.filter(Boolean).map(String)).size
-                  : 0;
-                const isHighCardinality = !isNum && !isDate && (uniqueCount > 50 || uniqueCount / rows.length > 0.5);
-
+              {autoVizData.map(({ col, isNum, isDate, chartData, uniqueCount, isHighCardinality }) => {
                 return (
                   <div key={col.name} className="bg-white rounded-2xl border border-neutral-200 p-4 hover:border-brand-200 transition-colors">
                     <div className="flex items-center justify-between mb-3">

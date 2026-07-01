@@ -65,7 +65,7 @@ export default function Navbar() {
 
   return (
     <>
-      <header className={`fixed top-0 left-0 right-0 z-50 transition-colors duration-300 ${navBg}`}>
+      <header className={`fixed top-0 left-0 right-0 z-50 transition-colors duration-150 ${navBg}`}>
         <div className="w-full px-4 md:px-6 lg:px-10">
           <div className="flex items-center justify-between h-16 md:h-20 gap-4">
 
@@ -80,7 +80,7 @@ export default function Navbar() {
               ) : (
                 <div className="w-10 h-10 rounded-lg bg-brand-600 flex items-center justify-center text-white text-sm font-black flex-shrink-0">IU</div>
               )}
-              <span className={`hidden sm:block text-sm md:text-base font-bold tracking-tight transition-colors duration-300 whitespace-nowrap ${isHome && !scrolled ? "text-white" : "text-neutral-800"}`}>
+              <span className={`hidden sm:block text-sm md:text-base font-bold tracking-tight transition-colors duration-150 whitespace-nowrap ${isHome && !scrolled ? "text-white" : "text-neutral-800"}`}>
                 데이터거버넌스센터
               </span>
             </Link>
@@ -91,8 +91,8 @@ export default function Navbar() {
                 const isActive = pathname === link.href;
                 return (
                   <Link key={link.href} href={link.href}
-                    className={`text-xs xl:text-sm font-semibold transition-colors duration-200 px-2 py-1 rounded-md whitespace-nowrap ${linkColor} ${
-                      isActive ? "opacity-100" : "opacity-60 hover:opacity-85"
+                    className={`text-xs xl:text-sm font-semibold transition-opacity duration-150 px-2 py-1 rounded-md whitespace-nowrap ${linkColor} ${
+                      isActive ? "opacity-100" : "opacity-55 hover:opacity-80"
                     }`}>
                     {link.label}
                   </Link>

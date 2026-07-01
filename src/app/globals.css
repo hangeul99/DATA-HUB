@@ -78,10 +78,8 @@
 }
 
 /* 부드러운 스크롤 이동 효과 */
-/* scrollbar-gutter: stable — 스크롤바 유무에 따른 레이아웃 밀림 방지 */
 html {
   scroll-behavior: smooth;
-  scrollbar-gutter: stable;
 }
 
 body {

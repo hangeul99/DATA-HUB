@@ -91,7 +91,7 @@ export default function Navbar() {
                 const isActive = pathname === link.href;
                 return (
                   <Link key={link.href} href={link.href}
-                    className={`text-xs xl:text-sm font-semibold transition-opacity duration-150 px-2 py-1 rounded-md whitespace-nowrap ${linkColor} ${
+                    className={`text-xs xl:text-sm font-semibold duration-150 px-2 py-1 rounded-md whitespace-nowrap [transition:color_150ms,opacity_150ms] ${linkColor} ${
                       isActive ? "opacity-100" : "opacity-55 hover:opacity-80"
                     }`}>
                     {link.label}
@@ -106,21 +106,21 @@ export default function Navbar() {
                 <>
                   {isAdmin && (
                     <Link href="/admin"
-                      className={`flex items-center gap-1 text-xs font-medium px-2.5 py-1.5 rounded-lg transition-colors ${
+                      className={`flex items-center gap-1 text-xs font-medium px-2.5 py-1.5 rounded-lg [transition:color_150ms,background-color_150ms] ${
                         isHome && !scrolled ? "text-white/70 hover:bg-white/15" : "text-neutral-400 hover:bg-neutral-100"
                       }`}>
                       <Settings size={12} /> 관리자
                     </Link>
                   )}
                   <Link href="/mypage"
-                    className={`flex items-center gap-1 text-xs font-medium px-3 py-1.5 rounded-lg transition-colors whitespace-nowrap max-w-[100px] truncate ${
+                    className={`flex items-center gap-1 text-xs font-medium px-3 py-1.5 rounded-lg [transition:color_150ms,background-color_150ms] whitespace-nowrap max-w-[100px] truncate ${
                       isHome && !scrolled ? "text-white hover:bg-white/15" : "text-neutral-600 hover:bg-neutral-100"
                     }`}>
                     <User size={13} />
                     {user.user_metadata?.full_name?.split(" ")[0] ?? user.email?.split("@")[0]}
                   </Link>
                   <button onClick={logout}
-                    className={`flex items-center gap-1 text-xs font-medium px-3 py-1.5 rounded-lg transition-colors ${
+                    className={`flex items-center gap-1 text-xs font-medium px-3 py-1.5 rounded-lg [transition:color_150ms,background-color_150ms] ${
                       isHome && !scrolled ? "text-white/70 hover:bg-white/15" : "text-neutral-400 hover:bg-neutral-100"
                     }`}>
                     <LogOut size={13} /> 로그아웃

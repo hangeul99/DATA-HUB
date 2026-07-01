@@ -27,6 +27,7 @@ export async function GET(
     .eq("user_id", user.id)
     .eq("dataset_id", datasetId)
     .eq("status", "approved")
+    .limit(1)
     .maybeSingle();
   if (!app) {
     return NextResponse.json({ error: "다운로드 권한이 없습니다." }, { status: 403 });

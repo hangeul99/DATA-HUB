@@ -539,7 +539,10 @@ export default function AnalysisClient() {
         row_count:    data.length,
         col_count:    keys.length,
       }).then(({ error }) => {
-        if (error) console.error("[analysis_log]", error.message, error.details);
+        // 중복 키 에러(race condition)는 무시, 그 외 에러만 로깅
+        if (error && !error.message.includes("duplicate") && !error.code?.startsWith("23")) {
+          console.error("[analysis_log]", error.message, error.details);
+        }
       });
     });
   }, []);

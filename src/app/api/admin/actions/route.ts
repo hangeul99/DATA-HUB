@@ -48,7 +48,11 @@ export async function POST(request: Request) {
           .from("profiles")
           .update({ local_data_approved: true })
           .eq("id", req.user_id);
-        if (pErr) return NextResponse.json({ error: pErr.message }, { status: 500 });
+        if (pErr) {
+          // 프로필 업데이트 실패 시 access_requests 상태 롤백
+          await db.from("access_requests").update({ status: "pending" }).eq("id", id);
+          return NextResponse.json({ error: `권한 부여 실패 (롤백됨): ${pErr.message}` }, { status: 500 });
+        }
       }
       return NextResponse.json({ success: true, status });
     }

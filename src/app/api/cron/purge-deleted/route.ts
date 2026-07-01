@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import type { User } from "@supabase/supabase-js";
 
 // ── 30일 유예기간 만료 계정 실제 삭제 (Vercel Cron / 관리자 수동 호출) ──
 // vercel.json: { "crons": [{ "path": "/api/cron/purge-deleted", "schedule": "0 2 * * *" }] }
@@ -16,12 +17,19 @@ export async function GET(request: Request) {
   const GRACE_DAYS = 30;
   const cutoff = new Date(Date.now() - GRACE_DAYS * 24 * 60 * 60 * 1000).toISOString();
 
-  const { data: { users }, error: listErr } = await admin.auth.admin.listUsers({ perPage: 1000 });
-  if (listErr) {
-    return NextResponse.json({ error: listErr.message }, { status: 500 });
+  // 페이지네이션으로 전체 사용자 조회 (1000명 초과 대응)
+  const allUsers: User[] = [];
+  let page = 1;
+  while (true) {
+    const { data: { users: pageUsers }, error: listErr } = await admin.auth.admin.listUsers({ perPage: 1000, page });
+    if (listErr) return NextResponse.json({ error: listErr.message }, { status: 500 });
+    if (!pageUsers || pageUsers.length === 0) break;
+    allUsers.push(...pageUsers);
+    if (pageUsers.length < 1000) break;
+    page++;
   }
 
-  const targets = (users ?? []).filter(
+  const targets = allUsers.filter(
     (u) =>
       u.user_metadata?.deletion_scheduled === true &&
       u.user_metadata?.deletion_scheduled_at &&

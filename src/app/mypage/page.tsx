@@ -7,6 +7,7 @@ import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import { createClient } from "@/lib/supabase/client";
 import type { User } from "@supabase/supabase-js";
+import Turnstile from "@/components/Turnstile";
 import {
   User as UserIcon, Mail, LogOut, Download, FileText,
   Upload, ChevronRight, Loader2, Calendar, Tag, Trash2,
@@ -64,6 +65,9 @@ export default function MyPage() {
   const [passwordError, setPasswordError]       = useState<string | null>(null);
   const [passwordLoading, setPasswordLoading]   = useState(false);
   const [showNewPw, setShowNewPw]               = useState(false);
+  // 캡차 토큰 — 비밀번호 변경 시 현재 비밀번호 재확인(signInWithPassword)에 필요
+  const [pwCaptchaToken, setPwCaptchaToken]     = useState<string | null>(null);
+  const [pwCaptchaKey, setPwCaptchaKey]         = useState(0);
 
   // 각 탭 데이터
   const [applications, setApplications] = useState<Application[]>([]);
@@ -152,15 +156,27 @@ export default function MyPage() {
     setPasswordError(null);
     if (newPassword.length < 8) { setPasswordError("비밀번호는 8자 이상이어야 합니다."); return; }
     if (newPassword !== confirmPassword) { setPasswordError("새 비밀번호가 일치하지 않습니다."); return; }
+    // 캡차 사용 중인데 아직 통과 전이면 잠시 대기 요청
+    if (process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY && !pwCaptchaToken) {
+      setPasswordError("보안 확인이 진행 중입니다. 잠시 후 다시 시도해주세요."); return;
+    }
     setPasswordLoading(true);
     const supabase = createClient();
-    // 현재 비밀번호 검증
+    // 현재 비밀번호 검증 (캡차 토큰 포함)
     const { error: signInErr } = await supabase.auth.signInWithPassword({
       email: user!.email!,
       password: currentPassword,
+      options: { captchaToken: pwCaptchaToken ?? undefined },
     });
     if (signInErr) {
-      setPasswordError("현재 비밀번호가 올바르지 않습니다.");
+      setPasswordError(
+        signInErr.message.toLowerCase().includes("captcha")
+          ? "보안 확인에 실패했습니다. 다시 시도해주세요."
+          : "현재 비밀번호가 올바르지 않습니다."
+      );
+      // 캡차 토큰은 1회용이므로 실패 시 리셋
+      setPwCaptchaToken(null);
+      setPwCaptchaKey((k) => k + 1);
       setPasswordLoading(false);
       return;
     }
@@ -513,6 +529,15 @@ export default function MyPage() {
                   placeholder="새 비밀번호 확인"
                   className={`w-full px-4 py-3 rounded-xl border text-sm text-neutral-700 focus:outline-none focus:ring-2 focus:ring-brand-400 placeholder:text-neutral-400
                     ${confirmPassword && confirmPassword !== newPassword ? "border-red-300" : confirmPassword && confirmPassword === newPassword ? "border-brand-300" : "border-neutral-200"}`}
+                />
+              </div>
+
+              {/* 캡차 (봇 차단) — 대부분 자동 통과 */}
+              <div className="mt-4">
+                <Turnstile
+                  key={pwCaptchaKey}
+                  onVerify={setPwCaptchaToken}
+                  onExpire={() => setPwCaptchaToken(null)}
                 />
               </div>
 

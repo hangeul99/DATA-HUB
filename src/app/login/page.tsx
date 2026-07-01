@@ -6,6 +6,7 @@ import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { ArrowLeft, Lock, Shield, AlertCircle, Eye, EyeOff } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
+import Turnstile from "@/components/Turnstile";
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
@@ -17,6 +18,9 @@ export default function LoginPage() {
   // 아이디(이메일) 저장 / 로그인 상태 유지 — 기본값은 유지(현행 동작)
   const [rememberId, setRememberId] = useState(false);
   const [keepLoggedIn, setKeepLoggedIn] = useState(true);
+  // 캡차 토큰 — 통과 시 발급, 로그인 요청에 실어 보냄. key 변경으로 위젯 리셋(토큰 1회용).
+  const [captchaToken, setCaptchaToken] = useState<string | null>(null);
+  const [captchaKey, setCaptchaKey] = useState(0);
   const router = useRouter();
 
   // 저장된 이메일 / 지난번 로그인유지 설정을 복원
@@ -57,16 +61,28 @@ export default function LoginPage() {
   const loginWithEmail = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!email || !password) { setError("이메일과 비밀번호를 입력하세요."); return; }
+    // 캡차 사용 중인데 아직 통과 전이면 잠시 대기 요청 (대부분 자동으로 몇 초 내 통과)
+    if (process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY && !captchaToken) {
+      setError("보안 확인이 진행 중입니다. 잠시 후 다시 시도해주세요.");
+      return;
+    }
     setLoadingEmail(true);
     setError(null);
     applyLoginPrefs();
     const supabase = createClient();
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    const { error } = await supabase.auth.signInWithPassword({
+      email, password,
+      options: { captchaToken: captchaToken ?? undefined },
+    });
     if (error) {
       // Supabase 에러 메시지를 한국어로 변환
       if (error.message.includes("Invalid login")) setError("이메일 또는 비밀번호가 올바르지 않습니다.");
       else if (error.message.includes("Email not confirmed")) setError("이메일 인증을 완료해주세요. 받은 편지함을 확인하세요.");
+      else if (error.message.toLowerCase().includes("captcha")) setError("보안 확인에 실패했습니다. 다시 시도해주세요.");
       else setError("로그인 중 오류가 발생했습니다.");
+      // 캡차 토큰은 1회용이므로 실패 시 위젯을 리셋해 새 토큰을 받는다.
+      setCaptchaToken(null);
+      setCaptchaKey((k) => k + 1);
       setLoadingEmail(false);
     } else {
       router.push("/");
@@ -161,6 +177,13 @@ export default function LoginPage() {
                 로그인 상태 유지
               </label>
             </div>
+
+            {/* 캡차 (봇 차단) — 대부분 자동 통과 */}
+            <Turnstile
+              key={captchaKey}
+              onVerify={setCaptchaToken}
+              onExpire={() => setCaptchaToken(null)}
+            />
 
             <button type="submit" disabled={loadingEmail}
               className="w-full bg-brand-600 hover:bg-brand-700 text-white font-semibold py-3.5 rounded-xl transition-colors active:scale-95 disabled:opacity-60">

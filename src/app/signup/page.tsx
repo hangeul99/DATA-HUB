@@ -5,6 +5,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { ArrowLeft, Lock, Shield, AlertCircle, Eye, EyeOff, CheckCircle } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
+import Turnstile from "@/components/Turnstile";
 
 export default function SignupPage() {
   const [name, setName]                     = useState("");
@@ -21,6 +22,9 @@ export default function SignupPage() {
   const [agreeAge, setAgreeAge]             = useState(false);
   const [emailStatus, setEmailStatus]       = useState<"idle" | "checking" | "available" | "taken">("idle");
   const emailTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // 캡차 토큰 (봇 차단) — 통과 시 발급, 가입 요청에 실어 보냄
+  const [captchaToken, setCaptchaToken]     = useState<string | null>(null);
+  const [captchaKey, setCaptchaKey]         = useState(0);
 
   const handleEmailChange = (val: string) => {
     setEmail(val);
@@ -58,6 +62,10 @@ export default function SignupPage() {
     if (!organization.trim()) { setError("소속기관을 입력하세요."); return; }
     if (!passwordValid) { setError("비밀번호는 8자 이상이어야 합니다."); return; }
     if (!passwordMatch) { setError("비밀번호가 일치하지 않습니다."); return; }
+    // 캡차 사용 중인데 아직 통과 전이면 잠시 대기 요청
+    if (process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY && !captchaToken) {
+      setError("보안 확인이 진행 중입니다. 잠시 후 다시 시도해주세요."); return;
+    }
 
     setLoading(true);
     const supabase = createClient();
@@ -69,12 +77,17 @@ export default function SignupPage() {
         data: { full_name: name, organization: organization.trim(), consented_at: new Date().toISOString() },
         // 이메일 인증 후 돌아올 주소
         emailRedirectTo: `${location.origin}/auth/callback`,
+        captchaToken: captchaToken ?? undefined,
       },
     });
 
     if (error) {
       if (error.message.includes("already registered")) setError("이미 가입된 이메일입니다. 로그인해주세요.");
+      else if (error.message.toLowerCase().includes("captcha")) setError("보안 확인에 실패했습니다. 다시 시도해주세요.");
       else setError("회원가입 중 오류가 발생했습니다.");
+      // 캡차 토큰은 1회용이므로 실패 시 위젯 리셋
+      setCaptchaToken(null);
+      setCaptchaKey((k) => k + 1);
       setLoading(false);
     } else {
       // 성공 → 이메일 인증 안내 화면으로 전환
@@ -229,6 +242,13 @@ export default function SignupPage() {
                 </span>
               </label>
             </div>
+
+            {/* 캡차 (봇 차단) — 대부분 자동 통과 */}
+            <Turnstile
+              key={captchaKey}
+              onVerify={setCaptchaToken}
+              onExpire={() => setCaptchaToken(null)}
+            />
 
             {/* 가입 버튼 */}
             <button type="submit" disabled={loading || !agreePrivacy || !agreeTerms || !agreeAge || emailStatus === "taken"}

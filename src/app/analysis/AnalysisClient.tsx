@@ -392,6 +392,14 @@ export default function AnalysisClient() {
 
     const cache = new Map<string, { lat: number; lng: number } | null>();
 
+    // 주소별 등장 횟수 미리 계산 — 루프 내 allVals 재스캔(O(n²)) 방지
+    const addrCounts = new Map<string, number>();
+    for (const a of allVals) {
+      if (a) addrCounts.set(a, (addrCounts.get(a) ?? 0) + 1);
+    }
+    // 확정된 좌표를 누적하며 setGeocodedPts 호출 (증분 갱신)
+    const accPts: { lat: number; lng: number; label: string }[] = [];
+
     for (let i = 0; i < unique.length; i++) {
       const addr = unique[i];
       try {
@@ -425,16 +433,13 @@ export default function AnalysisClient() {
 
       setGeocodeCount(i + 1);
 
-      // 변환 완료 주소부터 지도에 실시간 반영
-      const pts = allVals
-        .map((a) => {
-          if (!a) return null;
-          const coord = cache.get(a);
-          if (!coord) return null;
-          return { ...coord, label: a };
-        })
-        .filter((p): p is { lat: number; lng: number; label: string } => p !== null);
-      setGeocodedPts(pts);
+      // 변환 완료 주소를 누적 배열에 추가 후 지도 갱신 (O(count) — 전체 재스캔 불필요)
+      const coord = cache.get(addr);
+      if (coord) {
+        const count = addrCounts.get(addr) ?? 0;
+        for (let j = 0; j < count; j++) accPts.push({ lat: coord.lat, lng: coord.lng, label: addr });
+      }
+      setGeocodedPts([...accPts]);
     }
 
     setGeocoding(false);

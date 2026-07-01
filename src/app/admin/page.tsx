@@ -516,12 +516,12 @@ export default function AdminPage() {
   };
 
   // ── 지역/업체 접근 권한 승인/거절 ───────────────────────────
-  const handleAccessRequest = async (requestId: string, userId: string, approve: boolean) => {
+  const handleAccessRequest = async (requestId: string, _userId: string, approve: boolean) => {
     const newStatus = approve ? "approved" : "rejected";
+    // userId는 서버가 access_requests.user_id를 직접 조회하므로 전달 불필요
     const ok = await callAdminAction({
       action: approve ? "approve-access" : "reject-access",
       id: requestId,
-      userId,
     });
     if (!ok) { alert("처리에 실패했습니다."); return; }
     setAccessRows(prev => prev.map(r => r.id === requestId ? { ...r, status: newStatus } : r));

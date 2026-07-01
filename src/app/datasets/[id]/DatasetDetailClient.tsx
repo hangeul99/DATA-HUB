@@ -375,10 +375,7 @@ export default function DatasetDetailClient({ id }: { id: string }) {
       document.body.removeChild(a);
       URL.revokeObjectURL(blobUrl);
 
-      // 3. 다운로드 로그 + 카운트 증가
-      const supabase = createClient();
-      await supabase.from("download_logs").insert({ user_id: userInfo.id, dataset_id: dataset.id });
-      await supabase.rpc("increment_dataset_downloads", { dataset_id: dataset.id });
+      // 3. UI 카운트 증가 (로그·카운트 실제 기록은 서버 라우트에서 완료)
       setDataset(prev => prev ? { ...prev, downloads: prev.downloads + 1 } : prev);
     } catch {
       setDownloadError("다운로드에 실패했습니다. 다시 시도해주세요.");

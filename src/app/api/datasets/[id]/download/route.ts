@@ -54,5 +54,11 @@ export async function GET(
   const rawName = ds.file_path.split("/").pop() ?? "download";
   const cleanName = rawName.replace(/^\d+_/, "");
 
+  // 5. 다운로드 로그 + 카운트 증가 — 서버에서 보장 (클라이언트 의존 제거)
+  await Promise.all([
+    db.from("download_logs").insert({ user_id: user.id, dataset_id: datasetId }),
+    db.rpc("increment_dataset_downloads", { dataset_id: datasetId }),
+  ]);
+
   return NextResponse.json({ url: signed.signedUrl, filename: cleanName });
 }

@@ -2,22 +2,23 @@ import { NextResponse } from "next/server";
 import { createAdminClient, getRequestUser } from "@/lib/supabase/admin";
 
 export async function DELETE() {
-  // 현재 로그인 유저 확인 (서버에서 토큰 검증)
   const user = await getRequestUser();
   if (!user) {
     return NextResponse.json({ error: "인증이 필요합니다." }, { status: 401 });
   }
 
-  // 서비스 롤 클라이언트 (RLS 우회 — 유저 삭제 + 관련 데이터 정리 권한)
   const admin = createAdminClient();
-
-  // ── 1. 사용자 관련 개인정보를 명시적으로 모두 삭제 ──────────────
-  // FK가 ON DELETE CASCADE로 설정돼 있지 않더라도 연락처·소속 등
-  // 개인정보가 DB에 남지 않도록 직접 지운다(개인정보보호법 — 규칙 2-4).
-  // 자식 테이블(신청·로그·결과물·댓글·게시글·접근신청)을 먼저 지우고
-  // 마지막에 profiles → auth 유저 순으로 삭제한다.
   const uid = user.id;
-  await Promise.all([
+
+  // ── 1. 게시글 첨부파일 경로 수집 (Storage 삭제를 위해 먼저 조회) ──
+  const { data: userPosts } = await admin
+    .from("posts")
+    .select("attachment_path")
+    .eq("user_id", uid)
+    .not("attachment_path", "is", null);
+
+  // ── 2. 자식 테이블 개인정보 삭제 (오류 발생 시 중단 — 데이터 잔류 방지) ──
+  const delResults = await Promise.all([
     admin.from("applications").delete().eq("user_id", uid),
     admin.from("download_logs").delete().eq("user_id", uid),
     admin.from("results").delete().eq("user_id", uid),
@@ -25,14 +26,26 @@ export async function DELETE() {
     admin.from("comments").delete().eq("user_id", uid),
     admin.from("posts").delete().eq("user_id", uid),
   ]);
-  // 프로필 행 삭제 (위 자식 행 정리 후)
-  await admin.from("profiles").delete().eq("id", uid);
+  const childErr = delResults.find((r) => r.error);
+  if (childErr) {
+    return NextResponse.json({ error: "데이터 삭제 중 오류가 발생했습니다." }, { status: 500 });
+  }
 
-  // ── 2. 인증 계정(Auth) 삭제 ────────────────────────────────────
-  const { error } = await admin.auth.admin.deleteUser(uid);
-  if (error) {
+  // ── 3. 게시글 첨부파일 Storage 삭제 (잊힐 권리 — 개인정보보호법) ──
+  if (userPosts && userPosts.length > 0) {
+    const paths = userPosts.map((p) => p.attachment_path as string);
+    await admin.storage.from("post-attachments").remove(paths);
+  }
+
+  // ── 4. Auth 계정 먼저 삭제 — 실패 시 profiles를 그대로 보존 ──────
+  // (profiles 먼저 지우면 deleteUser 실패 시 로그인 가능한 고아 계정 발생)
+  const { error: authErr } = await admin.auth.admin.deleteUser(uid);
+  if (authErr) {
     return NextResponse.json({ error: "탈퇴 처리 중 오류가 발생했습니다." }, { status: 500 });
   }
+
+  // ── 5. profiles 삭제 (Auth 삭제 확인 후) ─────────────────────────
+  await admin.from("profiles").delete().eq("id", uid);
 
   return NextResponse.json({ success: true });
 }

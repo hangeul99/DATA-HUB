@@ -87,14 +87,17 @@ export default function Navbar() {
 
             {/* 데스크탑 네비게이션 — lg 이상에서만 표시 */}
             <nav className="hidden lg:flex items-center justify-center gap-1 xl:gap-4 flex-1">
-              {navLinks.map((link) => (
-                <Link key={link.href} href={link.href}
-                  className={`text-xs xl:text-sm font-medium transition-colors duration-200 hover:opacity-70 px-2 py-1 rounded-md whitespace-nowrap ${linkColor} ${
-                    pathname === link.href ? "opacity-100 font-semibold" : "opacity-75"
-                  }`}>
-                  {link.label}
-                </Link>
-              ))}
+              {navLinks.map((link) => {
+                const isActive = pathname === link.href;
+                return (
+                  <Link key={link.href} href={link.href}
+                    className={`text-xs xl:text-sm font-semibold transition-colors duration-200 px-2 py-1 rounded-md whitespace-nowrap ${linkColor} ${
+                      isActive ? "opacity-100" : "opacity-60 hover:opacity-85"
+                    }`}>
+                    {link.label}
+                  </Link>
+                );
+              })}
             </nav>
 
             {/* 인증 영역 — lg 이상에서만 표시 */}

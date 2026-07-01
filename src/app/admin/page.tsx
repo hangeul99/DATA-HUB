@@ -286,10 +286,10 @@ export default function AdminPage() {
       { count: dl },
       { count: r },
     ] = await Promise.all([
-      supabase.from("datasets").select("*", { count: "exact", head: true }).eq("is_active", true),
-      supabase.from("applications").select("*", { count: "exact", head: true }),
-      supabase.from("download_logs").select("*", { count: "exact", head: true }),
-      supabase.from("results").select("*", { count: "exact", head: true }),
+      supabase.from("datasets").select("id", { count: "exact", head: true }).eq("is_active", true),
+      supabase.from("applications").select("id", { count: "exact", head: true }),
+      supabase.from("download_logs").select("id", { count: "exact", head: true }),
+      supabase.from("results").select("id", { count: "exact", head: true }),
     ]);
     setSummary({ datasets: d ?? 0, applications: a ?? 0, downloads: dl ?? 0, submissions: r ?? 0 });
   }, []);
@@ -549,7 +549,8 @@ export default function AdminPage() {
   // ── 결과물 다운로드 서명 URL ─────────────────────────────────
   const downloadResult = async (filePath: string) => {
     const supabase = createClient();
-    const { data } = await supabase.storage.from("results").createSignedUrl(filePath, 3600);
+    // 15분(900초) 단기 서명 URL — 장시간 노출 최소화
+    const { data } = await supabase.storage.from("results").createSignedUrl(filePath, 900);
     if (data?.signedUrl) window.open(data.signedUrl, "_blank");
   };
 

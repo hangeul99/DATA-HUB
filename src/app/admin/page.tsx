@@ -226,7 +226,26 @@ export default function AdminPage() {
   const [memberRows, setMemberRows] = useState<MemberRow[]>([]);
   const [activityRows, setActivityRows] = useState<ActivityRow[]>([]);
   const [activityPage, setActivityPage] = useState(1);
+  const [activityFilter, setActivityFilter] = useState<string>("전체");
   const ACTIVITY_PER_PAGE = 100;
+
+  const ACTIVITY_FILTERS = ["전체", "지자체", "기업/업체", "학교/대학교", "연구기관", "기타"] as const;
+
+  const matchFilter = (org: string, filter: string): boolean => {
+    const o = org.toLowerCase();
+    if (filter === "전체") return true;
+    if (filter === "지자체") return /시청|군청|구청|도청|지자체|읍사무소|면사무소|주민센터|행정복지센터|시\.?$|군\.?$|구청/.test(org);
+    if (filter === "기업/업체") return /주식회사|\(주\)|㈜|기업|업체|회사|법인|co\.|corp\./i.test(org) || o.includes("기업") || o.includes("업체");
+    if (filter === "학교/대학교") return /대학교|대학원|대학|학교|교육청|교육원|초등|중학|고등/.test(org);
+    if (filter === "연구기관") return /연구원|연구소|연구센터|연구/.test(org);
+    // 기타: 위 어디에도 해당하지 않음
+    return ![
+      /시청|군청|구청|도청|지자체|읍사무소|면사무소|주민센터|행정복지센터/.test(org),
+      /주식회사|\(주\)|㈜|기업|업체|회사|법인/.test(org),
+      /대학교|대학원|대학|학교|교육청|교육원|초등|중학|고등/.test(org),
+      /연구원|연구소|연구센터|연구/.test(org),
+    ].some(Boolean);
+  };
   const [accessRows, setAccessRows] = useState<AccessRequestRow[]>([]);
 
   const [loading, setLoading] = useState(false);
@@ -812,7 +831,12 @@ export default function AdminPage() {
         {!loading && tab === 5 && (
           <div className="bg-white rounded-2xl border border-neutral-100 overflow-hidden">
             <div className="px-5 py-3 border-b border-neutral-100 flex items-center justify-between">
-              <h3 className="font-semibold text-neutral-900 text-sm">이용 현황 로그 ({activityRows.length}건)</h3>
+              <h3 className="font-semibold text-neutral-900 text-sm">
+                이용 현황 로그{" "}
+                <span className="text-neutral-400 font-normal">
+                  ({activityFilter === "전체" ? activityRows.length : activityRows.filter(r => matchFilter(r.organization, activityFilter)).length}건)
+                </span>
+              </h3>
               <div className="flex items-center gap-3">
                 <span className="text-xs text-neutral-400">데이터 분석 · 데이터 신청 · 다운로드 통합</span>
                 <button onClick={exportActivityExcel} disabled={activityRows.length === 0}
@@ -821,9 +845,32 @@ export default function AdminPage() {
                 </button>
               </div>
             </div>
+            {/* 소속 유형 필터 칩 */}
+            <div className="px-5 py-2.5 border-b border-neutral-100 flex items-center gap-2 flex-wrap">
+              <span className="text-xs text-neutral-400 mr-1">소속 유형:</span>
+              {ACTIVITY_FILTERS.map(f => (
+                <button
+                  key={f}
+                  onClick={() => { setActivityFilter(f); setActivityPage(1); }}
+                  className={`px-3 py-1 rounded-full text-xs font-medium transition-colors ${
+                    activityFilter === f
+                      ? "bg-brand-600 text-white"
+                      : "bg-neutral-100 text-neutral-600 hover:bg-neutral-200"
+                  }`}
+                >
+                  {f}
+                </button>
+              ))}
+            </div>
             {activityRows.length === 0 ? <EmptyState icon={BarChart2} text="이용 기록이 없습니다." /> : (() => {
-              const totalPages = Math.ceil(activityRows.length / ACTIVITY_PER_PAGE);
-              const pageRows = activityRows.slice((activityPage - 1) * ACTIVITY_PER_PAGE, activityPage * ACTIVITY_PER_PAGE);
+              const filtered = activityRows.filter(r => matchFilter(r.organization, activityFilter));
+              if (filtered.length === 0) return (
+                <div className="py-12 text-center text-sm text-neutral-400">
+                  &ldquo;{activityFilter}&rdquo; 에 해당하는 이용 기록이 없습니다.
+                </div>
+              );
+              const totalPages = Math.ceil(filtered.length / ACTIVITY_PER_PAGE);
+              const pageRows = filtered.slice((activityPage - 1) * ACTIVITY_PER_PAGE, activityPage * ACTIVITY_PER_PAGE);
               return (
                 <>
                   <div className="overflow-x-auto">

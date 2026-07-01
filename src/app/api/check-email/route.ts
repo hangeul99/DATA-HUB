@@ -7,6 +7,6 @@ export async function POST(request: NextRequest) {
   if (!email) return NextResponse.json({ available: false });
 
   const admin = createAdminClient();
-  const { data } = await admin.auth.admin.getUserByEmail(email);
-  return NextResponse.json({ available: !data?.user });
+  const { data } = await admin.from("profiles").select("id").eq("email", email).maybeSingle();
+  return NextResponse.json({ available: !data });
 }

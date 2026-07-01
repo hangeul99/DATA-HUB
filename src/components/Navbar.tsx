@@ -70,7 +70,7 @@ export default function Navbar() {
           <div className="flex items-center justify-between h-16 md:h-20 gap-4">
 
             {/* 로고 */}
-            <Link href="/" className="flex items-center gap-2 flex-shrink-0 group">
+            <Link href="/" className="flex items-center gap-2 flex-shrink-0 group outline-none focus:outline-none">
               {!logoError ? (
                 <div className="relative h-12 w-12 md:h-14 md:w-14 flex-shrink-0">
                   <Image src="/logo.png" alt="인제대학교 글로컬대학 로고" fill sizes="56px"
@@ -100,8 +100,8 @@ export default function Navbar() {
               })}
             </nav>
 
-            {/* 인증 영역 — lg 이상에서만 표시 */}
-            <div className="hidden lg:flex items-center gap-2 flex-shrink-0">
+            {/* 인증 영역 — lg 이상에서만 표시 / min-w 고정으로 auth 로드 시 nav 밀림 방지 */}
+            <div className="hidden lg:flex items-center gap-2 flex-shrink-0 min-w-[180px] justify-end">
               {user ? (
                 <>
                   {isAdmin && (

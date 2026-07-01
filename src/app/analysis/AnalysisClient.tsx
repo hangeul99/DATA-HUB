@@ -213,6 +213,7 @@ const CHART_TYPES = [
   { id: "radar",     label: "레이더",     Icon: Activity,     desc: "다항목 비교" },
   { id: "heatmap",   label: "히트맵",     Icon: Grid,         desc: "교차 패턴" },
   { id: "treemap",   label: "트리맵",     Icon: Layers,       desc: "비율·계층 구조" },
+  { id: "box",       label: "박스플롯",   Icon: Activity,     desc: "분포·이상값 탐지" },
 ] as const;
 type ChartTypeId = (typeof CHART_TYPES)[number]["id"];
 
@@ -230,6 +231,7 @@ const CHART_DESC: Record<string, string> = {
   radar:     "레이더(거미줄) 차트는 여러 수치 항목을 방사형으로 비교합니다. 제품이나 대상의 강점/약점을 파악하기에 좋습니다.",
   heatmap:   "히트맵은 두 범주형 변수의 교차값을 색상 강도로 나타냅니다. 패턴과 집중도를 직관적으로 파악합니다.",
   treemap:   "트리맵은 항목의 크기를 면적으로 비율·계층 구조를 나타냅니다. 전체 구성 요소 비중을 한눈에 봅니다.",
+  box:       "박스플롯(Box Plot)은 수치 컬럼의 분포를 최솟값·Q1·중앙값·Q3·최댓값으로 요약합니다. 이상값 탐지와 여러 컬럼 분포 비교에 효과적입니다.",
 };
 
 // ── 위도/경도 열 자동 감지 ─────────────────────────────────────
@@ -311,6 +313,7 @@ export default function AnalysisClient() {
   const [yCol, setYCol] = useState<string | null>(null);
   const [zCol, setZCol] = useState<string | null>(null);
   const [radarCols, setRadarCols] = useState<string[]>([]);
+  const [boxCols, setBoxCols]     = useState<string[]>([]);
   const [chartGenerated, setChartGenerated] = useState(false);
   const [MapView, setMapView] = useState<React.ComponentType<{ points: {lat:number;lng:number;label?:string}[]; latCol?:string; lngCol?:string }> | null>(null);
   const [dragOver, setDragOver] = useState(false);
@@ -795,6 +798,28 @@ export default function AnalysisClient() {
     }
     return makeFrequency(xMeta.values, 20).map((d, i) => ({ name: d.label, size: d.count, fill: COLORS[i % COLORS.length] }));
   }, [cols, rows, xCol, yCol, chartGenerated, selectedChartType]);
+
+  // 박스플롯 — 선택 컬럼별 5수치 요약 (min, Q1, median, Q3, max, 이상치 fence)
+  const boxChartData = useMemo(() => {
+    if (!chartGenerated || selectedChartType !== "box") return [];
+    const targets = boxCols.length > 0 ? boxCols : numericVizCols.slice(0, 6).map((c) => c.name);
+    return targets.map((colName) => {
+      const meta = cols.find((c) => c.name === colName);
+      if (!meta || meta.type !== "numeric") return null;
+      const vals = (meta.values as (number | null)[])
+        .filter((v): v is number => v !== null)
+        .sort((a, b) => a - b);
+      if (vals.length < 4) return null;
+      const n = vals.length;
+      const q1 = vals[Math.floor(n * 0.25)];
+      const median = n % 2 === 0 ? (vals[n / 2 - 1] + vals[n / 2]) / 2 : vals[Math.floor(n / 2)];
+      const q3 = vals[Math.floor(n * 0.75)];
+      const iqr = q3 - q1;
+      const wLow  = Math.max(vals[0],      q1 - 1.5 * iqr);
+      const wHigh = Math.min(vals[n - 1],  q3 + 1.5 * iqr);
+      return { col: colName, min: vals[0], q1, median, q3, max: vals[n - 1], wLow, wHigh, count: n };
+    }).filter((d): d is NonNullable<typeof d> => d !== null);
+  }, [cols, boxCols, chartGenerated, selectedChartType, numericVizCols]);
 
   // 자동 시각화(개요 탭) 미니차트 데이터 — 렌더링마다 전 컬럼을 재집계하지 않도록
   // cols/rows가 바뀔 때만 1회 계산 (히스토그램/월별집계/빈도 + 고카디널리티 판정)
@@ -1283,7 +1308,8 @@ export default function AnalysisClient() {
               (isHist && xCol) ||
               (isRadar && radarCols.length >= 2) ||
               (isHeatmap && xCol && yCol) ||
-              (isTreemap && xCol);
+              (isTreemap && xCol) ||
+              (ct === "box" && boxCols.length >= 1);
 
             return (
               <div className="bg-white rounded-2xl border border-neutral-200 p-6 space-y-5">
@@ -1352,6 +1378,25 @@ export default function AnalysisClient() {
                     {yCol && <button onClick={() => setYCol(null)} className="text-xs text-neutral-400 hover:text-red-500 transition-colors">값 컬럼 제거 (빈도수 사용)</button>}
                   </>
                 )}
+                {ct === "box" && (
+                  <div>
+                    <p className="text-xs text-neutral-500 mb-2 font-medium">수치 컬럼 선택 <span className="text-neutral-400 font-normal">(1개 이상)</span></p>
+                    <div className="flex flex-wrap gap-2">
+                      {numOnly.map((col) => {
+                        const checked = boxCols.includes(col.name);
+                        return (
+                          <button key={col.name}
+                            onClick={() => setBoxCols((prev) => checked ? prev.filter((c) => c !== col.name) : [...prev, col.name])}
+                            className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors
+                              ${checked ? "bg-brand-600 text-white" : "bg-neutral-100 text-neutral-600 hover:bg-neutral-200"}`}>
+                            {col.name}
+                          </button>
+                        );
+                      })}
+                    </div>
+                    {boxCols.length > 0 && <p className="text-xs text-neutral-400 mt-2">{boxCols.length}개 선택됨</p>}
+                  </div>
+                )}
 
                 <button
                   onClick={() => setChartGenerated(true)}
@@ -1383,7 +1428,8 @@ export default function AnalysisClient() {
               (ct === "histogram" && histChartData.length > 0) ||
               (ct === "radar" && radarChartData.length >= 2) ||
               (ct === "heatmap" && heatmapChartData.xLabels.length > 0) ||
-              (ct === "treemap" && treemapChartData.length > 0);
+              (ct === "treemap" && treemapChartData.length > 0) ||
+              (ct === "box" && boxChartData.length > 0);
 
             if (!valid) return (
               <div className="bg-neutral-50 border border-neutral-200 rounded-2xl p-10 text-center text-sm text-neutral-400">
@@ -1630,6 +1676,79 @@ export default function AnalysisClient() {
                           ))}
                         </tbody>
                       </table>
+                    </div>
+                  );
+                })()}
+
+                {ct === "box" && (() => {
+                  const PAD = { top: 20, right: 24, bottom: 56, left: 60 };
+                  const H = 380;
+                  const colW = Math.max(80, Math.min(140, Math.floor(680 / boxChartData.length)));
+                  const W = PAD.left + boxChartData.length * colW + PAD.right;
+                  const globalMin = Math.min(...boxChartData.map((d) => d.wLow));
+                  const globalMax = Math.max(...boxChartData.map((d) => d.wHigh));
+                  const range = globalMax - globalMin || 1;
+                  const toY = (v: number) => PAD.top + (1 - (v - globalMin) / range) * (H - PAD.top - PAD.bottom);
+                  const ticks = 5;
+                  return (
+                    <div className="overflow-x-auto">
+                      <svg width={W} height={H} style={{ fontFamily: "inherit" }}>
+                        {/* Y축 */}
+                        {Array.from({ length: ticks + 1 }, (_, i) => {
+                          const val = globalMin + (range * i) / ticks;
+                          const y = toY(val);
+                          return (
+                            <g key={i}>
+                              <line x1={PAD.left - 4} y1={y} x2={W - PAD.right} y2={y} stroke="#e5e7eb" strokeWidth={1} />
+                              <text x={PAD.left - 8} y={y + 4} textAnchor="end" fontSize={10} fill="#9ca3af">
+                                {val >= 1000 ? `${(val / 1000).toFixed(1)}k` : val.toFixed(val % 1 === 0 ? 0 : 1)}
+                              </text>
+                            </g>
+                          );
+                        })}
+                        {/* Y축 선 */}
+                        <line x1={PAD.left} y1={PAD.top} x2={PAD.left} y2={H - PAD.bottom} stroke="#d1d5db" strokeWidth={1} />
+
+                        {/* 박스들 */}
+                        {boxChartData.map((d, i) => {
+                          const cx = PAD.left + i * colW + colW / 2;
+                          const bw = colW * 0.45;
+                          const yWH = toY(d.wHigh);
+                          const yQ3 = toY(d.q3);
+                          const yMed = toY(d.median);
+                          const yQ1 = toY(d.q1);
+                          const yWL = toY(d.wLow);
+                          const color = COLORS[i % COLORS.length];
+                          return (
+                            <g key={d.col}>
+                              {/* 위 수염 */}
+                              <line x1={cx} y1={yWH} x2={cx} y2={yQ3} stroke={color} strokeWidth={1.5} />
+                              <line x1={cx - bw / 4} y1={yWH} x2={cx + bw / 4} y2={yWH} stroke={color} strokeWidth={1.5} />
+                              {/* IQR 박스 */}
+                              <rect x={cx - bw / 2} y={yQ3} width={bw} height={Math.abs(yQ1 - yQ3)}
+                                fill={color} fillOpacity={0.18} stroke={color} strokeWidth={1.8} rx={3} />
+                              {/* 중앙값 선 */}
+                              <line x1={cx - bw / 2} y1={yMed} x2={cx + bw / 2} y2={yMed} stroke={color} strokeWidth={2.5} />
+                              {/* 아래 수염 */}
+                              <line x1={cx} y1={yQ1} x2={cx} y2={yWL} stroke={color} strokeWidth={1.5} />
+                              <line x1={cx - bw / 4} y1={yWL} x2={cx + bw / 4} y2={yWL} stroke={color} strokeWidth={1.5} />
+                              {/* X축 레이블 */}
+                              <text x={cx} y={H - PAD.bottom + 18} textAnchor="middle" fontSize={11} fill="#4b5563" fontWeight={500}>
+                                {d.col.length > 12 ? d.col.slice(0, 12) + "…" : d.col}
+                              </text>
+                              {/* 중앙값 툴팁 텍스트 */}
+                              <text x={cx + bw / 2 + 4} y={yMed + 4} fontSize={9} fill={color} fontWeight={600}>
+                                {d.median.toFixed(1)}
+                              </text>
+                            </g>
+                          );
+                        })}
+
+                        {/* 범례 */}
+                        <text x={PAD.left} y={H - 6} fontSize={10} fill="#9ca3af">
+                          ■ IQR(Q1~Q3)  ── 중앙값  ┤ 수염(1.5×IQR)
+                        </text>
+                      </svg>
                     </div>
                   );
                 })()}

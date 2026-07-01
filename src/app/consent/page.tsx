@@ -28,6 +28,18 @@ export default function ConsentPage() {
   };
 
   const canProceed = checks.privacy && checks.terms;
+  const [saving, setSaving] = useState(false);
+
+  const handleProceed = async () => {
+    if (!canProceed || saving) return;
+    setSaving(true);
+    await fetch("/api/save-consent", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ marketing: checks.thirdparty }),
+    }).catch(() => null);
+    router.push("/");
+  };
 
   return (
     <div className="min-h-screen bg-neutral-50 flex flex-col items-center justify-center px-4 py-12">
@@ -70,11 +82,11 @@ export default function ConsentPage() {
           </div>
 
           <button
-            onClick={() => canProceed && router.push("/")}
-            disabled={!canProceed}
-            className={`w-full font-semibold py-4 rounded-xl transition-all active:scale-95 mt-2 ${canProceed ? "bg-brand-600 hover:bg-brand-700 text-white shadow-brand" : "bg-neutral-200 text-neutral-400 cursor-not-allowed"}`}
+            onClick={handleProceed}
+            disabled={!canProceed || saving}
+            className={`w-full font-semibold py-4 rounded-xl active:scale-95 mt-2 transition-colors ${canProceed ? "bg-brand-600 hover:bg-brand-700 text-white" : "bg-neutral-200 text-neutral-400 cursor-not-allowed"}`}
           >
-            {canProceed ? "동의하고 시작하기" : "필수 항목에 동의해주세요"}
+            {saving ? "저장 중..." : canProceed ? "동의하고 시작하기" : "필수 항목에 동의해주세요"}
           </button>
         </div>
 

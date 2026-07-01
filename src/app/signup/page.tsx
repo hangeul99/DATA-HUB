@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { ArrowLeft, Lock, Shield, AlertCircle, Eye, EyeOff, CheckCircle } from "lucide-react";
@@ -16,7 +16,32 @@ export default function SignupPage() {
   const [loading, setLoading]               = useState(false);
   const [error, setError]                   = useState<string | null>(null);
   const [done, setDone]                     = useState(false);
-  const [agreed, setAgreed]                 = useState(false);
+  const [agreePrivacy, setAgreePrivacy]     = useState(false);
+  const [agreeTerms, setAgreeTerms]         = useState(false);
+  const [agreeAge, setAgreeAge]             = useState(false);
+  const [emailStatus, setEmailStatus]       = useState<"idle" | "checking" | "available" | "taken">("idle");
+  const emailTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const handleEmailChange = (val: string) => {
+    setEmail(val);
+    setEmailStatus("idle");
+    if (emailTimer.current) clearTimeout(emailTimer.current);
+    if (!val || !val.includes("@")) return;
+    setEmailStatus("checking");
+    emailTimer.current = setTimeout(async () => {
+      try {
+        const res = await fetch("/api/check-email", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email: val }),
+        });
+        const json = await res.json();
+        setEmailStatus(json.available ? "available" : "taken");
+      } catch {
+        setEmailStatus("idle");
+      }
+    }, 600);
+  };
 
   // 비밀번호 유효성 검사
   const passwordValid = password.length >= 8;
@@ -26,7 +51,9 @@ export default function SignupPage() {
     e.preventDefault();
     setError(null);
 
-    if (!agreed) { setError("개인정보처리방침에 동의해주세요."); return; }
+    if (!agreePrivacy) { setError("개인정보처리방침에 동의해주세요."); return; }
+    if (!agreeTerms)   { setError("이용약관에 동의해주세요."); return; }
+    if (!agreeAge)     { setError("만 14세 이상인 경우에만 가입하실 수 있습니다."); return; }
     if (!name.trim()) { setError("이름을 입력하세요."); return; }
     if (!organization.trim()) { setError("소속기관을 입력하세요."); return; }
     if (!passwordValid) { setError("비밀번호는 8자 이상이어야 합니다."); return; }
@@ -39,7 +66,7 @@ export default function SignupPage() {
       email,
       password,
       options: {
-        data: { full_name: name, organization: organization.trim() },
+        data: { full_name: name, organization: organization.trim(), consented_at: new Date().toISOString() },
         // 이메일 인증 후 돌아올 주소
         emailRedirectTo: `${location.origin}/auth/callback`,
       },
@@ -131,9 +158,21 @@ export default function SignupPage() {
               className="w-full px-4 py-3.5 rounded-xl border border-neutral-200 text-sm text-neutral-700 focus:outline-none focus:ring-2 focus:ring-brand-400 placeholder:text-neutral-400" />
 
             {/* 이메일 */}
-            <input type="email" value={email} onChange={(e) => setEmail(e.target.value)}
-              placeholder="이메일 주소" required
-              className="w-full px-4 py-3.5 rounded-xl border border-neutral-200 text-sm text-neutral-700 focus:outline-none focus:ring-2 focus:ring-brand-400 placeholder:text-neutral-400" />
+            <div className="space-y-1">
+              <input type="email" value={email} onChange={(e) => handleEmailChange(e.target.value)}
+                placeholder="이메일 주소" required
+                className={`w-full px-4 py-3.5 rounded-xl border text-sm text-neutral-700 focus:outline-none focus:ring-2 focus:ring-brand-400 placeholder:text-neutral-400
+                  ${emailStatus === "taken" ? "border-red-300" : emailStatus === "available" ? "border-brand-300" : "border-neutral-200"}`} />
+              {emailStatus === "checking" && (
+                <p className="text-xs text-neutral-400 pl-1">확인 중...</p>
+              )}
+              {emailStatus === "available" && (
+                <p className="text-xs text-brand-600 pl-1">사용 가능한 이메일입니다.</p>
+              )}
+              {emailStatus === "taken" && (
+                <p className="text-xs text-red-500 pl-1">이미 가입된 이메일입니다. 로그인해주세요.</p>
+              )}
+            </div>
 
             {/* 비밀번호 */}
             <div className="relative">
@@ -163,24 +202,35 @@ export default function SignupPage() {
               )}
             </div>
 
-            {/* 개인정보처리방침 동의 체크박스 */}
-            <label className="flex items-start gap-3 cursor-pointer group">
-              <input
-                type="checkbox"
-                checked={agreed}
-                onChange={(e) => setAgreed(e.target.checked)}
-                className="mt-0.5 w-4 h-4 rounded border-neutral-300 text-brand-600 focus:ring-brand-400 cursor-pointer flex-shrink-0"
-              />
-              <span className="text-xs text-neutral-500 group-hover:text-neutral-700 transition-colors">
-                <Link href="/privacy" target="_blank" className="text-brand-600 hover:underline font-semibold">개인정보처리방침</Link>
-                {" "}및{" "}
-                <Link href="/terms" target="_blank" className="text-brand-600 hover:underline font-semibold">이용약관</Link>
-                {" "}동의 · 만 14세 이상 확인 <span className="text-red-400">(필수)</span>
-              </span>
-            </label>
+            {/* 동의 체크박스 3개 (개인정보보호법 제22조 제2항: 항목별 개별 동의) */}
+            <div className="space-y-2 pt-1">
+              <label className="flex items-start gap-3 cursor-pointer group">
+                <input type="checkbox" checked={agreePrivacy} onChange={(e) => setAgreePrivacy(e.target.checked)}
+                  className="mt-0.5 w-4 h-4 rounded border-neutral-300 accent-brand-600 cursor-pointer flex-shrink-0" />
+                <span className="text-xs text-neutral-500 group-hover:text-neutral-700 transition-colors">
+                  <Link href="/privacy" target="_blank" className="text-brand-600 hover:underline font-semibold">개인정보처리방침</Link>
+                  {" "}에 동의합니다 <span className="text-red-400">(필수)</span>
+                </span>
+              </label>
+              <label className="flex items-start gap-3 cursor-pointer group">
+                <input type="checkbox" checked={agreeTerms} onChange={(e) => setAgreeTerms(e.target.checked)}
+                  className="mt-0.5 w-4 h-4 rounded border-neutral-300 accent-brand-600 cursor-pointer flex-shrink-0" />
+                <span className="text-xs text-neutral-500 group-hover:text-neutral-700 transition-colors">
+                  <Link href="/terms" target="_blank" className="text-brand-600 hover:underline font-semibold">이용약관</Link>
+                  {" "}에 동의합니다 <span className="text-red-400">(필수)</span>
+                </span>
+              </label>
+              <label className="flex items-start gap-3 cursor-pointer group">
+                <input type="checkbox" checked={agreeAge} onChange={(e) => setAgreeAge(e.target.checked)}
+                  className="mt-0.5 w-4 h-4 rounded border-neutral-300 accent-brand-600 cursor-pointer flex-shrink-0" />
+                <span className="text-xs text-neutral-500 group-hover:text-neutral-700 transition-colors">
+                  만 14세 이상임을 확인합니다 <span className="text-red-400">(필수)</span>
+                </span>
+              </label>
+            </div>
 
             {/* 가입 버튼 */}
-            <button type="submit" disabled={loading || !agreed}
+            <button type="submit" disabled={loading || !agreePrivacy || !agreeTerms || !agreeAge || emailStatus === "taken"}
               className="w-full bg-brand-600 hover:bg-brand-700 text-white font-semibold py-3.5 rounded-xl transition-colors active:scale-95 disabled:opacity-60 mt-2">
               {loading ? "처리 중..." : "회원가입"}
             </button>

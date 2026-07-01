@@ -10,6 +10,7 @@ import type { User } from "@supabase/supabase-js";
 import {
   User as UserIcon, Mail, LogOut, Download, FileText,
   Upload, ChevronRight, Loader2, Calendar, Tag, Trash2,
+  Lock, Eye, EyeOff,
 } from "lucide-react";
 
 // ── 타입 ─────────────────────────────────────────────────────────
@@ -56,6 +57,13 @@ export default function MyPage() {
   const [activeTab, setActiveTab] = useState<"applications" | "downloads" | "results">("applications");
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [showPasswordModal, setShowPasswordModal] = useState(false);
+  const [currentPassword, setCurrentPassword]   = useState("");
+  const [newPassword, setNewPassword]           = useState("");
+  const [confirmPassword, setConfirmPassword]   = useState("");
+  const [passwordError, setPasswordError]       = useState<string | null>(null);
+  const [passwordLoading, setPasswordLoading]   = useState(false);
+  const [showNewPw, setShowNewPw]               = useState(false);
 
   // 각 탭 데이터
   const [applications, setApplications] = useState<Application[]>([]);
@@ -140,6 +148,34 @@ export default function MyPage() {
     router.refresh();
   };
 
+  const changePassword = async () => {
+    setPasswordError(null);
+    if (newPassword.length < 8) { setPasswordError("비밀번호는 8자 이상이어야 합니다."); return; }
+    if (newPassword !== confirmPassword) { setPasswordError("새 비밀번호가 일치하지 않습니다."); return; }
+    setPasswordLoading(true);
+    const supabase = createClient();
+    // 현재 비밀번호 검증
+    const { error: signInErr } = await supabase.auth.signInWithPassword({
+      email: user!.email!,
+      password: currentPassword,
+    });
+    if (signInErr) {
+      setPasswordError("현재 비밀번호가 올바르지 않습니다.");
+      setPasswordLoading(false);
+      return;
+    }
+    // 비밀번호 변경
+    const { error: updateErr } = await supabase.auth.updateUser({ password: newPassword });
+    if (updateErr) {
+      setPasswordError("비밀번호 변경 중 오류가 발생했습니다.");
+      setPasswordLoading(false);
+      return;
+    }
+    setShowPasswordModal(false);
+    setCurrentPassword(""); setNewPassword(""); setConfirmPassword("");
+    alert("비밀번호가 성공적으로 변경되었습니다.");
+  };
+
   const deleteAccount = async () => {
     setDeleting(true);
     const res = await fetch("/api/delete-account", { method: "DELETE" });
@@ -173,6 +209,8 @@ export default function MyPage() {
   const name = user.user_metadata?.full_name ?? user.email?.split("@")[0] ?? "사용자";
   const email = user.email ?? "";
   const avatar = user.user_metadata?.avatar_url;
+  // Google OAuth 전용 계정은 이메일 로그인 identity 없음 → 비밀번호 변경 숨김
+  const isOAuthUser = !user.identities?.some((id) => id.provider === "email");
 
   return (
     <>
@@ -196,6 +234,15 @@ export default function MyPage() {
                 <Mail size={13} />
                 {email}
               </div>
+              {!isOAuthUser && (
+                <button
+                  onClick={() => { setShowPasswordModal(true); setPasswordError(null); }}
+                  className="mt-2 flex items-center gap-1 text-xs text-neutral-400 hover:text-brand-600 transition-colors"
+                >
+                  <Lock size={11} />
+                  비밀번호 변경
+                </button>
+              )}
             </div>
             <button onClick={logout}
               className="flex items-center gap-2 text-sm text-neutral-400 hover:text-red-500 transition-colors px-4 py-2 rounded-lg hover:bg-red-50">
@@ -411,6 +458,75 @@ export default function MyPage() {
                 <button onClick={deleteAccount} disabled={deleting}
                   className="flex-1 py-3 rounded-xl bg-red-500 hover:bg-red-600 text-white text-sm font-semibold transition-colors disabled:opacity-60">
                   {deleting ? "처리 중..." : "탈퇴하기"}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+        {/* 비밀번호 변경 모달 */}
+        {showPasswordModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm px-4">
+            <div className="bg-white rounded-2xl shadow-xl border border-neutral-100 p-8 w-full max-w-sm">
+              <div className="flex items-center gap-3 mb-6">
+                <div className="w-10 h-10 rounded-full bg-brand-50 flex items-center justify-center">
+                  <Lock size={18} className="text-brand-600" />
+                </div>
+                <h2 className="text-lg font-bold text-neutral-900">비밀번호 변경</h2>
+              </div>
+
+              {passwordError && (
+                <div className="text-xs text-red-500 bg-red-50 border border-red-100 rounded-xl px-4 py-2.5 mb-4">
+                  {passwordError}
+                </div>
+              )}
+
+              <div className="space-y-3">
+                {/* 현재 비밀번호 */}
+                <input
+                  type="password"
+                  value={currentPassword}
+                  onChange={(e) => setCurrentPassword(e.target.value)}
+                  placeholder="현재 비밀번호"
+                  className="w-full px-4 py-3 rounded-xl border border-neutral-200 text-sm text-neutral-700 focus:outline-none focus:ring-2 focus:ring-brand-400 placeholder:text-neutral-400"
+                />
+                {/* 새 비밀번호 */}
+                <div className="relative">
+                  <input
+                    type={showNewPw ? "text" : "password"}
+                    value={newPassword}
+                    onChange={(e) => setNewPassword(e.target.value)}
+                    placeholder="새 비밀번호 (8자 이상)"
+                    className="w-full px-4 py-3 pr-11 rounded-xl border border-neutral-200 text-sm text-neutral-700 focus:outline-none focus:ring-2 focus:ring-brand-400 placeholder:text-neutral-400"
+                  />
+                  <button type="button" onClick={() => setShowNewPw(!showNewPw)}
+                    className="absolute right-3.5 top-1/2 -translate-y-1/2 text-neutral-400 hover:text-neutral-600">
+                    {showNewPw ? <EyeOff size={15} /> : <Eye size={15} />}
+                  </button>
+                </div>
+                {/* 새 비밀번호 확인 */}
+                <input
+                  type={showNewPw ? "text" : "password"}
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  placeholder="새 비밀번호 확인"
+                  className={`w-full px-4 py-3 rounded-xl border text-sm text-neutral-700 focus:outline-none focus:ring-2 focus:ring-brand-400 placeholder:text-neutral-400
+                    ${confirmPassword && confirmPassword !== newPassword ? "border-red-300" : confirmPassword && confirmPassword === newPassword ? "border-brand-300" : "border-neutral-200"}`}
+                />
+              </div>
+
+              <div className="flex gap-3 mt-6">
+                <button
+                  onClick={() => { setShowPasswordModal(false); setCurrentPassword(""); setNewPassword(""); setConfirmPassword(""); setPasswordError(null); }}
+                  className="flex-1 py-3 rounded-xl border border-neutral-200 text-sm font-semibold text-neutral-600 hover:bg-neutral-50 transition-colors"
+                >
+                  취소
+                </button>
+                <button
+                  onClick={changePassword}
+                  disabled={passwordLoading || !currentPassword || !newPassword || !confirmPassword}
+                  className="flex-1 py-3 rounded-xl bg-brand-600 hover:bg-brand-700 text-white text-sm font-semibold transition-colors disabled:opacity-60"
+                >
+                  {passwordLoading ? "변경 중..." : "변경하기"}
                 </button>
               </div>
             </div>

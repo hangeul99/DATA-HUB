@@ -12,6 +12,10 @@ export async function proxy(request: NextRequest) {
   // Supabase 세션 쿠키를 읽어 응답에 갱신 (SSR 세션 유지)
   let supabaseResponse = NextResponse.next({ request });
 
+  // "로그인 상태 유지"를 끈 경우(dh_keep=0) 토큰 갱신 시에도 세션 쿠키로 다시 써서
+  // 브라우저 종료 시 로그아웃되도록 한다. (그렇지 않으면 갱신이 만료를 400일로 되돌림)
+  const sessionOnly = request.cookies.get("dh_keep")?.value === "0";
+
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
@@ -19,9 +23,14 @@ export async function proxy(request: NextRequest) {
       cookies: {
         getAll() { return request.cookies.getAll(); },
         setAll(cookiesToSet) {
-          cookiesToSet.forEach(({ name, value, options }) =>
-            supabaseResponse.cookies.set(name, value, options)
-          );
+          cookiesToSet.forEach(({ name, value, options }) => {
+            const opts = { ...options };
+            if (sessionOnly) {
+              delete opts.maxAge;
+              delete opts.expires;
+            }
+            supabaseResponse.cookies.set(name, value, opts);
+          });
         },
       },
     }

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
@@ -14,12 +14,34 @@ export default function LoginPage() {
   const [loadingEmail, setLoadingEmail] = useState(false);
   const [loadingGoogle, setLoadingGoogle] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // 아이디(이메일) 저장 / 로그인 상태 유지 — 기본값은 유지(현행 동작)
+  const [rememberId, setRememberId] = useState(false);
+  const [keepLoggedIn, setKeepLoggedIn] = useState(true);
   const router = useRouter();
+
+  // 저장된 이메일 / 지난번 로그인유지 설정을 복원
+  useEffect(() => {
+    const saved = localStorage.getItem("savedEmail");
+    if (saved) { setEmail(saved); setRememberId(true); }
+    // dh_keep=0 이면 지난번에 '로그인 유지 안 함'을 선택한 것
+    if (document.cookie.split("; ").includes("dh_keep=0")) setKeepLoggedIn(false);
+  }, []);
+
+  // 로그인 직전에 사용자 선택(아이디 저장·로그인 유지)을 저장/반영한다.
+  const applyLoginPrefs = () => {
+    // 이메일 저장 (비밀번호는 보안상 저장하지 않음)
+    if (rememberId && email) localStorage.setItem("savedEmail", email);
+    else localStorage.removeItem("savedEmail");
+    // 로그인 유지 여부를 dh_keep 쿠키로 남겨 client/proxy/server가 세션 쿠키 여부를 판단
+    const secure = location.protocol === "https:" ? "; secure" : "";
+    document.cookie = `dh_keep=${keepLoggedIn ? "1" : "0"}; path=/; max-age=34560000; samesite=lax${secure}`;
+  };
 
   // 구글 OAuth 로그인
   const loginWithGoogle = async () => {
     setLoadingGoogle(true);
     setError(null);
+    applyLoginPrefs();
     const supabase = createClient();
     const { error } = await supabase.auth.signInWithOAuth({
       provider: "google",
@@ -37,6 +59,7 @@ export default function LoginPage() {
     if (!email || !password) { setError("이메일과 비밀번호를 입력하세요."); return; }
     setLoadingEmail(true);
     setError(null);
+    applyLoginPrefs();
     const supabase = createClient();
     const { error } = await supabase.auth.signInWithPassword({ email, password });
     if (error) {
@@ -123,6 +146,20 @@ export default function LoginPage() {
                 className="absolute right-3.5 top-1/2 -translate-y-1/2 text-neutral-400 hover:text-neutral-600">
                 {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
               </button>
+            </div>
+
+            {/* 아이디 저장 / 로그인 상태 유지 */}
+            <div className="flex items-center justify-between gap-2 flex-wrap text-sm px-0.5">
+              <label className="flex items-center gap-2 text-neutral-600 cursor-pointer select-none">
+                <input type="checkbox" checked={rememberId} onChange={(e) => setRememberId(e.target.checked)}
+                  className="w-4 h-4 rounded border-neutral-300 text-brand-600 focus:ring-brand-400 cursor-pointer" />
+                아이디 저장
+              </label>
+              <label className="flex items-center gap-2 text-neutral-600 cursor-pointer select-none">
+                <input type="checkbox" checked={keepLoggedIn} onChange={(e) => setKeepLoggedIn(e.target.checked)}
+                  className="w-4 h-4 rounded border-neutral-300 text-brand-600 focus:ring-brand-400 cursor-pointer" />
+                로그인 상태 유지
+              </label>
             </div>
 
             <button type="submit" disabled={loadingEmail}

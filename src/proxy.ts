@@ -31,6 +31,15 @@ export async function proxy(request: NextRequest) {
   const { data: { user } } = await supabase.auth.getUser();
   const isLoggedIn = !!user;
 
+  // ── 0. 탈퇴 유예기간 중 사용자 → 복구 페이지로 강제 이동 ────────
+  // deletion_scheduled 플래그는 JWT에 포함되어 있어 추가 DB 쿼리 없이 확인 가능.
+  if (user?.user_metadata?.deletion_scheduled === true) {
+    const ALLOWED = ["/account-recovery", "/api/recover-account", "/api/auth", "/login", "/_next"];
+    if (!ALLOWED.some((p) => pathname.startsWith(p))) {
+      return NextResponse.redirect(new URL("/account-recovery", request.url));
+    }
+  }
+
   // ── 1. 관리자 전용 경로 — profiles.role 기준으로 통일 ──
   // 기존엔 이메일 목록(하드코딩 포함) 기준이라 관리자 페이지(role 기준)와
   // 판별 기준이 달랐다(규칙 6-1). role 하나로 통일해 기준 이원화 버그를 막는다.

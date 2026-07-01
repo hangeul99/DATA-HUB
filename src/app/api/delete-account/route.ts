@@ -1,6 +1,11 @@
 import { NextResponse } from "next/server";
 import { createAdminClient, getRequestUser } from "@/lib/supabase/admin";
 
+// ── 회원탈퇴 요청 — 30일 유예기간 소프트 딜리트 ────────────────────
+// 즉시 삭제하지 않고 auth 메타데이터에 삭제 예정 플래그만 기록한다.
+// - 30일 이내에 /account-recovery 에서 복구 가능
+// - 30일 경과 후 /api/cron/purge-deleted 가 실제 삭제 수행
+// - proxy.ts 가 deletion_scheduled=true 사용자를 복구 페이지로 강제 이동
 export async function DELETE() {
   const user = await getRequestUser();
   if (!user) {
@@ -8,44 +13,25 @@ export async function DELETE() {
   }
 
   const admin = createAdminClient();
-  const uid = user.id;
 
-  // ── 1. 게시글 첨부파일 경로 수집 (Storage 삭제를 위해 먼저 조회) ──
-  const { data: userPosts } = await admin
-    .from("posts")
-    .select("attachment_path")
-    .eq("user_id", uid)
-    .not("attachment_path", "is", null);
-
-  // ── 2. 자식 테이블 개인정보 삭제 (오류 발생 시 중단 — 데이터 잔류 방지) ──
-  const delResults = await Promise.all([
-    admin.from("applications").delete().eq("user_id", uid),
-    admin.from("download_logs").delete().eq("user_id", uid),
-    admin.from("results").delete().eq("user_id", uid),
-    admin.from("access_requests").delete().eq("user_id", uid),
-    admin.from("comments").delete().eq("user_id", uid),
-    admin.from("posts").delete().eq("user_id", uid),
-  ]);
-  const childErr = delResults.find((r) => r.error);
-  if (childErr) {
-    return NextResponse.json({ error: "데이터 삭제 중 오류가 발생했습니다." }, { status: 500 });
+  // 이미 탈퇴 예정 상태면 중복 처리 방지
+  if (user.user_metadata?.deletion_scheduled === true) {
+    return NextResponse.json({ error: "이미 탈퇴 신청된 계정입니다." }, { status: 409 });
   }
 
-  // ── 3. 게시글 첨부파일 Storage 삭제 (잊힐 권리 — 개인정보보호법) ──
-  if (userPosts && userPosts.length > 0) {
-    const paths = userPosts.map((p) => p.attachment_path as string);
-    await admin.storage.from("post-attachments").remove(paths);
-  }
+  const scheduledAt = new Date().toISOString();
+  const { error } = await admin.auth.admin.updateUserById(user.id, {
+    user_metadata: {
+      ...user.user_metadata,
+      deletion_scheduled: true,
+      deletion_scheduled_at: scheduledAt,
+    },
+  });
 
-  // ── 4. Auth 계정 먼저 삭제 — 실패 시 profiles를 그대로 보존 ──────
-  // (profiles 먼저 지우면 deleteUser 실패 시 로그인 가능한 고아 계정 발생)
-  const { error: authErr } = await admin.auth.admin.deleteUser(uid);
-  if (authErr) {
+  if (error) {
     return NextResponse.json({ error: "탈퇴 처리 중 오류가 발생했습니다." }, { status: 500 });
   }
 
-  // ── 5. profiles 삭제 (Auth 삭제 확인 후) ─────────────────────────
-  await admin.from("profiles").delete().eq("id", uid);
-
-  return NextResponse.json({ success: true });
+  const deletionDate = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
+  return NextResponse.json({ success: true, deletion_date: deletionDate });
 }

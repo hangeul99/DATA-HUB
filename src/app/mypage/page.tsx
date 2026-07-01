@@ -144,9 +144,10 @@ export default function MyPage() {
     setDeleting(true);
     const res = await fetch("/api/delete-account", { method: "DELETE" });
     if (res.ok) {
-      // 서버에서 계정 삭제 후 브라우저에 남은 로그인 세션도 정리
-      await createClient().auth.signOut();
-      router.push("/");
+      // 탈퇴 신청 완료 — 30일 유예기간 후 실제 삭제
+      // 세션은 유지한 채로 복구 페이지로 이동 (유예기간 중 복구 가능하도록)
+      await createClient().auth.refreshSession();
+      router.push("/account-recovery");
       router.refresh();
     } else {
       alert("탈퇴 처리 중 오류가 발생했습니다. 다시 시도해주세요.");
@@ -398,8 +399,9 @@ export default function MyPage() {
               </div>
               <h2 className="text-lg font-bold text-neutral-900 mb-2">정말 탈퇴하시겠어요?</h2>
               <p className="text-sm text-neutral-500 mb-6">
-                탈퇴 시 모든 신청 내역과 계정 정보가<br />
-                영구적으로 삭제되며 복구할 수 없습니다.
+                탈퇴 신청 후 <span className="font-semibold text-red-500">30일간 계정이 유지</span>됩니다.<br />
+                이 기간 내에 복구하실 수 있으며,<br />
+                30일 경과 후 모든 데이터가 영구 삭제됩니다.
               </p>
               <div className="flex gap-3">
                 <button onClick={() => setShowDeleteConfirm(false)}

@@ -143,7 +143,8 @@ export default function PostDetailPage() {
           <div className="flex bg-white rounded-xl border border-neutral-100 overflow-hidden">
             {BOARDS.map(b => (
               <Link key={b.type} href={`/board/${b.type}`}
-                className={`flex-1 text-center py-2.5 text-xs font-medium transition-colors ${
+                // 모바일에서 긴 라벨이 줄바꿈되지 않도록 글자 축소 + truncate
+                className={`flex-1 text-center py-2.5 text-[11px] sm:text-xs font-medium truncate transition-colors ${
                   type === b.type ? "bg-brand-600 text-white" : "text-neutral-600 hover:bg-neutral-50"
                 }`}>
                 {b.label}

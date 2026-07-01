@@ -171,7 +171,7 @@ export default function ApplyPage() {
   if (submitted) {
     return (
       <div className="min-h-screen bg-neutral-50 flex items-center justify-center px-4">
-        <div className="bg-white rounded-3xl border border-neutral-100 p-10 max-w-md w-full text-center shadow-sm">
+        <div className="bg-white rounded-3xl border border-neutral-100 p-6 sm:p-10 max-w-md w-full text-center shadow-sm">
           <div className="w-16 h-16 rounded-2xl bg-brand-50 flex items-center justify-center mx-auto mb-5">
             <CheckCircle size={32} className="text-brand-600" />
           </div>
@@ -207,7 +207,7 @@ export default function ApplyPage() {
 
   // ── 신청서 폼 ─────────────────────────────────────────────────
   return (
-    <div className="min-h-screen bg-neutral-50 py-10 px-4">
+    <div className="min-h-screen bg-neutral-50 py-6 sm:py-10 px-4">
       <div className="max-w-xl mx-auto">
 
         {/* 뒤로 가기 */}
@@ -222,25 +222,25 @@ export default function ApplyPage() {
           </div>
         )}
 
-        {/* 진행 단계 표시 */}
-        <div className="flex items-center gap-3 mb-8">
+        {/* 진행 단계 표시 — 모바일에서 원/라벨 축소 */}
+        <div className="flex items-center gap-2 sm:gap-3 mb-6 sm:mb-8">
           {[
             { n: 1, label: "신청서 작성" },
             { n: 2, label: "보안 서약" },
           ].map(({ n, label }, i) => (
-            <div key={n} className="flex items-center gap-3 flex-1">
-              <div className="flex items-center gap-2">
-                <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold transition-colors ${step >= n ? "bg-brand-600 text-white" : "bg-neutral-200 text-neutral-400"}`}>
+            <div key={n} className="flex items-center gap-2 sm:gap-3 flex-1">
+              <div className="flex items-center gap-1.5 sm:gap-2">
+                <div className={`w-6 h-6 sm:w-7 sm:h-7 rounded-full flex items-center justify-center text-xs font-bold transition-colors ${step >= n ? "bg-brand-600 text-white" : "bg-neutral-200 text-neutral-400"}`}>
                   {step > n ? <CheckCircle size={14} /> : n}
                 </div>
-                <span className={`text-sm font-medium ${step >= n ? "text-brand-700" : "text-neutral-400"}`}>{label}</span>
+                <span className={`text-xs sm:text-sm font-medium whitespace-nowrap ${step >= n ? "text-brand-700" : "text-neutral-400"}`}>{label}</span>
               </div>
               {i < 1 && <div className={`flex-1 h-px ${step > 1 ? "bg-brand-300" : "bg-neutral-200"}`} />}
             </div>
           ))}
         </div>
 
-        <div className="bg-white rounded-2xl border border-neutral-100 p-7 shadow-sm">
+        <div className="bg-white rounded-2xl border border-neutral-100 p-5 sm:p-7 shadow-sm">
 
           {/* ── Step 1: 신청서 작성 ─────────────────────────────── */}
           {step === 1 && (
@@ -311,7 +311,7 @@ export default function ApplyPage() {
                   {errors.purpose && <p className="text-xs text-red-500 mt-1">{errors.purpose}</p>}
                 </div>
 
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   {/* 활용 분야 */}
                   <div>
                     <label className="block text-sm font-semibold text-neutral-700 mb-1.5">

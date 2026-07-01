@@ -82,7 +82,8 @@ export default function BoardListPage() {
           <div className="flex bg-white rounded-xl border border-neutral-100 overflow-hidden">
             {BOARDS.map(b => (
               <Link key={b.type} href={`/board/${b.type}`}
-                className={`flex-1 text-center py-2.5 text-xs font-medium transition-colors ${
+                // 모바일에서 긴 라벨이 줄바꿈되지 않도록 글자 축소 + truncate
+                className={`flex-1 text-center py-2.5 text-[11px] sm:text-xs font-medium truncate transition-colors ${
                   type === b.type ? "bg-brand-600 text-white" : "text-neutral-600 hover:bg-neutral-50"
                 }`}>
                 {b.label}
@@ -118,13 +119,14 @@ export default function BoardListPage() {
           <div className="flex-1 min-w-0">
 
             {/* 총게시물 + 검색 */}
-            <div className="flex items-center justify-between mb-3 gap-4 flex-wrap">
+            {/* 모바일: 세로 스택 / sm 이상: 가로 정렬 */}
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-3 gap-2 sm:gap-4">
               <p className="text-xs text-neutral-500">
                 총게시물 : <strong className="text-neutral-800">{total}</strong>
                 {" / "}페이지 : <strong className="text-neutral-800">{page} / {totalPages}</strong>
               </p>
               <div className="flex items-center gap-1.5">
-                <select className="text-xs border border-neutral-200 rounded-lg px-2 py-1.5 text-neutral-600 focus:outline-none focus:ring-2 focus:ring-brand-400 bg-white">
+                <select className="text-xs border border-neutral-200 rounded-lg px-2 py-1.5 text-neutral-600 focus:outline-none focus:ring-2 focus:ring-brand-400 bg-white flex-shrink-0">
                   <option>제목</option>
                 </select>
                 <input
@@ -132,10 +134,10 @@ export default function BoardListPage() {
                   onChange={e => setInputVal(e.target.value)}
                   onKeyDown={e => e.key === "Enter" && handleSearch()}
                   placeholder="검색어 입력"
-                  className="text-xs border border-neutral-200 rounded-l-lg px-3 py-1.5 w-36 focus:outline-none focus:ring-2 focus:ring-brand-400"
+                  className="text-xs border border-neutral-200 rounded-l-lg px-3 py-1.5 w-full sm:w-36 focus:outline-none focus:ring-2 focus:ring-brand-400"
                 />
                 <button onClick={handleSearch}
-                  className="bg-neutral-700 hover:bg-neutral-800 text-white px-3 py-1.5 rounded-r-lg transition-colors -ml-px">
+                  className="bg-neutral-700 hover:bg-neutral-800 text-white px-3 py-1.5 rounded-r-lg transition-colors -ml-px flex-shrink-0">
                   <Search size={13} />
                 </button>
               </div>
@@ -157,9 +159,10 @@ export default function BoardListPage() {
                     <tr>
                       <th className="px-4 py-3 text-center text-xs font-semibold text-neutral-500 w-14">번호</th>
                       <th className="px-4 py-3 text-center text-xs font-semibold text-neutral-500">제목</th>
-                      <th className="px-4 py-3 text-center text-xs font-semibold text-neutral-500 w-20">작성자</th>
-                      <th className="px-4 py-3 text-center text-xs font-semibold text-neutral-500 w-24">작성일</th>
-                      <th className="px-4 py-3 text-center text-xs font-semibold text-neutral-500 w-14">조회수</th>
+                      {/* 저가치 열은 모바일에서 숨기고 sm+에서 복원 */}
+                      <th className="hidden sm:table-cell px-4 py-3 text-center text-xs font-semibold text-neutral-500 w-20">작성자</th>
+                      <th className="hidden sm:table-cell px-4 py-3 text-center text-xs font-semibold text-neutral-500 w-24">작성일</th>
+                      <th className="hidden sm:table-cell px-4 py-3 text-center text-xs font-semibold text-neutral-500 w-14">조회수</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-neutral-100">
@@ -172,9 +175,9 @@ export default function BoardListPage() {
                             {p.title}
                           </Link>
                         </td>
-                        <td className="px-4 py-3 text-center text-xs text-neutral-500">{maskName(p.author_name)}</td>
-                        <td className="px-4 py-3 text-center text-xs text-neutral-400">{fmtDate(p.created_at)}</td>
-                        <td className="px-4 py-3 text-center text-xs text-neutral-400">{p.views}</td>
+                        <td className="hidden sm:table-cell px-4 py-3 text-center text-xs text-neutral-500">{maskName(p.author_name)}</td>
+                        <td className="hidden sm:table-cell px-4 py-3 text-center text-xs text-neutral-400">{fmtDate(p.created_at)}</td>
+                        <td className="hidden sm:table-cell px-4 py-3 text-center text-xs text-neutral-400">{p.views}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -183,29 +186,30 @@ export default function BoardListPage() {
             </div>
 
             {/* 페이지네이션 + 글쓰기 */}
-            <div className="flex items-center justify-between mt-4">
-              <div className="flex items-center gap-1">
+            <div className="flex items-center justify-between mt-4 gap-2">
+              {/* 번호 버튼이 많아도 좁은 화면에서 넘치지 않도록 가로 스크롤 허용 */}
+              <div className="flex items-center gap-1 overflow-x-auto min-w-0">
                 {totalPages > 1 && <>
                   <button onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1}
-                    className="p-1.5 rounded-lg text-neutral-400 hover:bg-white hover:text-neutral-700 disabled:opacity-30 transition-colors">
+                    className="p-1.5 rounded-lg text-neutral-400 hover:bg-white hover:text-neutral-700 disabled:opacity-30 transition-colors flex-shrink-0">
                     <ChevronLeft size={15} />
                   </button>
                   {Array.from({ length: Math.min(totalPages, 10) }, (_, i) => i + 1).map(p => (
                     <button key={p} onClick={() => setPage(p)}
-                      className={`w-7 h-7 text-xs rounded-lg font-medium transition-colors ${
+                      className={`w-7 h-7 text-xs rounded-lg font-medium transition-colors flex-shrink-0 ${
                         p === page ? "bg-brand-600 text-white" : "text-neutral-500 hover:bg-white"
                       }`}>
                       {p}
                     </button>
                   ))}
                   <button onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={page === totalPages}
-                    className="p-1.5 rounded-lg text-neutral-400 hover:bg-white hover:text-neutral-700 disabled:opacity-30 transition-colors">
+                    className="p-1.5 rounded-lg text-neutral-400 hover:bg-white hover:text-neutral-700 disabled:opacity-30 transition-colors flex-shrink-0">
                     <ChevronRight size={15} />
                   </button>
                 </>}
               </div>
               <Link href={loggedIn ? `/board/${type}/write` : "/login"}
-                className="bg-neutral-700 hover:bg-neutral-800 text-white text-sm font-semibold px-5 py-2.5 rounded-xl transition-colors active:scale-95">
+                className="bg-neutral-700 hover:bg-neutral-800 text-white text-sm font-semibold px-5 py-2.5 rounded-xl transition-colors active:scale-95 flex-shrink-0">
                 글쓰기
               </Link>
             </div>

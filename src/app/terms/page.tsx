@@ -95,9 +95,10 @@ export default function TermsPage() {
       <Navbar />
       <main className="min-h-screen bg-neutral-50 pt-20">
         <div className="bg-white border-b border-neutral-200">
-          <div className="max-w-4xl mx-auto px-6 py-12">
+          {/* 모바일 여백/제목 크기 축소 */}
+          <div className="max-w-4xl mx-auto px-5 sm:px-6 py-8 sm:py-12">
             <p className="text-xs font-semibold text-brand-600 tracking-widest uppercase mb-3">Terms of Service</p>
-            <h1 className="text-3xl font-bold text-neutral-900 mb-2">이용약관</h1>
+            <h1 className="text-2xl sm:text-3xl font-bold text-neutral-900 mb-2">이용약관</h1>
             <p className="text-sm text-neutral-500">
               인제대학교 데이터거버넌스센터 데이터허브 서비스 이용에 관한 약관입니다.
             </p>
@@ -105,9 +106,9 @@ export default function TermsPage() {
           </div>
         </div>
 
-        <div className="max-w-4xl mx-auto px-6 py-12 space-y-8">
+        <div className="max-w-4xl mx-auto px-5 sm:px-6 py-8 sm:py-12 space-y-6 sm:space-y-8">
           {SECTIONS.map((sec) => (
-            <div key={sec.title} className="bg-white rounded-2xl border border-neutral-200 p-7">
+            <div key={sec.title} className="bg-white rounded-2xl border border-neutral-200 p-5 sm:p-7">
               <h2 className="text-base font-bold text-neutral-900 mb-4">{sec.title}</h2>
               <div className="text-sm text-neutral-600 leading-relaxed whitespace-pre-line">
                 {sec.content}

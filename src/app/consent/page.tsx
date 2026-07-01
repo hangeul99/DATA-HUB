@@ -45,12 +45,13 @@ export default function ConsentPage() {
     <div className="min-h-screen bg-neutral-50 flex flex-col items-center justify-center px-4 py-12">
       <div className="w-full max-w-lg">
         {/* Logo */}
-        <div className="text-center mb-8">
+        <div className="text-center mb-6 sm:mb-8">
           <div className="inline-flex items-center gap-2.5 mb-3">
             <div className="w-10 h-10 rounded-xl bg-brand-600 flex items-center justify-center">
               <Database size={20} className="text-white" />
             </div>
-            <span className="font-bold text-xl text-neutral-900">인제대학교 데이터거버넌스센터</span>
+            {/* 모바일에서 긴 기관명 폰트 축소 */}
+            <span className="font-bold text-lg sm:text-xl text-neutral-900">인제대학교 데이터거버넌스센터</span>
           </div>
           <h1 className="text-xl font-bold text-neutral-900">서비스 이용 동의</h1>
           <p className="text-sm text-neutral-500 mt-1">인제대학교 데이터거버넌스센터 이용을 위해 아래 항목에 동의해주세요.</p>

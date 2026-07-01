@@ -86,7 +86,7 @@ export default function SignupPage() {
   if (done) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-neutral-50 to-brand-50/30 flex items-center justify-center px-4">
-        <div className="w-full max-w-md bg-white rounded-3xl border border-neutral-100 shadow-sm p-10 text-center">
+        <div className="w-full max-w-md bg-white rounded-3xl border border-neutral-100 shadow-sm p-6 sm:p-10 text-center">
           <div className="w-16 h-16 bg-brand-50 rounded-full flex items-center justify-center mx-auto mb-5">
             <CheckCircle size={32} className="text-brand-600" />
           </div>
@@ -121,7 +121,7 @@ export default function SignupPage() {
       <div className="w-full max-w-md">
 
         {/* 로고 + 제목 */}
-        <div className="text-center mb-8">
+        <div className="text-center mb-6 sm:mb-8">
           <div className="flex items-center justify-center gap-3 mb-4">
             <div className="relative w-12 h-12 bg-white rounded-xl border border-neutral-100 p-1 shadow-sm flex-shrink-0">
               <Image src="/logo.png" alt="인제대학교 로고" fill sizes="48px"
@@ -136,7 +136,8 @@ export default function SignupPage() {
           <p className="text-sm text-neutral-500 mt-1">데이터 이용 신청을 위한 계정을 만드세요</p>
         </div>
 
-        <div className="bg-white rounded-3xl border border-neutral-100 shadow-sm p-8">
+        {/* 모바일에서 카드 여백 축소 */}
+        <div className="bg-white rounded-3xl border border-neutral-100 shadow-sm p-6 sm:p-8">
 
           {/* 에러 메시지 */}
           {error && (

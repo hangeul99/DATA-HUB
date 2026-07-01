@@ -122,17 +122,17 @@ export default function WritePostPage() {
       <Navbar />
       <main className="min-h-screen bg-neutral-50 pt-20">
         <div className="bg-white border-b border-neutral-100">
-          <div className="max-w-4xl mx-auto px-6 py-10">
+          <div className="max-w-4xl mx-auto px-4 sm:px-6 py-6 sm:py-10">
             <Link href={`/board/${type}`}
               className="text-xs text-neutral-400 hover:text-brand-600 mb-3 inline-flex items-center gap-1 transition-colors">
               <ChevronLeft size={12} /> {label}
             </Link>
-            <h1 className="text-2xl font-bold text-neutral-900">글쓰기</h1>
+            <h1 className="text-xl sm:text-2xl font-bold text-neutral-900">글쓰기</h1>
           </div>
         </div>
 
-        <div className="max-w-4xl mx-auto px-4 md:px-6 py-8">
-          <div className="bg-white rounded-2xl border border-neutral-100 p-6 md:p-8">
+        <div className="max-w-4xl mx-auto px-4 md:px-6 py-6 sm:py-8">
+          <div className="bg-white rounded-2xl border border-neutral-100 p-5 sm:p-6 md:p-8">
             <div className="space-y-4">
               <div>
                 <label className="block text-sm font-semibold text-neutral-700 mb-2">제목</label>

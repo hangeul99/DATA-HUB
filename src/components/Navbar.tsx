@@ -156,10 +156,10 @@ export default function Navbar() {
         {/* 모바일 드롭다운 */}
         {mobileOpen && (
           <div className="lg:hidden bg-white border-t border-neutral-100 shadow-lg">
-            <div className="px-5 py-4 flex flex-col gap-1">
+            <div className="px-5 py-3 flex flex-col gap-0.5">
               {navLinks.map((link) => (
                 <Link key={link.href} href={link.href} onClick={() => setMobileOpen(false)}
-                  className={`text-sm font-medium py-2.5 px-3 rounded-lg transition-colors ${
+                  className={`text-sm font-medium py-2 px-3 rounded-lg transition-colors ${
                     pathname === link.href
                       ? "text-brand-700 bg-brand-50 font-semibold"
                       : "text-neutral-700 hover:bg-neutral-50 hover:text-brand-600"
@@ -172,12 +172,12 @@ export default function Navbar() {
                 <div className="flex flex-col gap-2">
                   {isAdmin && (
                     <Link href="/admin" onClick={() => setMobileOpen(false)}
-                      className="flex items-center gap-2 text-sm font-medium text-neutral-500 py-2.5 px-3 rounded-lg hover:bg-neutral-50">
+                      className="flex items-center gap-2 text-sm font-medium text-neutral-500 py-2 px-3 rounded-lg hover:bg-neutral-50">
                       <Settings size={14} /> 관리자 페이지
                     </Link>
                   )}
                   <Link href="/mypage" onClick={() => setMobileOpen(false)}
-                    className="flex items-center gap-2 text-sm font-medium text-neutral-700 py-2.5 px-3 rounded-lg hover:bg-neutral-50">
+                    className="flex items-center gap-2 text-sm font-medium text-neutral-700 py-2 px-3 rounded-lg hover:bg-neutral-50">
                     <User size={14} />
                     {user.user_metadata?.full_name?.split(" ")[0] ?? user.email?.split("@")[0]}
                   </Link>

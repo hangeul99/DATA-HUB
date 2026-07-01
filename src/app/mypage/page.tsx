@@ -219,20 +219,21 @@ export default function MyPage() {
 
         {/* 프로필 헤더 */}
         <div className="bg-white border-b border-neutral-100">
-          <div className="max-w-4xl mx-auto px-6 py-8 flex items-center gap-5">
+          {/* 모바일: 세로 스택 / sm 이상: 가로 정렬 */}
+          <div className="max-w-4xl mx-auto px-5 sm:px-6 py-6 sm:py-8 flex flex-col sm:flex-row items-start sm:items-center gap-4 sm:gap-5">
             {avatar ? (
               // eslint-disable-next-line @next/next/no-img-element
-              <img src={avatar} alt={name} className="w-16 h-16 rounded-full object-cover" />
+              <img src={avatar} alt={name} className="w-12 h-12 sm:w-16 sm:h-16 rounded-full object-cover flex-shrink-0" />
             ) : (
-              <div className="w-16 h-16 rounded-full bg-brand-100 flex items-center justify-center">
+              <div className="w-12 h-12 sm:w-16 sm:h-16 rounded-full bg-brand-100 flex items-center justify-center flex-shrink-0">
                 <UserIcon size={28} className="text-brand-600" />
               </div>
             )}
-            <div className="flex-1">
+            <div className="flex-1 min-w-0">
               <h1 className="text-xl font-bold text-neutral-900">{name}</h1>
-              <div className="flex items-center gap-1.5 text-sm text-neutral-400 mt-0.5">
-                <Mail size={13} />
-                {email}
+              <div className="flex items-center gap-1.5 text-sm text-neutral-400 mt-0.5 min-w-0">
+                <Mail size={13} className="flex-shrink-0" />
+                <span className="truncate">{email}</span>
               </div>
               {!isOAuthUser && (
                 <button
@@ -253,15 +254,16 @@ export default function MyPage() {
         </div>
 
         {/* 탭 + 콘텐츠 */}
-        <div className="max-w-4xl mx-auto px-6 mt-8">
-          <div className="flex gap-1 bg-neutral-100 p-1 rounded-xl w-fit mb-6">
+        <div className="max-w-4xl mx-auto px-5 sm:px-6 mt-8">
+          {/* 모바일: 탭이 넘칠 경우 가로 스크롤 */}
+          <div className="flex gap-1 bg-neutral-100 p-1 rounded-xl w-fit max-w-full overflow-x-auto mb-6">
             {([
               { id: "applications", label: "신청 내역",    icon: <FileText size={14} /> },
               { id: "downloads",    label: "다운로드 기록", icon: <Download size={14} /> },
               { id: "results",      label: "결과물 제출",  icon: <Upload size={14} /> },
             ] as const).map((t) => (
               <button key={t.id} onClick={() => setActiveTab(t.id)}
-                className={`flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium transition-all
+                className={`flex items-center gap-1.5 px-3 sm:px-4 py-2 rounded-lg text-xs sm:text-sm font-medium whitespace-nowrap flex-shrink-0 transition-all
                   ${activeTab === t.id ? "bg-white text-brand-700 shadow-sm" : "text-neutral-500 hover:text-neutral-700"}`}>
                 {t.icon}{t.label}
               </button>
@@ -271,7 +273,7 @@ export default function MyPage() {
           {/* ── 신청 내역 탭 ─────────────────────────────────────── */}
           {activeTab === "applications" && (
             <div className="bg-white rounded-2xl border border-neutral-200 overflow-hidden">
-              <div className="px-6 py-4 border-b border-neutral-100 flex items-center justify-between">
+              <div className="px-4 sm:px-6 py-4 border-b border-neutral-100 flex items-center justify-between">
                 <h2 className="font-semibold text-neutral-800">신청한 데이터셋</h2>
                 {applications.length > 0 && (
                   <span className="text-xs text-neutral-400">{applications.length}건</span>
@@ -296,7 +298,7 @@ export default function MyPage() {
                   {applications.map((app) => (
                     <li key={app.id}>
                       <Link href={`/datasets/${app.datasets.id}`}
-                        className="flex items-center gap-4 px-6 py-4 hover:bg-neutral-50 transition-colors group">
+                        className="flex items-center gap-3 sm:gap-4 px-4 sm:px-6 py-4 hover:bg-neutral-50 transition-colors group">
                         {/* 카테고리 아이콘 */}
                         <div className="w-10 h-10 rounded-xl bg-brand-50 flex items-center justify-center flex-shrink-0">
                           <FileText size={18} className="text-brand-500" />
@@ -329,7 +331,7 @@ export default function MyPage() {
           {/* ── 다운로드 기록 탭 ──────────────────────────────────── */}
           {activeTab === "downloads" && (
             <div className="bg-white rounded-2xl border border-neutral-200 overflow-hidden">
-              <div className="px-6 py-4 border-b border-neutral-100 flex items-center justify-between">
+              <div className="px-4 sm:px-6 py-4 border-b border-neutral-100 flex items-center justify-between">
                 <h2 className="font-semibold text-neutral-800">다운로드 기록</h2>
                 {downloads.length > 0 && (
                   <span className="text-xs text-neutral-400">{downloads.length}건</span>
@@ -350,7 +352,7 @@ export default function MyPage() {
                   {downloads.map((log) => (
                     <li key={log.id}>
                       <Link href={`/datasets/${log.datasets.id}`}
-                        className="flex items-center gap-4 px-6 py-4 hover:bg-neutral-50 transition-colors group">
+                        className="flex items-center gap-3 sm:gap-4 px-4 sm:px-6 py-4 hover:bg-neutral-50 transition-colors group">
                         <div className="w-10 h-10 rounded-xl bg-neutral-100 flex items-center justify-center flex-shrink-0">
                           <Download size={18} className="text-neutral-400" />
                         </div>
@@ -374,7 +376,7 @@ export default function MyPage() {
           {/* ── 결과물 제출 탭 ───────────────────────────────────── */}
           {activeTab === "results" && (
             <div className="bg-white rounded-2xl border border-neutral-200 overflow-hidden">
-              <div className="px-6 py-4 border-b border-neutral-100 flex items-center justify-between">
+              <div className="px-4 sm:px-6 py-4 border-b border-neutral-100 flex items-center justify-between">
                 <h2 className="font-semibold text-neutral-800">제출한 결과물</h2>
                 {results.length > 0 && (
                   <span className="text-xs text-neutral-400">{results.length}건</span>
@@ -397,7 +399,7 @@ export default function MyPage() {
               ) : (
                 <ul className="divide-y divide-neutral-100">
                   {results.map((r) => (
-                    <li key={r.id} className="px-6 py-4 flex items-start gap-4">
+                    <li key={r.id} className="px-4 sm:px-6 py-4 flex items-start gap-3 sm:gap-4">
                       <div className="w-10 h-10 rounded-xl bg-brand-50 flex items-center justify-center flex-shrink-0 mt-0.5">
                         <Upload size={18} className="text-brand-500" />
                       </div>
@@ -430,7 +432,7 @@ export default function MyPage() {
         </div>
 
         {/* 회원탈퇴 */}
-        <div className="max-w-4xl mx-auto px-6 mt-8 mb-16 text-right">
+        <div className="max-w-4xl mx-auto px-5 sm:px-6 mt-8 mb-16 text-right">
           <button onClick={() => setShowDeleteConfirm(true)}
             className="text-xs text-neutral-300 hover:text-red-400 transition-colors">
             회원탈퇴
@@ -440,7 +442,7 @@ export default function MyPage() {
         {/* 회원탈퇴 확인 모달 */}
         {showDeleteConfirm && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm px-4">
-            <div className="bg-white rounded-2xl shadow-xl border border-neutral-100 p-8 w-full max-w-sm text-center">
+            <div className="bg-white rounded-2xl shadow-xl border border-neutral-100 p-6 sm:p-8 w-full max-w-sm text-center">
               <div className="w-12 h-12 rounded-full bg-red-50 flex items-center justify-center mx-auto mb-4">
                 <Trash2 size={20} className="text-red-500" />
               </div>
@@ -466,7 +468,7 @@ export default function MyPage() {
         {/* 비밀번호 변경 모달 */}
         {showPasswordModal && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm px-4">
-            <div className="bg-white rounded-2xl shadow-xl border border-neutral-100 p-8 w-full max-w-sm">
+            <div className="bg-white rounded-2xl shadow-xl border border-neutral-100 p-6 sm:p-8 w-full max-w-sm">
               <div className="flex items-center gap-3 mb-6">
                 <div className="w-10 h-10 rounded-full bg-brand-50 flex items-center justify-center">
                   <Lock size={18} className="text-brand-600" />

@@ -19,19 +19,20 @@ export default function PolicyPage() {
 
         {/* 헤더 */}
         <div className="bg-white border-b border-neutral-100">
-          <div className="max-w-4xl mx-auto px-6 py-12">
+          {/* 모바일 여백/제목 크기 축소 */}
+          <div className="max-w-4xl mx-auto px-5 sm:px-6 py-8 sm:py-12">
             <p className="text-brand-600 font-semibold text-sm uppercase tracking-widest mb-3">Policy</p>
-            <h1 className="text-3xl font-bold text-neutral-900 mb-2">정책</h1>
+            <h1 className="text-2xl sm:text-3xl font-bold text-neutral-900 mb-2">정책</h1>
             <p className="text-neutral-500 text-sm">인제대학교 데이터거버넌스센터 운영 정책을 안내합니다.</p>
           </div>
         </div>
 
         {/* 정책 목록 */}
-        <div className="max-w-4xl mx-auto px-6 py-10">
+        <div className="max-w-4xl mx-auto px-5 sm:px-6 py-8 sm:py-10">
           <div className="flex flex-col gap-4">
             {POLICIES.map((policy) => (
               <div key={policy.id}
-                className="bg-white rounded-2xl border border-neutral-100 hover:border-brand-200 hover:shadow-sm transition-all duration-200 px-6 py-5 flex items-start gap-4 cursor-default">
+                className="bg-white rounded-2xl border border-neutral-100 hover:border-brand-200 hover:shadow-sm transition-all duration-200 px-5 sm:px-6 py-5 flex items-start gap-3 sm:gap-4 cursor-default">
                 <div className="w-10 h-10 rounded-xl bg-brand-50 flex items-center justify-center flex-shrink-0 mt-0.5">
                   <FileText size={18} className="text-brand-600" />
                 </div>

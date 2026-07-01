@@ -88,7 +88,7 @@ function AccessRequestModal({ onClose, onSubmit }: { onClose: () => void; onSubm
 
   if (done) return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4">
-      <div className="bg-white rounded-2xl p-8 max-w-md w-full text-center">
+      <div className="bg-white rounded-2xl p-6 sm:p-8 max-w-md w-full text-center">
         <div className="w-14 h-14 rounded-full bg-emerald-50 flex items-center justify-center mx-auto mb-4">
           <Unlock size={24} className="text-emerald-600" />
         </div>
@@ -101,7 +101,7 @@ function AccessRequestModal({ onClose, onSubmit }: { onClose: () => void; onSubm
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4">
-      <div className="bg-white rounded-2xl p-7 max-w-md w-full shadow-xl">
+      <div className="bg-white rounded-2xl p-5 sm:p-7 max-w-md w-full shadow-xl">
         <div className="flex items-center justify-between mb-5">
           <div className="flex items-center gap-2">
             <Lock size={16} className="text-orange-500" />
@@ -136,7 +136,7 @@ function AccessRequestModal({ onClose, onSubmit }: { onClose: () => void; onSubm
 // ── 토스트 알림 컴포넌트 ──────────────────────────────────────
 function Toast({ message, onClose }: { message: string; onClose: () => void }) {
   return (
-    <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 flex items-center gap-3 bg-neutral-900 text-white text-sm px-5 py-3 rounded-2xl shadow-xl">
+    <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 flex items-center gap-3 bg-neutral-900 text-white text-xs sm:text-sm px-4 sm:px-5 py-3 rounded-2xl shadow-xl max-w-[calc(100vw-2rem)]">
       <ShoppingCart size={15} className="text-brand-300" />
       {message}
       <button onClick={onClose} className="ml-2 text-neutral-400 hover:text-white">
@@ -409,11 +409,12 @@ export default function DatasetsClient() {
 
       {/* ── 탭 바 ── */}
       <div className="bg-white border-b border-neutral-200">
-        <div className="max-w-7xl mx-auto px-6 lg:px-8">
-          <div className="flex justify-center">
+        {/* 모바일: 탭이 많아 넘칠 수 있으므로 가로 스크롤 허용 */}
+        <div className="max-w-7xl mx-auto px-6 lg:px-8 overflow-x-auto">
+          <div className="flex justify-start sm:justify-center">
             {TABS.map((tab) => (
               <button key={tab.id} onClick={() => setActiveTab(tab.id)}
-                className={`relative px-6 py-4 text-sm font-medium whitespace-nowrap transition-colors duration-150
+                className={`relative px-3 sm:px-6 py-3 sm:py-4 text-xs sm:text-sm font-medium whitespace-nowrap transition-colors duration-150
                   ${activeTab === tab.id ? "bg-neutral-900 text-white" : "text-neutral-500 hover:text-neutral-800 hover:bg-neutral-50"}
                   ${tab.id === "cart" && cart.size > 0 ? "pr-8" : ""}`}>
                 {tab.label}
@@ -670,8 +671,8 @@ export default function DatasetsClient() {
         <>
           {/* 페이지 헤더 + 필터 */}
           <div className="bg-white border-b border-neutral-100">
-            <div className="max-w-7xl mx-auto px-6 lg:px-8 py-10">
-              <h1 className="text-3xl font-bold text-neutral-900 mb-1">데이터 탐색</h1>
+            <div className="max-w-7xl mx-auto px-6 lg:px-8 py-6 sm:py-10">
+              <h1 className="text-2xl sm:text-3xl font-bold text-neutral-900 mb-1">데이터 탐색</h1>
               <p className="text-neutral-500 text-sm">
                 검증된 {datasets.length}개 데이터셋을 탐색하고 이용 신청하세요.
               </p>
@@ -681,62 +682,68 @@ export default function DatasetsClient() {
                 <div className="mt-4 text-sm text-red-500 bg-red-50 px-4 py-3 rounded-xl">{fetchError}</div>
               )}
 
-              {/* 필터 행 */}
-              <div className="mt-6 flex flex-col sm:flex-row gap-3 flex-wrap">
-                <select value={category} onChange={(e) => setCategory(e.target.value)}
-                  className="px-4 py-2.5 rounded-xl border border-neutral-200 text-sm text-neutral-700 bg-white focus:outline-none focus:ring-2 focus:ring-brand-400">
-                  {CATEGORIES.map((c) => <option key={c}>{c}</option>)}
-                </select>
-                <select value={year} onChange={(e) => setYear(e.target.value)}
-                  className="px-4 py-2.5 rounded-xl border border-neutral-200 text-sm text-neutral-700 bg-white focus:outline-none focus:ring-2 focus:ring-brand-400">
-                  {YEARS.map((y) => <option key={y}>{y}</option>)}
-                </select>
-                <select value={fileType} onChange={(e) => setFileType(e.target.value)}
-                  className="px-4 py-2.5 rounded-xl border border-neutral-200 text-sm text-neutral-700 bg-white focus:outline-none focus:ring-2 focus:ring-brand-400">
-                  {FILE_TYPES.map((f) => <option key={f}>{f}</option>)}
-                </select>
+              {/* 필터 행 — 모바일: 세로 배치, 데스크톱(sm↑): 한 줄 flex 복원 */}
+              <div className="mt-6 flex flex-col sm:flex-row gap-3 sm:flex-wrap">
+                {/* 셀렉트 3개: 모바일에서 2열 그리드로 공간 절약, sm↑ 개별 flex 항목 복원 */}
+                <div className="grid grid-cols-2 gap-3 sm:contents">
+                  <select value={category} onChange={(e) => setCategory(e.target.value)}
+                    className="col-span-2 sm:col-span-1 px-3 sm:px-4 py-2 sm:py-2.5 rounded-xl border border-neutral-200 text-xs sm:text-sm text-neutral-700 bg-white focus:outline-none focus:ring-2 focus:ring-brand-400">
+                    {CATEGORIES.map((c) => <option key={c}>{c}</option>)}
+                  </select>
+                  <select value={year} onChange={(e) => setYear(e.target.value)}
+                    className="px-3 sm:px-4 py-2 sm:py-2.5 rounded-xl border border-neutral-200 text-xs sm:text-sm text-neutral-700 bg-white focus:outline-none focus:ring-2 focus:ring-brand-400">
+                    {YEARS.map((y) => <option key={y}>{y}</option>)}
+                  </select>
+                  <select value={fileType} onChange={(e) => setFileType(e.target.value)}
+                    className="px-3 sm:px-4 py-2 sm:py-2.5 rounded-xl border border-neutral-200 text-xs sm:text-sm text-neutral-700 bg-white focus:outline-none focus:ring-2 focus:ring-brand-400">
+                    {FILE_TYPES.map((f) => <option key={f}>{f}</option>)}
+                  </select>
+                </div>
 
-                {/* 검색창 */}
+                {/* 검색창 — 모바일 전체폭 유지 */}
                 <div className="relative flex-1 min-w-[180px]">
                   <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-neutral-400" size={16} />
                   <input type="text" value={query} onChange={(e) => setQuery(e.target.value)}
                     placeholder="검색어를 입력하세요."
-                    className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-neutral-200 text-sm text-neutral-700 bg-white focus:outline-none focus:ring-2 focus:ring-brand-400" />
+                    className="w-full pl-10 pr-4 py-2 sm:py-2.5 rounded-xl border border-neutral-200 text-xs sm:text-sm text-neutral-700 bg-white focus:outline-none focus:ring-2 focus:ring-brand-400" />
                 </div>
 
-                {/* 선택 데이터 담기 */}
-                <button onClick={addSelectedToCart} disabled={selected.size === 0}
-                  className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold transition-all whitespace-nowrap
-                    ${selected.size > 0 ? "bg-brand-600 text-white hover:bg-brand-700 shadow-brand active:scale-95" : "bg-neutral-100 text-neutral-400 cursor-not-allowed"}`}>
-                  <CheckSquare size={15} />
-                  선택 데이터 담기
-                  {selected.size > 0 && (
-                    <span className="bg-white text-brand-700 text-xs font-bold px-1.5 py-0.5 rounded-full">{selected.size}</span>
-                  )}
-                </button>
-
-                {/* 장바구니 버튼 */}
-                <button onClick={() => setActiveTab("cart")}
-                  className="relative flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium border border-neutral-200 bg-white hover:border-brand-300 transition-colors">
-                  <ShoppingCart size={15} className="text-neutral-500" />
-                  장바구니
-                  {cart.size > 0 && (
-                    <span className="absolute -top-1.5 -right-1.5 bg-brand-600 text-white text-[10px] font-bold min-w-[18px] h-[18px] flex items-center justify-center rounded-full">
-                      {cart.size}
-                    </span>
-                  )}
-                </button>
-
-                {/* 뷰 전환 */}
-                <div className="flex items-center gap-1 bg-neutral-100 rounded-xl p-1">
-                  <button onClick={() => setView("grid")}
-                    className={`p-2 rounded-lg transition-colors ${view === "grid" ? "bg-white text-brand-600 shadow-sm" : "text-neutral-400 hover:text-neutral-600"}`}>
-                    <Grid3X3 size={16} />
+                {/* 액션 버튼들 — 모바일에서 한 줄로 압축 배치, sm↑ 개별 flex 항목 복원 */}
+                <div className="flex items-center gap-3 sm:contents">
+                  {/* 선택 데이터 담기 */}
+                  <button onClick={addSelectedToCart} disabled={selected.size === 0}
+                    className={`flex-1 sm:flex-none flex items-center justify-center gap-2 px-3 sm:px-4 py-2 sm:py-2.5 rounded-xl text-xs sm:text-sm font-semibold transition-all whitespace-nowrap
+                      ${selected.size > 0 ? "bg-brand-600 text-white hover:bg-brand-700 shadow-brand active:scale-95" : "bg-neutral-100 text-neutral-400 cursor-not-allowed"}`}>
+                    <CheckSquare size={15} />
+                    선택 데이터 담기
+                    {selected.size > 0 && (
+                      <span className="bg-white text-brand-700 text-xs font-bold px-1.5 py-0.5 rounded-full">{selected.size}</span>
+                    )}
                   </button>
-                  <button onClick={() => setView("list")}
-                    className={`p-2 rounded-lg transition-colors ${view === "list" ? "bg-white text-brand-600 shadow-sm" : "text-neutral-400 hover:text-neutral-600"}`}>
-                    <List size={16} />
+
+                  {/* 장바구니 버튼 */}
+                  <button onClick={() => setActiveTab("cart")}
+                    className="relative flex items-center gap-2 px-3 sm:px-4 py-2 sm:py-2.5 rounded-xl text-xs sm:text-sm font-medium border border-neutral-200 bg-white hover:border-brand-300 transition-colors">
+                    <ShoppingCart size={15} className="text-neutral-500" />
+                    장바구니
+                    {cart.size > 0 && (
+                      <span className="absolute -top-1.5 -right-1.5 bg-brand-600 text-white text-[10px] font-bold min-w-[18px] h-[18px] flex items-center justify-center rounded-full">
+                        {cart.size}
+                      </span>
+                    )}
                   </button>
+
+                  {/* 뷰 전환 */}
+                  <div className="flex items-center gap-1 bg-neutral-100 rounded-xl p-1">
+                    <button onClick={() => setView("grid")}
+                      className={`p-2 rounded-lg transition-colors ${view === "grid" ? "bg-white text-brand-600 shadow-sm" : "text-neutral-400 hover:text-neutral-600"}`}>
+                      <Grid3X3 size={16} />
+                    </button>
+                    <button onClick={() => setView("list")}
+                      className={`p-2 rounded-lg transition-colors ${view === "list" ? "bg-white text-brand-600 shadow-sm" : "text-neutral-400 hover:text-neutral-600"}`}>
+                      <List size={16} />
+                    </button>
+                  </div>
                 </div>
               </div>
 
@@ -772,7 +779,7 @@ export default function DatasetsClient() {
           </div>
 
           {/* 결과 목록 */}
-          <div className="max-w-7xl mx-auto px-6 lg:px-8 py-8">
+          <div className="max-w-7xl mx-auto px-6 lg:px-8 py-6 sm:py-8">
             <p className="text-sm text-neutral-500 mb-6">
               총 <span className="font-semibold text-neutral-900">{filtered.length}</span>개 데이터셋
               {selected.size > 0 && <span className="ml-2 text-brand-600 font-medium">{selected.size}개 선택됨</span>}
@@ -791,7 +798,7 @@ export default function DatasetsClient() {
               </div>
             ) : view === "grid" ? (
               // ── 그리드 뷰 ──
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-5">
                 {filtered.map((ds) => {
                   const isSelected = selected.has(ds.id);
                   const inCart = cart.has(ds.id);
@@ -897,12 +904,13 @@ export default function DatasetsClient() {
                   return (
                     <div key={ds.id}
                       onClick={() => router.push(`/datasets/${ds.id}`)}
-                      className={`group bg-white rounded-2xl border transition-all duration-200 flex items-center gap-4 px-5 py-4 cursor-pointer
+                      className={`group bg-white rounded-2xl border transition-all duration-200 flex items-center gap-2.5 sm:gap-4 px-3.5 sm:px-5 py-3 sm:py-4 cursor-pointer
                         ${isSelected ? "border-brand-400 ring-2 ring-brand-200" : "border-neutral-100 hover:border-brand-200 hover:shadow-brand"}`}>
                       <input type="checkbox" checked={isSelected} onChange={() => toggleSelect(ds.id)}
                         onClick={e => e.stopPropagation()}
                         className="w-4 h-4 rounded border-neutral-300 text-brand-600 focus:ring-brand-400 cursor-pointer flex-shrink-0" />
-                      <div className={`w-11 h-11 rounded-xl flex-shrink-0 flex items-center justify-center font-bold text-sm ${iconColor[ds.category] ?? "bg-neutral-100 text-neutral-500"}`}>
+                      {/* 모바일에서 아이콘 축소 */}
+                      <div className={`w-9 h-9 sm:w-11 sm:h-11 rounded-xl flex-shrink-0 flex items-center justify-center font-bold text-sm ${iconColor[ds.category] ?? "bg-neutral-100 text-neutral-500"}`}>
                         {ds.category[0]}
                       </div>
                       <div className="flex-1 min-w-0">
@@ -918,21 +926,22 @@ export default function DatasetsClient() {
                       <div className="hidden md:flex items-center gap-1 text-xs text-neutral-400 flex-shrink-0 w-16 justify-end">
                         <Download size={11} /> {ds.downloads?.toLocaleString()}
                       </div>
-                      <div className="flex items-center gap-1.5 flex-shrink-0">
-                        {/* 설명자료 내려받기: 리스트 뷰 */}
-                        <button title="설명자료 내려받기" onClick={e => { e.stopPropagation(); downloadDescription(ds); }} className="flex items-center justify-center w-8 h-8 rounded-lg bg-neutral-100 hover:bg-neutral-200 text-neutral-500 transition-colors"><FileText size={14} /></button>
+                      <div className="flex items-center gap-1 sm:gap-1.5 flex-shrink-0">
+                        {/* 설명자료 내려받기: 리스트 뷰 — 모바일에서는 공간상 숨김 */}
+                        <button title="설명자료 내려받기" onClick={e => { e.stopPropagation(); downloadDescription(ds); }} className="hidden sm:flex items-center justify-center w-8 h-8 rounded-lg bg-neutral-100 hover:bg-neutral-200 text-neutral-500 transition-colors"><FileText size={14} /></button>
                         <button title="장바구니" onClick={e => { e.stopPropagation(); addToCart(ds.id); }}
                           className={`flex items-center justify-center w-8 h-8 rounded-lg transition-colors ${inCart ? "bg-brand-100 text-brand-600" : "bg-neutral-100 hover:bg-neutral-200 text-neutral-500"}`}>
                           <ShoppingCart size={14} />
                         </button>
+                        {/* 미리보기: 행 전체가 클릭 가능하므로 모바일에서는 숨김 */}
                         <Link href={`/datasets/${ds.id}`} title="미리보기"
                           onClick={e => e.stopPropagation()}
-                          className="flex items-center justify-center w-8 h-8 rounded-lg bg-neutral-100 hover:bg-neutral-200 text-neutral-500 transition-colors">
+                          className="hidden sm:flex items-center justify-center w-8 h-8 rounded-lg bg-neutral-100 hover:bg-neutral-200 text-neutral-500 transition-colors">
                           <Eye size={14} />
                         </Link>
                         <Link href={`/datasets/${ds.id}`}
                           onClick={e => e.stopPropagation()}
-                          className="text-xs font-semibold text-white bg-brand-600 hover:bg-brand-700 px-4 py-2 rounded-lg transition-colors active:scale-95">
+                          className="text-xs font-semibold text-white bg-brand-600 hover:bg-brand-700 px-3 sm:px-4 py-2 rounded-lg transition-colors active:scale-95 whitespace-nowrap">
                           신청하기
                         </Link>
                       </div>

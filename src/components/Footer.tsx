@@ -5,8 +5,9 @@ import { Mail } from "lucide-react";
 export default function Footer() {
   return (
     <footer className="bg-neutral-900 text-neutral-400">
-      <div className="max-w-7xl mx-auto px-6 lg:px-8 py-14">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-10">
+      {/* 모바일 세로 여백/간격 축소 */}
+      <div className="max-w-7xl mx-auto px-6 lg:px-8 py-8 md:py-14">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 md:gap-10">
           {/* Brand */}
           <div className="space-y-4">
             <div className="flex items-center gap-3">
@@ -62,7 +63,7 @@ export default function Footer() {
           </div>
         </div>
 
-        <div className="mt-12 pt-6 border-t border-neutral-800 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs">
+        <div className="mt-8 md:mt-12 pt-6 border-t border-neutral-800 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs">
           <p>© 2026 인제대학교 데이터거버넌스센터. All rights reserved.</p>
           <div className="flex items-center gap-4">
             <Link href="/privacy" className="hover:text-brand-400 transition-colors">개인정보처리방침</Link>

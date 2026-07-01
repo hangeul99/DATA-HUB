@@ -114,7 +114,7 @@ function ApplyModal({
       <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg my-auto">
 
         {/* 모달 헤더 */}
-        <div className="flex items-center justify-between px-7 pt-6 pb-4 border-b border-neutral-100">
+        <div className="flex items-center justify-between px-5 sm:px-7 pt-6 pb-4 border-b border-neutral-100">
           <div>
             <p className="text-xs text-brand-600 font-semibold mb-0.5">{dataset.category}</p>
             <h2 className="text-base font-bold text-neutral-900 leading-snug line-clamp-1">{dataset.title}</h2>
@@ -125,7 +125,7 @@ function ApplyModal({
         </div>
 
         {/* 진행 단계 */}
-        <div className="flex items-center gap-3 px-7 py-4">
+        <div className="flex items-center gap-3 px-5 sm:px-7 py-4">
           {[{ n: 1, label: "신청서 작성" }, { n: 2, label: "보안 서약" }].map(({ n, label }, i) => (
             <div key={n} className="flex items-center gap-3 flex-1">
               <div className="flex items-center gap-2">
@@ -139,7 +139,7 @@ function ApplyModal({
           ))}
         </div>
 
-        <div className="px-7 pb-7">
+        <div className="px-5 sm:px-7 pb-5 sm:pb-7">
 
           {/* ── Step 1: 신청서 작성 ─────────────────────────────── */}
           {step === 1 && (
@@ -182,7 +182,7 @@ function ApplyModal({
                   {errors.purpose && <p className="text-xs text-red-500 mt-1">{errors.purpose}</p>}
                 </div>
 
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div>
                     <label className="block text-xs font-semibold text-neutral-700 mb-1.5">활용 분야 <span className="text-red-500">*</span></label>
                     <select value={form.field} onChange={e => set("field", e.target.value)} className={inputCls(errors.field)}>
@@ -403,17 +403,17 @@ export default function DatasetDetailClient({ id }: { id: string }) {
 
   return (
     <div className="min-h-screen bg-neutral-50">
-      <div className="max-w-5xl mx-auto px-6 lg:px-8 py-10">
+      <div className="max-w-5xl mx-auto px-6 lg:px-8 py-6 sm:py-10">
 
         <Link href="/datasets" className="inline-flex items-center gap-1.5 text-sm text-neutral-500 hover:text-neutral-700 transition-colors mb-6">
           <ArrowLeft size={14} /> 데이터 목록으로
         </Link>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-5 sm:gap-6">
 
           {/* ── 메인 정보 ──────────────────────────────────────── */}
           <div className="lg:col-span-2 space-y-5">
-            <div className="bg-white rounded-2xl border border-neutral-100 p-7">
+            <div className="bg-white rounded-2xl border border-neutral-100 p-5 sm:p-7">
 
               <div className="flex items-center gap-2 mb-3 flex-wrap">
                 <span className="text-xs text-brand-600 font-semibold bg-brand-50 px-2.5 py-1 rounded-full">
@@ -421,23 +421,25 @@ export default function DatasetDetailClient({ id }: { id: string }) {
                 </span>
               </div>
 
-              <div className="flex items-start gap-3 mb-4">
+              {/* 제목 + NEW 배지: 모바일에서 세로 배치 */}
+              <div className="flex flex-col sm:flex-row items-start gap-2 sm:gap-3 mb-4">
                 {isNew && (
-                  <span className="text-xs font-bold px-2.5 py-1 rounded bg-red-500 text-white flex-shrink-0 mt-0.5">NEW</span>
+                  <span className="text-xs font-bold px-2.5 py-1 rounded bg-red-500 text-white flex-shrink-0 sm:mt-0.5">NEW</span>
                 )}
-                <h1 className="text-2xl font-bold text-neutral-900 leading-tight">{dataset.title}</h1>
+                <h1 className="text-xl sm:text-2xl font-bold text-neutral-900 leading-tight">{dataset.title}</h1>
               </div>
 
               {dataset.tags?.length > 0 && (
-                <div className="flex items-center gap-2 flex-wrap mb-5">
+                <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap mb-5">
                   <span className="text-xs text-neutral-500 font-semibold">형식</span>
                   {dataset.tags.map((t) => (
-                    <span key={t} className="text-xs px-2.5 py-1 bg-neutral-100 text-neutral-600 rounded-md font-mono font-medium">{t}</span>
+                    <span key={t} className="text-xs px-2 sm:px-2.5 py-0.5 sm:py-1 bg-neutral-100 text-neutral-600 rounded-md font-mono font-medium">{t}</span>
                   ))}
                 </div>
               )}
 
-              <div className="flex flex-wrap gap-x-6 gap-y-2 text-sm text-neutral-500 border-t border-b border-neutral-100 py-4 mb-5">
+              {/* 메타데이터: 모바일에서 간격·글자 축소 */}
+              <div className="flex flex-wrap gap-x-4 sm:gap-x-6 gap-y-2 text-xs sm:text-sm text-neutral-500 border-t border-b border-neutral-100 py-4 mb-5">
                 <span>구축년도 <strong className="text-neutral-800 ml-1">{dataset.year}</strong></span>
                 <span>등록일 <strong className="text-neutral-800 ml-1">{registeredYM}</strong></span>
                 <span className="flex items-center gap-1">
@@ -460,7 +462,7 @@ export default function DatasetDetailClient({ id }: { id: string }) {
 
           {/* ── 사이드바 ─────────────────────────────────────────── */}
           <div className="space-y-4">
-            <div className="bg-white rounded-2xl border border-neutral-100 p-5 sticky top-24">
+            <div className="bg-white rounded-2xl border border-neutral-100 p-5 lg:sticky lg:top-24">
               {appStatus === "approved" ? (
                 <>
                   <div className="flex items-center gap-2 text-brand-600 mb-4">

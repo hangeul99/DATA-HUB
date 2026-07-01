@@ -61,7 +61,7 @@ function OnboardingContent() {
 
   return (
     <div className="min-h-screen bg-neutral-50 flex items-center justify-center px-4">
-      <div className="bg-white rounded-2xl shadow-sm border border-neutral-100 p-8 w-full max-w-md">
+      <div className="bg-white rounded-2xl shadow-sm border border-neutral-100 p-6 sm:p-8 w-full max-w-md">
 
         {/* 로고 */}
         <div className="flex items-center gap-2.5 mb-8">

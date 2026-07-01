@@ -22,15 +22,16 @@ export default function SurveyPage() {
 
         {/* 헤더 */}
         <div className="bg-white border-b border-neutral-100">
-          <div className="max-w-4xl mx-auto px-6 py-12">
+          {/* 모바일 여백/제목 크기 축소 */}
+          <div className="max-w-4xl mx-auto px-5 sm:px-6 py-8 sm:py-12">
             <p className="text-brand-600 font-semibold text-sm uppercase tracking-widest mb-3">Survey</p>
-            <h1 className="text-3xl font-bold text-neutral-900 mb-2">만족도 조사</h1>
+            <h1 className="text-2xl sm:text-3xl font-bold text-neutral-900 mb-2">만족도 조사</h1>
             <p className="text-neutral-500 text-sm">조사를 선택하면 QR코드를 확인할 수 있습니다.</p>
           </div>
         </div>
 
         {/* 카드 목록 */}
-        <div className="max-w-4xl mx-auto px-6 py-10">
+        <div className="max-w-4xl mx-auto px-5 sm:px-6 py-8 sm:py-10">
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {SURVEYS.map((s) => (
               <button
@@ -62,7 +63,7 @@ export default function SurveyPage() {
           onClick={() => setSelected(null)}
         >
           <div
-            className="bg-white rounded-3xl shadow-2xl p-8 w-full max-w-sm text-center"
+            className="bg-white rounded-3xl shadow-2xl p-6 sm:p-8 w-full max-w-sm text-center"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center justify-between mb-6">

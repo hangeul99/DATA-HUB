@@ -63,7 +63,7 @@ export default function LoginPage() {
       <div className="w-full max-w-md">
 
         {/* 로고 + 제목 */}
-        <div className="text-center mb-8">
+        <div className="text-center mb-6 sm:mb-8">
           <div className="flex items-center justify-center gap-3 mb-4">
             <div className="relative w-12 h-12 bg-white rounded-xl border border-neutral-100 p-1 shadow-sm flex-shrink-0">
               <Image src="/logo.png" alt="인제대학교 로고" fill sizes="48px"
@@ -78,7 +78,8 @@ export default function LoginPage() {
           <p className="text-sm text-neutral-500 mt-1">계정에 로그인하세요</p>
         </div>
 
-        <div className="bg-white rounded-3xl border border-neutral-100 shadow-sm p-8 space-y-4">
+        {/* 모바일에서 카드 여백 축소 (375px 대응) */}
+        <div className="bg-white rounded-3xl border border-neutral-100 shadow-sm p-6 sm:p-8 space-y-4">
 
           {/* 에러 메시지 */}
           {error && (

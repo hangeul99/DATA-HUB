@@ -134,7 +134,7 @@ function UploadModal({ onClose, onUploaded }: { onClose: () => void; onUploaded:
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4 overflow-y-auto py-8">
-      <div className="bg-white rounded-2xl p-7 max-w-lg w-full shadow-xl my-auto">
+      <div className="bg-white rounded-2xl p-5 sm:p-7 max-w-lg w-full shadow-xl my-auto">
         <div className="flex items-center justify-between mb-5">
           <h3 className="text-lg font-bold text-neutral-900">새 데이터셋 등록</h3>
           <button onClick={onClose} className="p-1.5 hover:bg-neutral-100 rounded-lg"><X size={16} /></button>
@@ -153,7 +153,7 @@ function UploadModal({ onClose, onUploaded }: { onClose: () => void; onUploaded:
               placeholder="예: 2025 전국 교육통계 데이터"
               className="w-full px-4 py-3 rounded-xl border border-neutral-200 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400" />
           </div>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-semibold text-neutral-700 mb-1.5">카테고리 <span className="text-red-500">*</span></label>
               <select value={form.category} onChange={e => setForm(p => ({ ...p, category: e.target.value }))}
@@ -183,7 +183,7 @@ function UploadModal({ onClose, onUploaded }: { onClose: () => void; onUploaded:
           </div>
           <div>
             <label className="block text-sm font-semibold text-neutral-700 mb-1.5">데이터 파일 업로드 <span className="text-neutral-400 font-normal">(선택)</span></label>
-            <label className="flex flex-col items-center justify-center w-full h-28 border-2 border-dashed border-neutral-200 rounded-xl cursor-pointer hover:border-brand-300 hover:bg-brand-50/30 transition-colors">
+            <label className="flex flex-col items-center justify-center w-full h-24 sm:h-28 border-2 border-dashed border-neutral-200 rounded-xl cursor-pointer hover:border-brand-300 hover:bg-brand-50/30 transition-colors">
               <Upload size={20} className="text-neutral-400 mb-2" />
               <span className="text-sm text-neutral-500">{file ? file.name : "파일 클릭 또는 드래그 업로드"}</span>
               <input type="file" className="hidden" onChange={e => setFile(e.target.files?.[0] ?? null)} />
@@ -537,20 +537,20 @@ export default function AdminPage() {
   return (
     <div className="min-h-screen bg-neutral-50">
       {/* 관리자 헤더 */}
-      <header className="bg-neutral-900 text-white px-6 py-4 flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <div className="w-8 h-8 rounded-lg bg-brand-600 flex items-center justify-center">
+      <header className="bg-neutral-900 text-white px-4 sm:px-6 py-4 flex items-center justify-between gap-3">
+        <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+          <div className="w-8 h-8 rounded-lg bg-brand-600 flex items-center justify-center flex-shrink-0">
             <Database size={16} className="text-white" />
           </div>
-          <div>
-            <span className="font-bold text-base">데이터거버넌스센터</span>
-            <span className="ml-2 text-xs bg-brand-600 px-2 py-0.5 rounded-full">관리자</span>
+          <div className="min-w-0">
+            <span className="font-bold text-sm sm:text-base">데이터거버넌스센터</span>
+            <span className="ml-2 text-xs bg-brand-600 px-2 py-0.5 rounded-full whitespace-nowrap">관리자</span>
           </div>
         </div>
-        <Link href="/" className="text-xs text-neutral-400 hover:text-white transition-colors">← 사이트로 돌아가기</Link>
+        <Link href="/" className="text-xs text-neutral-400 hover:text-white transition-colors whitespace-nowrap flex-shrink-0">← 사이트로 돌아가기</Link>
       </header>
 
-      <div className="max-w-7xl mx-auto px-6 lg:px-8 py-8">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
 
         {/* 요약 카드 */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
@@ -560,11 +560,11 @@ export default function AdminPage() {
             { label: "총 다운로드",    value: summary.downloads,    icon: Download,   color: "text-emerald-600 bg-emerald-50" },
             { label: "결과물 제출",    value: summary.submissions,  icon: TrendingUp, color: "text-amber-600 bg-amber-50" },
           ].map(({ label, value, icon: Icon, color }) => (
-            <div key={label} className="bg-white rounded-2xl border border-neutral-100 p-5">
+            <div key={label} className="bg-white rounded-2xl border border-neutral-100 p-4 sm:p-5">
               <div className={`w-10 h-10 rounded-xl flex items-center justify-center mb-3 ${color}`}>
                 <Icon size={18} />
               </div>
-              <p className="text-2xl font-bold text-neutral-900">{value.toLocaleString()}</p>
+              <p className="text-xl sm:text-2xl font-bold text-neutral-900">{value.toLocaleString()}</p>
               <p className="text-xs text-neutral-500 mt-1">{label}</p>
             </div>
           ))}
@@ -595,22 +595,23 @@ export default function AdminPage() {
               <h3 className="font-semibold text-neutral-900">데이터셋별 활용 실적</h3>
             </div>
             {utilRows.length === 0 ? <EmptyState icon={BarChart2} text="데이터가 없습니다." /> : (
+              <div className="overflow-x-auto">
               <table className="w-full">
                 <thead className="bg-neutral-50 border-b border-neutral-100">
                   <tr>
                     {["데이터셋", "카테고리", "신청", "다운로드", "결과물 제출"].map(h => (
-                      <th key={h} className="px-5 py-3 text-left text-xs font-semibold text-neutral-500">{h}</th>
+                      <th key={h} className="px-5 py-3 text-left text-xs font-semibold text-neutral-500 whitespace-nowrap">{h}</th>
                     ))}
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-neutral-50">
                   {utilRows.map(u => (
                     <tr key={u.id} className="hover:bg-neutral-50 transition-colors">
-                      <td className="px-5 py-4 text-sm font-medium text-neutral-900">{u.title}</td>
-                      <td className="px-5 py-4 text-xs text-neutral-500">{u.category}</td>
-                      <td className="px-5 py-4 text-sm text-neutral-700">{u.applications}</td>
-                      <td className="px-5 py-4 text-sm text-neutral-700">{u.downloads}</td>
-                      <td className="px-5 py-4">
+                      <td className="px-5 py-4 text-sm font-medium text-neutral-900 whitespace-nowrap">{u.title}</td>
+                      <td className="px-5 py-4 text-xs text-neutral-500 whitespace-nowrap">{u.category}</td>
+                      <td className="px-5 py-4 text-sm text-neutral-700 whitespace-nowrap">{u.applications}</td>
+                      <td className="px-5 py-4 text-sm text-neutral-700 whitespace-nowrap">{u.downloads}</td>
+                      <td className="px-5 py-4 whitespace-nowrap">
                         <span className="text-sm font-bold text-brand-600">{u.submissions}</span>
                         <span className="text-xs text-neutral-400 ml-1">건</span>
                       </td>
@@ -618,6 +619,7 @@ export default function AdminPage() {
                   ))}
                 </tbody>
               </table>
+              </div>
             )}
           </div>
         )}
@@ -629,24 +631,25 @@ export default function AdminPage() {
               <h3 className="font-semibold text-neutral-900">전체 신청서 목록</h3>
             </div>
             {appRows.length === 0 ? <EmptyState icon={FileText} text="신청 내역이 없습니다." /> : (
+              <div className="overflow-x-auto">
               <table className="w-full">
                 <thead className="bg-neutral-50 border-b border-neutral-100">
                   <tr>
                     {["신청자", "이메일", "소속", "데이터셋", "활용분야", "신청일", "처리"].map(h => (
-                      <th key={h} className="px-5 py-3 text-left text-xs font-semibold text-neutral-500">{h}</th>
+                      <th key={h} className="px-5 py-3 text-left text-xs font-semibold text-neutral-500 whitespace-nowrap">{h}</th>
                     ))}
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-neutral-50">
                   {appRows.map(a => (
                     <tr key={a.id} className="hover:bg-neutral-50 transition-colors">
-                      <td className="px-5 py-4 text-sm font-medium text-neutral-900">{a.profiles?.name ?? "-"}</td>
-                      <td className="px-5 py-4 text-xs text-neutral-500">{a.profiles?.email ?? "-"}</td>
-                      <td className="px-5 py-4 text-xs text-neutral-500">{a.institution}</td>
+                      <td className="px-5 py-4 text-sm font-medium text-neutral-900 whitespace-nowrap">{a.profiles?.name ?? "-"}</td>
+                      <td className="px-5 py-4 text-xs text-neutral-500 whitespace-nowrap">{a.profiles?.email ?? "-"}</td>
+                      <td className="px-5 py-4 text-xs text-neutral-500 whitespace-nowrap">{a.institution}</td>
                       <td className="px-5 py-4 text-sm text-neutral-700 max-w-[180px] truncate">{a.datasets?.title ?? "-"}</td>
-                      <td className="px-5 py-4 text-xs text-neutral-500">{a.field}</td>
-                      <td className="px-5 py-4 text-xs text-neutral-500">{fmtDate(a.created_at)}</td>
-                      <td className="px-5 py-4">
+                      <td className="px-5 py-4 text-xs text-neutral-500 whitespace-nowrap">{a.field}</td>
+                      <td className="px-5 py-4 text-xs text-neutral-500 whitespace-nowrap">{fmtDate(a.created_at)}</td>
+                      <td className="px-5 py-4 whitespace-nowrap">
                         {a.status === "approved" ? (
                           <span className="flex items-center gap-1 text-xs text-emerald-700 bg-emerald-50 px-2 py-1 rounded-full w-fit">
                             <CheckCircle size={10} /> 승인됨
@@ -670,6 +673,7 @@ export default function AdminPage() {
                   ))}
                 </tbody>
               </table>
+              </div>
             )}
           </div>
         )}
@@ -728,25 +732,26 @@ export default function AdminPage() {
             </div>
             <div className="bg-white rounded-2xl border border-neutral-100 overflow-hidden">
               {datasetRows.length === 0 ? <EmptyState icon={Database} text="등록된 데이터셋이 없습니다." /> : (
+                <div className="overflow-x-auto">
                 <table className="w-full">
                   <thead className="bg-neutral-50 border-b border-neutral-100">
                     <tr>
                       {["데이터셋", "카테고리", "연도", "파일 크기", "등록일", "관리"].map(h => (
-                        <th key={h} className="px-5 py-3 text-left text-xs font-semibold text-neutral-500">{h}</th>
+                        <th key={h} className="px-5 py-3 text-left text-xs font-semibold text-neutral-500 whitespace-nowrap">{h}</th>
                       ))}
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-neutral-50">
                     {datasetRows.map(d => (
                       <tr key={d.id} className="hover:bg-neutral-50 transition-colors">
-                        <td className="px-5 py-4 text-sm font-medium text-neutral-900">{d.title}</td>
-                        <td className="px-5 py-4 text-xs text-neutral-500">{d.category}</td>
-                        <td className="px-5 py-4 text-xs text-neutral-500">{d.year}</td>
-                        <td className="px-5 py-4 text-xs text-neutral-500">{fmtBytes(d.file_size)}</td>
-                        <td className="px-5 py-4 text-xs text-neutral-500">
+                        <td className="px-5 py-4 text-sm font-medium text-neutral-900 whitespace-nowrap">{d.title}</td>
+                        <td className="px-5 py-4 text-xs text-neutral-500 whitespace-nowrap">{d.category}</td>
+                        <td className="px-5 py-4 text-xs text-neutral-500 whitespace-nowrap">{d.year}</td>
+                        <td className="px-5 py-4 text-xs text-neutral-500 whitespace-nowrap">{fmtBytes(d.file_size)}</td>
+                        <td className="px-5 py-4 text-xs text-neutral-500 whitespace-nowrap">
                           {new Date(d.created_at).toLocaleDateString("ko-KR")}
                         </td>
-                        <td className="px-5 py-4">
+                        <td className="px-5 py-4 whitespace-nowrap">
                           <button
                             onClick={() => deactivateDataset(d.id)}
                             className="flex items-center gap-1 text-xs text-red-500 hover:text-red-700 hover:bg-red-50 px-2.5 py-1.5 rounded-lg transition-colors"
@@ -758,6 +763,7 @@ export default function AdminPage() {
                     ))}
                   </tbody>
                 </table>
+                </div>
               )}
             </div>
           </div>
@@ -770,33 +776,35 @@ export default function AdminPage() {
               <h3 className="font-semibold text-neutral-900">가입 회원 목록 ({memberRows.length}명)</h3>
             </div>
             {memberRows.length === 0 ? <EmptyState icon={FileText} text="가입 회원이 없습니다." /> : (
+              <div className="overflow-x-auto">
               <table className="w-full">
                 <thead className="bg-neutral-50 border-b border-neutral-100">
                   <tr>
                     {["이름", "이메일", "권한", "가입일", "신청 건수"].map(h => (
-                      <th key={h} className="px-5 py-3 text-left text-xs font-semibold text-neutral-500">{h}</th>
+                      <th key={h} className="px-5 py-3 text-left text-xs font-semibold text-neutral-500 whitespace-nowrap">{h}</th>
                     ))}
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-neutral-50">
                   {memberRows.map(m => (
                     <tr key={m.id} className="hover:bg-neutral-50 transition-colors">
-                      <td className="px-5 py-4 text-sm font-medium text-neutral-900">{m.name}</td>
-                      <td className="px-5 py-4 text-xs text-neutral-500">{m.email}</td>
-                      <td className="px-5 py-4">
+                      <td className="px-5 py-4 text-sm font-medium text-neutral-900 whitespace-nowrap">{m.name}</td>
+                      <td className="px-5 py-4 text-xs text-neutral-500 whitespace-nowrap">{m.email}</td>
+                      <td className="px-5 py-4 whitespace-nowrap">
                         <span className={`text-xs px-2 py-0.5 rounded-full font-medium
                           ${m.role === "admin" ? "bg-red-50 text-red-700" : "bg-neutral-100 text-neutral-500"}`}>
                           {m.role === "admin" ? "관리자" : "일반"}
                         </span>
                       </td>
-                      <td className="px-5 py-4 text-xs text-neutral-500">
+                      <td className="px-5 py-4 text-xs text-neutral-500 whitespace-nowrap">
                         {new Date(m.created_at).toLocaleDateString("ko-KR")}
                       </td>
-                      <td className="px-5 py-4 text-sm text-neutral-700">{m.applicationCount}건</td>
+                      <td className="px-5 py-4 text-sm text-neutral-700 whitespace-nowrap">{m.applicationCount}건</td>
                     </tr>
                   ))}
                 </tbody>
               </table>
+              </div>
             )}
           </div>
         )}
@@ -901,6 +909,7 @@ export default function AdminPage() {
             {accessRows.length === 0 ? (
               <EmptyState icon={Lock} text="접근 권한 신청이 없습니다." />
             ) : (
+              <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead className="bg-neutral-50 border-b border-neutral-100">
                   <tr>
@@ -918,9 +927,9 @@ export default function AdminPage() {
                         <td className="px-5 py-3 text-xs text-neutral-500 whitespace-nowrap">
                           {new Date(r.created_at).toLocaleDateString("ko-KR")}
                         </td>
-                        <td className="px-5 py-3 text-sm font-medium text-neutral-900">{profile?.name ?? "-"}</td>
-                        <td className="px-5 py-3 text-xs text-neutral-500">{profile?.email ?? "-"}</td>
-                        <td className="px-5 py-3 text-xs text-neutral-500">{profile?.organization ?? "-"}</td>
+                        <td className="px-5 py-3 text-sm font-medium text-neutral-900 whitespace-nowrap">{profile?.name ?? "-"}</td>
+                        <td className="px-5 py-3 text-xs text-neutral-500 whitespace-nowrap">{profile?.email ?? "-"}</td>
+                        <td className="px-5 py-3 text-xs text-neutral-500 whitespace-nowrap">{profile?.organization ?? "-"}</td>
                         <td className="px-5 py-3 text-xs text-neutral-600 max-w-[200px]">
                           <p className="truncate" title={r.reason}>{r.reason || "-"}</p>
                         </td>
@@ -933,7 +942,7 @@ export default function AdminPage() {
                             {r.status === "approved" ? "승인됨" : r.status === "rejected" ? "거절됨" : "대기중"}
                           </span>
                         </td>
-                        <td className="px-5 py-3">
+                        <td className="px-5 py-3 whitespace-nowrap">
                           {isPending ? (
                             <div className="flex items-center gap-2">
                               <button
@@ -958,6 +967,7 @@ export default function AdminPage() {
                   })}
                 </tbody>
               </table>
+              </div>
             )}
           </div>
         )}

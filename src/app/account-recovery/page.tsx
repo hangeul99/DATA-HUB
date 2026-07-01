@@ -59,7 +59,7 @@ export default function AccountRecoveryPage() {
 
   return (
     <div className="min-h-screen bg-neutral-50 flex items-center justify-center px-4">
-      <div className="bg-white rounded-2xl shadow-sm border border-neutral-100 p-8 w-full max-w-md text-center">
+      <div className="bg-white rounded-2xl shadow-sm border border-neutral-100 p-6 sm:p-8 w-full max-w-md text-center">
         {/* 아이콘 */}
         <div className="w-16 h-16 rounded-full bg-amber-50 flex items-center justify-center mx-auto mb-5">
           <AlertTriangle size={28} className="text-amber-500" />

@@ -844,7 +844,7 @@ export default function AnalysisClient() {
   // ── Excel 멀티시트 선택 화면 ──────────────────────────────
   if (sheetNames.length > 0 && pendingWb) {
     return (
-      <div className="max-w-xl mx-auto px-6 py-20 flex flex-col items-center">
+      <div className="max-w-xl mx-auto px-6 py-10 sm:py-20 flex flex-col items-center">
         <div className="mb-6 text-center">
           <h2 className="text-xl font-bold text-neutral-900 mb-1">시트 선택</h2>
           <p className="text-sm text-neutral-500">
@@ -884,12 +884,12 @@ export default function AnalysisClient() {
   // ── 업로드 전 화면 ─────────────────────────────────────────
   if (!fileName) {
     return (
-      <div className="max-w-3xl mx-auto px-6 py-20 flex flex-col items-center">
+      <div className="max-w-3xl mx-auto px-6 py-10 sm:py-20 flex flex-col items-center">
         <div className="mb-8 text-center">
           <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-brand-600 text-white mb-4">
             <TrendingUp size={30} />
           </div>
-          <h1 className="text-3xl font-bold text-neutral-900 mb-2">자동 데이터 분석</h1>
+          <h1 className="text-2xl sm:text-3xl font-bold text-neutral-900 mb-2">자동 데이터 분석</h1>
           <p className="text-neutral-500 text-sm">CSV 또는 Excel 파일을 업로드하면 자동으로 통계 분석과 시각화를 제공합니다.</p>
         </div>
 
@@ -909,7 +909,7 @@ export default function AnalysisClient() {
           onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
           onDragLeave={() => setDragOver(false)}
           onClick={() => inputRef.current?.click()}
-          className={`w-full border-2 border-dashed rounded-2xl p-16 flex flex-col items-center gap-4 cursor-pointer transition-all duration-200
+          className={`w-full border-2 border-dashed rounded-2xl p-8 sm:p-16 flex flex-col items-center gap-4 cursor-pointer transition-all duration-200
             ${dragOver ? "border-brand-500 bg-brand-50" : "border-neutral-300 bg-white hover:border-brand-400 hover:bg-brand-50/40"}`}
         >
           <Upload size={40} className={dragOver ? "text-brand-500" : "text-neutral-400"} />
@@ -927,7 +927,7 @@ export default function AnalysisClient() {
         )}
 
         {/* 지원 포맷 안내 */}
-        <div className="mt-8 grid grid-cols-3 gap-4 w-full text-center text-sm">
+        <div className="mt-8 grid grid-cols-1 sm:grid-cols-3 gap-4 w-full text-center text-sm">
           {[
             { label: "CSV", desc: "쉼표 구분 텍스트" },
             { label: "XLSX", desc: "Excel 2007+" },
@@ -945,7 +945,7 @@ export default function AnalysisClient() {
 
   // ── 분석 결과 화면 ─────────────────────────────────────────
   return (
-    <div className="max-w-7xl mx-auto px-6 py-10">
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6 sm:py-10">
 
       {/* 헤더 */}
       <div className="flex items-center justify-between mb-6">
@@ -962,7 +962,8 @@ export default function AnalysisClient() {
       </div>
 
       {/* 탭 — 위치 데이터 없으면 지도 탭 숨김 */}
-      <div className="flex gap-1 bg-neutral-100 p-1 rounded-xl mb-6 w-fit">
+      {/* 모바일: 가로 스크롤 허용해 4개 탭이 넘칠 때 밀리지 않게 */}
+      <div className="flex gap-1 bg-neutral-100 p-1 rounded-xl mb-6 w-fit max-w-full overflow-x-auto">
         {([
           { id: "overview", label: "개요",            icon: <TrendingUp size={14} />, show: true },
           { id: "charts",   label: "차트",             icon: <BarChart2  size={14} />, show: true },
@@ -972,7 +973,7 @@ export default function AnalysisClient() {
           <button
             key={t.id}
             onClick={() => setActiveTab(t.id)}
-            className={`flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium transition-all duration-150 relative
+            className={`flex items-center gap-1.5 px-2.5 sm:px-4 py-2 rounded-lg text-xs sm:text-sm font-medium transition-all duration-150 relative whitespace-nowrap
               ${activeTab === t.id ? "bg-white text-brand-700 shadow-sm" : "text-neutral-500 hover:text-neutral-700"}`}
           >
             {t.icon}{t.label}
@@ -994,9 +995,9 @@ export default function AnalysisClient() {
               { label: "수치 열", value: numericCols.length },
               { label: "범주 열", value: catCols.length },
             ].map((s) => (
-              <div key={s.label} className="bg-white rounded-2xl border border-neutral-200 p-5">
+              <div key={s.label} className="bg-white rounded-2xl border border-neutral-200 p-4 sm:p-5">
                 <p className="text-xs text-neutral-400 mb-1">{s.label}</p>
-                <p className="text-2xl font-bold text-brand-600">{s.value}</p>
+                <p className="text-xl sm:text-2xl font-bold text-brand-600">{s.value}</p>
               </div>
             ))}
           </div>
@@ -1049,7 +1050,7 @@ export default function AnalysisClient() {
                   <thead className="bg-neutral-50 text-neutral-500 text-xs">
                     <tr>
                       {["열 이름", "고유값 수", "최빈값", "결측값"].map((h) => (
-                        <th key={h} className="text-left px-4 py-3 font-medium">{h}</th>
+                        <th key={h} className="text-left px-4 py-3 font-medium whitespace-nowrap">{h}</th>
                       ))}
                     </tr>
                   </thead>
@@ -1059,12 +1060,12 @@ export default function AnalysisClient() {
                       const nullCnt = col.values.filter((v) => v === null || v === "").length;
                       return (
                         <tr key={col.name} className="hover:bg-neutral-50">
-                          <td className="px-4 py-3 font-medium text-neutral-800">{col.name}</td>
-                          <td className="px-4 py-3 text-neutral-600">
+                          <td className="px-4 py-3 font-medium text-neutral-800 whitespace-nowrap">{col.name}</td>
+                          <td className="px-4 py-3 text-neutral-600 whitespace-nowrap">
                             {new Set(col.values.filter(Boolean).map(String)).size}
                           </td>
-                          <td className="px-4 py-3 text-neutral-600">{freq[0]?.label ?? "-"}</td>
-                          <td className="px-4 py-3 text-neutral-600">{nullCnt}</td>
+                          <td className="px-4 py-3 text-neutral-600 whitespace-nowrap">{freq[0]?.label ?? "-"}</td>
+                          <td className="px-4 py-3 text-neutral-600 whitespace-nowrap">{nullCnt}</td>
                         </tr>
                       );
                     })}
@@ -1164,7 +1165,7 @@ export default function AnalysisClient() {
           {/* 자동 시각화 — 전체 열 미니 차트 (isId 열 제외) */}
           <div>
             <h2 className="font-semibold text-neutral-800 mb-4">자동 시각화</h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3 sm:gap-4">
               {autoVizData.map(({ col, isNum, isDate, chartData, uniqueCount, isHighCardinality }) => {
                 return (
                   <div key={col.name} className="bg-white rounded-2xl border border-neutral-200 p-4 hover:border-brand-200 transition-colors">
@@ -1237,7 +1238,7 @@ export default function AnalysisClient() {
         <div className="space-y-5">
 
           {/* STEP 1: 차트 종류 선택 */}
-          <div className="bg-white rounded-2xl border border-neutral-200 p-6">
+          <div className="bg-white rounded-2xl border border-neutral-200 p-4 sm:p-6">
             <p className="text-xs font-semibold text-neutral-500 uppercase tracking-wider mb-4">① 차트 종류 선택</p>
             <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-3">
               {CHART_TYPES.map(({ id, label, Icon, desc }) => (
@@ -1312,7 +1313,7 @@ export default function AnalysisClient() {
               (ct === "box" && boxCols.length >= 1);
 
             return (
-              <div className="bg-white rounded-2xl border border-neutral-200 p-6 space-y-5">
+              <div className="bg-white rounded-2xl border border-neutral-200 p-4 sm:p-6 space-y-5">
                 <p className="text-xs font-semibold text-neutral-500 uppercase tracking-wider">② 컬럼 선택</p>
 
                 {isXY && (
@@ -1438,7 +1439,7 @@ export default function AnalysisClient() {
             );
 
             return (
-              <div className="bg-white rounded-2xl border border-neutral-200 p-6 space-y-4" ref={chartRef}>
+              <div className="bg-white rounded-2xl border border-neutral-200 p-4 sm:p-6 space-y-4" ref={chartRef}>
                 <div className="flex items-start justify-between">
                   <div>
                     <h2 className="font-bold text-neutral-900 text-base">{chartTitle}</h2>
@@ -1862,7 +1863,7 @@ export default function AnalysisClient() {
           {!latLng && !addrDetected && (
             <div className="bg-white rounded-2xl border border-neutral-200 p-5">
               <p className="text-sm font-semibold text-neutral-700 mb-3">좌표 열을 직접 선택해주세요</p>
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <p className="text-xs text-neutral-500 mb-2">위도 열 (세로 방향)</p>
                   <div className="flex flex-wrap gap-2">

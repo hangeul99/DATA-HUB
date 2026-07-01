@@ -101,7 +101,7 @@ export default function Navbar() {
             </nav>
 
             {/* 인증 영역 — lg 이상에서만 표시 / min-w 고정으로 auth 로드 시 nav 밀림 방지 */}
-            <div className="hidden lg:flex items-center gap-2 flex-shrink-0 min-w-[180px] justify-end">
+            <div className="hidden lg:flex items-center gap-2 flex-shrink-0 min-w-[220px] justify-end">
               {user ? (
                 <>
                   {isAdmin && (
@@ -162,10 +162,10 @@ export default function Navbar() {
             <div className="px-5 py-3 flex flex-col gap-0.5">
               {navLinks.map((link) => (
                 <Link key={link.href} href={link.href} onClick={() => setMobileOpen(false)}
-                  className={`text-sm font-medium py-2 px-3 rounded-lg transition-colors ${
+                  className={`text-sm font-semibold py-2 px-3 rounded-lg transition-colors ${
                     pathname === link.href
-                      ? "text-brand-700 bg-brand-50 font-semibold"
-                      : "text-neutral-700 hover:bg-neutral-50 hover:text-brand-600"
+                      ? "text-brand-700 bg-brand-50"
+                      : "text-neutral-600 opacity-70 hover:bg-neutral-50 hover:text-brand-600 hover:opacity-100"
                   }`}>
                   {link.label}
                 </Link>

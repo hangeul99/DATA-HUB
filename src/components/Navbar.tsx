@@ -55,18 +55,16 @@ export default function Navbar() {
     router.refresh();
   };
 
-  const navBg = isHome
-    ? scrolled
-      ? "bg-white/95 backdrop-blur-md shadow-sm border-b border-neutral-200/60"
-      : "bg-transparent"
-    : "bg-white/95 backdrop-blur-md shadow-sm border-b border-neutral-200/60";
-
   const linkColor = isHome && !scrolled ? "text-white" : "text-neutral-700";
 
   return (
     <>
-      <header className={`fixed top-0 left-0 right-0 z-50 transition-colors duration-150 ${navBg}`}>
-        <div className="w-full px-4 md:px-6 lg:px-10">
+      <header className="fixed top-0 left-0 right-0 z-50">
+        {/* 배경 레이어: -z-10으로 콘텐츠 아래 유지, opacity fade로 blur·shadow 부드럽게 전환 */}
+        <div aria-hidden="true" className={`absolute inset-0 -z-10 bg-white/95 backdrop-blur-md shadow-sm border-b border-neutral-200/60 [transition:opacity_150ms] ${
+          isHome && !scrolled ? "opacity-0" : "opacity-100"
+        }`} />
+        <div className="relative w-full px-4 md:px-6 lg:px-10">
           <div className="flex items-center justify-between h-16 md:h-20 gap-4">
 
             {/* 로고 */}

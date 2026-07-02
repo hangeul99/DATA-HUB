@@ -75,6 +75,7 @@
 
 * {
   box-sizing: border-box;
+  -webkit-tap-highlight-color: transparent;
 }
 
 /* 부드러운 스크롤 이동 효과 / scrollbar-gutter 고정 → 페이지 전환 시 nav 밀림 방지 */

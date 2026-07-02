@@ -92,11 +92,8 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
-/* 스크롤바 — 평소엔 완전 투명 (초록 번쩍임 방지), 스크롤바 위에 마우스 올릴 때만 표시 */
-::-webkit-scrollbar { width: 6px; }
-::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: transparent; border-radius: 3px; }
-::-webkit-scrollbar-thumb:hover { background: rgba(13, 115, 119, 0.6); }
+/* 스크롤바 완전 제거 → 초록 번쩍임·레이아웃 shift 원천 차단 (스크롤 동작은 유지) */
+::-webkit-scrollbar { width: 0; }
 
 /* 그라디언트 텍스트 유틸리티 클래스 — className="gradient-text" 로 사용 */
 .gradient-text {

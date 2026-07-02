@@ -60,8 +60,8 @@ export default function Navbar() {
   return (
     <>
       <header className="fixed top-0 left-0 right-0 z-50">
-        {/* 배경 레이어: -z-10으로 콘텐츠 아래 유지, opacity fade로 blur·shadow 부드럽게 전환 */}
-        <div aria-hidden="true" className={`absolute inset-0 -z-10 bg-white/95 backdrop-blur-md shadow-sm border-b border-neutral-200/60 [transition:opacity_150ms] ${
+        {/* 배경 레이어: backdrop-blur 제거 → 홈 히어로 색이 비치지 않음, opacity로 부드럽게 전환 */}
+        <div aria-hidden="true" className={`absolute inset-0 -z-10 bg-white shadow-sm border-b border-neutral-200/60 [transition:opacity_150ms] ${
           isHome && !scrolled ? "opacity-0" : "opacity-100"
         }`} />
         <div className="relative w-full px-4 md:px-6 lg:px-10">

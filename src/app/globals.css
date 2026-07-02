@@ -91,11 +91,11 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
-/* 스크롤바 스타일 (Chrome/Edge) */
+/* 스크롤바 — 평소엔 완전 투명 (초록 번쩍임 방지), 스크롤바 위에 마우스 올릴 때만 표시 */
 ::-webkit-scrollbar { width: 6px; }
 ::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: rgba(13, 115, 119, 0.25); border-radius: 3px; }
-::-webkit-scrollbar-thumb:hover { background: #0D7377; }
+::-webkit-scrollbar-thumb { background: transparent; border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: rgba(13, 115, 119, 0.6); }
 
 /* 그라디언트 텍스트 유틸리티 클래스 — className="gradient-text" 로 사용 */
 .gradient-text {

@@ -21,7 +21,7 @@ export default function Navbar() {
   const [scrolled,   setScrolled]   = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [logoError,  setLogoError]  = useState(false);
-  const [user,       setUser]       = useState<SupabaseUser | null>(null);
+  const [user,       setUser]       = useState<SupabaseUser | null | undefined>(undefined); // undefined = 아직 로딩 중
   const [isAdmin,    setIsAdmin]    = useState(false);
 
   const pathname = usePathname();
@@ -36,16 +36,26 @@ export default function Navbar() {
 
   useEffect(() => {
     const supabase = createClient();
-    const checkUser = async (u: SupabaseUser | null) => {
+    let initialized = false;
+
+    const applyUser = async (u: SupabaseUser | null) => {
       setUser(u);
       if (!u) { setIsAdmin(false); return; }
       const { data } = await supabase.from("profiles").select("role").eq("id", u.id).maybeSingle();
       setIsAdmin(data?.role === "admin");
     };
-    supabase.auth.getUser().then(({ data }) => checkUser(data.user));
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_e, session) => {
-      checkUser(session?.user ?? null);
+
+    // getUser()가 완료돼야 초기화 — 그 전엔 onAuthStateChange 이벤트 무시 (초록 번쩍임 방지)
+    supabase.auth.getUser().then(({ data }) => {
+      initialized = true;
+      applyUser(data.user);
     });
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_e, session) => {
+      if (!initialized) return;
+      applyUser(session?.user ?? null);
+    });
+
     return () => subscription.unsubscribe();
   }, []);
 
@@ -102,7 +112,7 @@ export default function Navbar() {
 
             {/* 인증 영역 — lg 이상에서만 표시 / min-w 고정으로 auth 로드 시 nav 밀림 방지 */}
             <div className="hidden lg:flex items-center gap-2 flex-shrink-0 min-w-[220px] justify-end">
-              {user ? (
+              {user === undefined ? null : user ? (
                 <>
                   {isAdmin && (
                     <Link href="/admin"

@@ -14,7 +14,7 @@ const navLinks = [
   { href: "/analysis", label: "데이터 분석" },
   { href: "/policy",   label: "정책" },
   { href: "/survey",   label: "만족도 조사" },
-  { href: "/board",    label: "게시판" },
+  { href: "/board/free", label: "게시판" },
 ];
 
 export default function Navbar() {
@@ -88,7 +88,9 @@ export default function Navbar() {
             {/* 데스크탑 네비게이션 — lg 이상에서만 표시 */}
             <nav className="hidden lg:flex items-center justify-center gap-1 xl:gap-4 flex-1">
               {navLinks.map((link) => {
-                const isActive = pathname === link.href;
+                const isActive = link.href === "/board/free"
+                  ? pathname.startsWith("/board")
+                  : pathname === link.href;
                 return (
                   <Link key={link.href} href={link.href}
                     className={`text-xs xl:text-sm font-semibold px-2 py-1 rounded-md whitespace-nowrap outline-none focus:outline-none [transition:color_150ms,opacity_150ms] ${linkColor} ${
@@ -163,7 +165,7 @@ export default function Navbar() {
               {navLinks.map((link) => (
                 <Link key={link.href} href={link.href} onClick={() => setMobileOpen(false)}
                   className={`text-sm font-semibold py-2 px-3 rounded-lg outline-none focus:outline-none transition-colors ${
-                    pathname === link.href
+                    (link.href === "/board/free" ? pathname.startsWith("/board") : pathname === link.href)
                       ? "text-brand-700 bg-brand-50"
                       : "text-neutral-600 opacity-70 hover:bg-neutral-50 hover:text-brand-600 hover:opacity-100"
                   }`}>

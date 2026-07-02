@@ -77,9 +77,10 @@
   box-sizing: border-box;
 }
 
-/* 부드러운 스크롤 이동 효과 */
+/* 부드러운 스크롤 이동 효과 / scrollbar-gutter 고정 → 페이지 전환 시 nav 밀림 방지 */
 html {
   scroll-behavior: smooth;
+  scrollbar-gutter: stable;
 }
 
 body {
@@ -92,8 +93,9 @@ body {
 
 /* 스크롤바 스타일 (Chrome/Edge) */
 ::-webkit-scrollbar { width: 6px; }
-::-webkit-scrollbar-track { background: #f1f1f1; }
-::-webkit-scrollbar-thumb { background: #0D7377; border-radius: 3px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: rgba(13, 115, 119, 0.25); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: #0D7377; }
 
 /* 그라디언트 텍스트 유틸리티 클래스 — className="gradient-text" 로 사용 */
 .gradient-text {

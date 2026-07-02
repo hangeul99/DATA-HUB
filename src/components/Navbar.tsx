@@ -91,7 +91,7 @@ export default function Navbar() {
                 const isActive = pathname === link.href;
                 return (
                   <Link key={link.href} href={link.href}
-                    className={`text-xs xl:text-sm font-semibold duration-150 px-2 py-1 rounded-md whitespace-nowrap [transition:color_150ms,opacity_150ms] ${linkColor} ${
+                    className={`text-xs xl:text-sm font-semibold px-2 py-1 rounded-md whitespace-nowrap outline-none focus:outline-none [transition:color_150ms,opacity_150ms] ${linkColor} ${
                       isActive ? "opacity-100" : "opacity-55 hover:opacity-80"
                     }`}>
                     {link.label}
@@ -106,21 +106,21 @@ export default function Navbar() {
                 <>
                   {isAdmin && (
                     <Link href="/admin"
-                      className={`flex items-center gap-1 text-xs font-medium px-2.5 py-1.5 rounded-lg [transition:color_150ms,background-color_150ms] ${
+                      className={`flex items-center gap-1 text-xs font-medium px-2.5 py-1.5 rounded-lg outline-none focus:outline-none [transition:color_150ms,background-color_150ms] ${
                         isHome && !scrolled ? "text-white/70 hover:bg-white/15" : "text-neutral-400 hover:bg-neutral-100"
                       }`}>
                       <Settings size={12} /> 관리자
                     </Link>
                   )}
                   <Link href="/mypage"
-                    className={`flex items-center gap-1 text-xs font-medium px-3 py-1.5 rounded-lg [transition:color_150ms,background-color_150ms] whitespace-nowrap max-w-[100px] truncate ${
+                    className={`flex items-center gap-1 text-xs font-medium px-3 py-1.5 rounded-lg outline-none focus:outline-none [transition:color_150ms,background-color_150ms] whitespace-nowrap max-w-[100px] truncate ${
                       isHome && !scrolled ? "text-white hover:bg-white/15" : "text-neutral-600 hover:bg-neutral-100"
                     }`}>
                     <User size={13} />
                     {user.user_metadata?.full_name?.split(" ")[0] ?? user.email?.split("@")[0]}
                   </Link>
                   <button onClick={logout}
-                    className={`flex items-center gap-1 text-xs font-medium px-3 py-1.5 rounded-lg [transition:color_150ms,background-color_150ms] ${
+                    className={`flex items-center gap-1 text-xs font-medium px-3 py-1.5 rounded-lg outline-none focus:outline-none [transition:color_150ms,background-color_150ms] ${
                       isHome && !scrolled ? "text-white/70 hover:bg-white/15" : "text-neutral-400 hover:bg-neutral-100"
                     }`}>
                     <LogOut size={13} /> 로그아웃
@@ -129,13 +129,13 @@ export default function Navbar() {
               ) : (
                 <>
                   <Link href="/login"
-                    className={`text-xs font-medium px-3 py-1.5 rounded-lg transition-colors ${
+                    className={`text-xs font-medium px-3 py-1.5 rounded-lg outline-none focus:outline-none [transition:color_150ms,background-color_150ms] ${
                       isHome && !scrolled ? "text-white hover:bg-white/15" : "text-neutral-600 hover:bg-neutral-100"
                     }`}>
                     로그인
                   </Link>
                   <Link href="/login"
-                    className={`text-xs font-semibold px-4 py-1.5 rounded-lg transition-colors active:scale-95 ${
+                    className={`text-xs font-semibold px-4 py-1.5 rounded-lg outline-none focus:outline-none [transition:color_150ms,background-color_150ms] active:scale-95 ${
                       isHome && !scrolled
                         ? "bg-white text-brand-700 hover:bg-brand-50"
                         : "bg-brand-600 text-white hover:bg-brand-700"
@@ -148,7 +148,7 @@ export default function Navbar() {
 
             {/* 모바일/태블릿 햄버거 — lg 미만에서 표시 */}
             <button onClick={() => setMobileOpen(!mobileOpen)}
-              className={`lg:hidden p-2 rounded-lg transition-colors flex-shrink-0 ${
+              className={`lg:hidden p-2 rounded-lg outline-none focus:outline-none [transition:color_150ms,background-color_150ms] flex-shrink-0 ${
                 isHome && !scrolled ? "text-white hover:bg-white/20" : "text-neutral-700 hover:bg-neutral-100"
               }`} aria-label="메뉴">
               {mobileOpen ? <X size={20} /> : <Menu size={20} />}
@@ -162,7 +162,7 @@ export default function Navbar() {
             <div className="px-5 py-3 flex flex-col gap-0.5">
               {navLinks.map((link) => (
                 <Link key={link.href} href={link.href} onClick={() => setMobileOpen(false)}
-                  className={`text-sm font-semibold py-2 px-3 rounded-lg transition-colors ${
+                  className={`text-sm font-semibold py-2 px-3 rounded-lg outline-none focus:outline-none transition-colors ${
                     pathname === link.href
                       ? "text-brand-700 bg-brand-50"
                       : "text-neutral-600 opacity-70 hover:bg-neutral-50 hover:text-brand-600 hover:opacity-100"
@@ -175,23 +175,23 @@ export default function Navbar() {
                 <div className="flex flex-col gap-2">
                   {isAdmin && (
                     <Link href="/admin" onClick={() => setMobileOpen(false)}
-                      className="flex items-center gap-2 text-sm font-medium text-neutral-500 py-2 px-3 rounded-lg hover:bg-neutral-50">
+                      className="flex items-center gap-2 text-sm font-medium text-neutral-500 py-2 px-3 rounded-lg outline-none focus:outline-none hover:bg-neutral-50">
                       <Settings size={14} /> 관리자 페이지
                     </Link>
                   )}
                   <Link href="/mypage" onClick={() => setMobileOpen(false)}
-                    className="flex items-center gap-2 text-sm font-medium text-neutral-700 py-2 px-3 rounded-lg hover:bg-neutral-50">
+                    className="flex items-center gap-2 text-sm font-medium text-neutral-700 py-2 px-3 rounded-lg outline-none focus:outline-none hover:bg-neutral-50">
                     <User size={14} />
                     {user.user_metadata?.full_name?.split(" ")[0] ?? user.email?.split("@")[0]}
                   </Link>
                   <button onClick={logout}
-                    className="text-sm font-semibold text-center bg-neutral-100 text-neutral-700 py-3 rounded-xl hover:bg-neutral-200 transition-colors">
+                    className="text-sm font-semibold text-center bg-neutral-100 text-neutral-700 py-3 rounded-xl outline-none focus:outline-none hover:bg-neutral-200 transition-colors">
                     로그아웃
                   </button>
                 </div>
               ) : (
                 <Link href="/login" onClick={() => setMobileOpen(false)}
-                  className="text-sm font-semibold text-center bg-brand-600 text-white py-3 rounded-xl hover:bg-brand-700 transition-colors active:scale-95">
+                  className="text-sm font-semibold text-center bg-brand-600 text-white py-3 rounded-xl outline-none focus:outline-none hover:bg-brand-700 transition-colors active:scale-95">
                   로그인 / 시작하기
                 </Link>
               )}

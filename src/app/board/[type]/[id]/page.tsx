@@ -120,7 +120,8 @@ export default function PostDetailPage() {
 
   const handleDownload = async () => {
     if (!post?.attachment_path || !post?.attachment_name) return;
-    const { data } = createClient().storage
+    const supabase = createClient();
+    const { data } = supabase.storage
       .from("post-attachments")
       .getPublicUrl(post.attachment_path);
     if (!data?.publicUrl) return;
@@ -131,6 +132,19 @@ export default function PostDetailPage() {
     a.href = url; a.download = post.attachment_name;
     document.body.appendChild(a); a.click();
     document.body.removeChild(a); URL.revokeObjectURL(url);
+
+    // 비로그인 포함 다운로드 로그 기록
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      await supabase.from("board_download_logs").insert({
+        post_id: post.id,
+        post_title: post.title,
+        file_name: post.attachment_name,
+        board_type: type,
+        user_id: user?.id ?? null,
+        user_email: user?.email ?? null,
+      });
+    } catch { /* 로그 실패해도 다운로드에 영향 없음 */ }
   };
 
   return (

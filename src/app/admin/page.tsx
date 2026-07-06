@@ -79,7 +79,6 @@ function UploadModal({ onClose, onUploaded }: { onClose: () => void; onUploaded:
 
     // 파일이 있으면 Storage에 업로드
     if (file) {
-      const ext = file.name.split(".").pop();
       const safeName = `${Date.now()}_${file.name.replace(/[^a-zA-Z0-9._-]/g, "_")}`;
       const uploadPath = `uploads/${safeName}`;
 
@@ -388,7 +387,7 @@ export default function AdminPage() {
         return `${local.slice(0, local.length - 4)}****@${domain}`;
       };
 
-      const [{ data: logs }, { data: apps }, { data: dls }] = await Promise.all([
+      const [{ data: logs }, { data: apps }, { data: dls }, { data: boardDls }] = await Promise.all([
         supabase
           .from("analysis_logs")
           .select("id, created_at, organization, user_email, file_name")
@@ -404,11 +403,17 @@ export default function AdminPage() {
           .select("id, downloaded_at, user_id, dataset_id, profiles(email, organization), datasets(title)")
           .order("downloaded_at", { ascending: false })
           .limit(500),
+        supabase
+          .from("board_download_logs")
+          .select("id, created_at, post_title, file_name, user_email")
+          .order("created_at", { ascending: false })
+          .limit(500),
       ]);
 
-      type LogRaw = { id: string; created_at: string; organization: string | null; user_email: string | null; file_name: string | null };
-      type AppRaw = { id: string; created_at: string; institution: string; user_id: string; dataset_id: string; status: string; profiles: { email: string } | { email: string }[] | null; datasets: { title: string } | null };
-      type DlRaw  = { id: string; downloaded_at: string; user_id: string; dataset_id: string; profiles: { email: string; organization: string | null } | null; datasets: { title: string } | null };
+      type LogRaw     = { id: string; created_at: string; organization: string | null; user_email: string | null; file_name: string | null };
+      type AppRaw     = { id: string; created_at: string; institution: string; user_id: string; dataset_id: string; status: string; profiles: { email: string } | { email: string }[] | null; datasets: { title: string } | null };
+      type DlRaw      = { id: string; downloaded_at: string; user_id: string; dataset_id: string; profiles: { email: string; organization: string | null } | null; datasets: { title: string } | null };
+      type BoardDlRaw = { id: string; created_at: string; post_title: string | null; file_name: string; user_email: string | null };
 
       const getEmail = (p: AppRaw["profiles"]): string | undefined => {
         if (!p) return undefined;
@@ -453,6 +458,16 @@ export default function AdminPage() {
           appStatus: undefined,
         }));
 
+      const boardDlCombined = ((boardDls ?? []) as unknown as BoardDlRaw[]).map(b => ({
+        datetime: b.created_at,
+        organization: "-",
+        email: b.user_email ? maskEmail(b.user_email) : "비회원",
+        feature: "게시판 다운로드",
+        fileName: b.file_name ?? undefined,
+        downloaded: false,
+        appStatus: undefined,
+      }));
+
       const combined = [
         ...((logs ?? []) as unknown as LogRaw[]).map(l => ({
           datetime: l.created_at,
@@ -465,6 +480,7 @@ export default function AdminPage() {
         })),
         ...appCombined,
         ...orphanDls,
+        ...boardDlCombined,
       ].sort((a, b) => new Date(b.datetime).getTime() - new Date(a.datetime).getTime());
 
       setActivityRows(combined.map((row, i) => ({ no: i + 1, ...row })));
@@ -839,7 +855,7 @@ export default function AdminPage() {
                 </span>
               </h3>
               <div className="flex items-center gap-3">
-                <span className="text-xs text-neutral-400">데이터 분석 · 데이터 신청 · 다운로드 통합</span>
+                <span className="text-xs text-neutral-400">데이터 분석 · 데이터 신청 · 다운로드 · 게시판 다운로드 통합</span>
                 <button onClick={exportActivityExcel} disabled={activityRows.length === 0}
                   className="flex items-center gap-1.5 text-xs font-medium text-emerald-700 bg-emerald-50 hover:bg-emerald-100 px-3 py-1.5 rounded-lg transition-colors disabled:opacity-40">
                   <Download size={12} /> 엑셀 내보내기
@@ -905,6 +921,8 @@ export default function AdminPage() {
                                     ? "bg-brand-50 text-brand-700"
                                     : row.feature === "데이터 신청"
                                     ? "bg-blue-50 text-blue-700"
+                                    : row.feature === "게시판 다운로드"
+                                    ? "bg-amber-50 text-amber-700"
                                     : "bg-emerald-50 text-emerald-700"
                                 }`}>
                                   {row.feature}

@@ -67,7 +67,7 @@ export default function PostDetailPage() {
     ]).then(async ([{ data: postData }, { data: { user } }]) => {
       if (!postData) { router.replace(`/board/${type}`); return; }
       setPost(postData as Post);
-      await supabase.from("posts").update({ views: postData.views + 1 }).eq("id", id);
+      await supabase.rpc("increment_post_views", { post_id: id });
       if (user) {
         setCurrentUserId(user.id);
         const { data: profile } = await supabase.from("profiles").select("role, name").eq("id", user.id).single();

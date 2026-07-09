@@ -461,7 +461,7 @@ export default function AdminPage() {
       const boardDlCombined = ((boardDls ?? []) as unknown as BoardDlRaw[]).map(b => ({
         datetime: b.created_at,
         organization: "-",
-        email: b.user_email ? maskEmail(b.user_email) : "비회원",
+        email: b.user_email ? (b.user_email.startsWith("게스트-") ? b.user_email : maskEmail(b.user_email)) : "비회원",
         feature: "게시판 다운로드",
         fileName: b.file_name ?? undefined,
         downloaded: false,

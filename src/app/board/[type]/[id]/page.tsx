@@ -28,6 +28,17 @@ interface Comment {
 
 const maskName = (name: string) => `${name[0]}**`;
 
+// 비로그인 사용자 식별 ID — localStorage에 저장해 같은 브라우저면 동일한 번호 유지
+function getGuestId(): string {
+  const key = "dh_guest_id";
+  let id = localStorage.getItem(key);
+  if (!id) {
+    id = String(Math.floor(1000 + Math.random() * 9000));
+    localStorage.setItem(key, id);
+  }
+  return id;
+}
+
 const AdminBadge = () => (
   <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold bg-brand-600 text-white leading-none">
     관리자
@@ -142,7 +153,7 @@ export default function PostDetailPage() {
         file_name: post.attachment_name,
         board_type: type,
         user_id: user?.id ?? null,
-        user_email: user?.email ?? null,
+        user_email: user?.email ?? `게스트-${getGuestId()}`,
       });
     } catch { /* 로그 실패해도 다운로드에 영향 없음 */ }
   };

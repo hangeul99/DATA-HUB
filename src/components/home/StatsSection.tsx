@@ -84,7 +84,7 @@ export default function StatsSection() {
 
   return (
     <section ref={sectionRef} className="py-20 bg-white border-b border-neutral-100">
-      <div className="max-w-5xl mx-auto px-6">
+      <div className="max-w-7xl mx-auto px-6 lg:px-8">
         <div className="grid grid-cols-2 md:grid-cols-4 gap-10">
           {stats.map((s, i) => (
             <StatCard key={s.label} {...s} delay={i * 100} started={started} />

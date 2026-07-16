@@ -46,29 +46,29 @@ export default function HeroSection() {
       <div className="absolute top-1/3 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[900px] h-[700px] bg-brand-500/15 rounded-full blur-3xl pointer-events-none" />
 
       {/* 콘텐츠 */}
-      <div className="relative z-10 max-w-5xl mx-auto px-6 text-center">
+      <div className="relative z-10 max-w-6xl mx-auto px-6 text-center">
 
         {/* 로고 + 센터명 영역 */}
-        <div ref={logoRef} className="flex flex-col items-center mb-12">
+        <div ref={logoRef} className="flex flex-col items-center mb-8 sm:mb-12">
           {/* 글로컬 로고 */}
-          <div className="relative mb-6">
-            <div className="relative w-48 h-48 md:w-56 md:h-56 drop-shadow-2xl">
-              <Image src="/logo.png" alt="인제대학교 글로컬대학 로고" fill sizes="224px"
+          <div className="relative mb-4 sm:mb-6">
+            <div className="relative w-32 h-32 sm:w-40 sm:h-40 md:w-48 md:h-48 lg:w-56 lg:h-56 drop-shadow-2xl">
+              <Image src="/logo.png" alt="인제대학교 글로컬대학 로고" fill sizes="(max-width:640px) 128px,(max-width:768px) 160px,(max-width:1024px) 192px,224px"
                 style={{ objectFit: "contain" }} priority draggable={false} />
             </div>
           </div>
-          <h2 className="text-white text-3xl md:text-4xl font-extrabold tracking-tight">
+          <h2 className="text-white text-2xl sm:text-3xl md:text-4xl font-extrabold tracking-tight">
             데이터거버넌스센터
           </h2>
         </div>
 
         {/* 구분선 */}
-        <div className="w-16 h-px bg-white/20 mx-auto mb-10" />
+        <div className="w-16 h-px bg-white/20 mx-auto mb-8 sm:mb-10" />
 
         {/* 메인 타이틀 */}
         <h1
           ref={titleRef}
-          className="text-4xl md:text-5xl lg:text-6xl font-bold text-white leading-tight tracking-tight"
+          className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold text-white leading-tight tracking-tight"
         >
           데이터로 여는
           <br />
@@ -78,7 +78,7 @@ export default function HeroSection() {
         {/* 서브 문구 */}
         <p
           ref={subRef}
-          className="mt-6 text-base md:text-lg text-white/60 max-w-2xl mx-auto leading-relaxed"
+          className="mt-4 sm:mt-6 text-sm sm:text-base md:text-lg text-white/60 max-w-2xl mx-auto leading-relaxed"
         >
           연구자·기업·지자체·일반인 모두를 위한 인제대학교 데이터 플랫폼.
           <br className="hidden md:block" />

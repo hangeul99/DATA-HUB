@@ -136,13 +136,19 @@ export default function PostDetailPage() {
       .from("post-attachments")
       .getPublicUrl(post.attachment_path);
     if (!data?.publicUrl) return;
-    const res  = await fetch(data.publicUrl);
-    const blob = await res.blob();
-    const url  = URL.createObjectURL(blob);
-    const a    = document.createElement("a");
-    a.href = url; a.download = post.attachment_name;
-    document.body.appendChild(a); a.click();
-    document.body.removeChild(a); URL.revokeObjectURL(url);
+
+    try {
+      const res  = await fetch(data.publicUrl);
+      const blob = await res.blob();
+      const url  = URL.createObjectURL(blob);
+      const a    = document.createElement("a");
+      a.href = url; a.download = post.attachment_name;
+      document.body.appendChild(a); a.click();
+      document.body.removeChild(a); URL.revokeObjectURL(url);
+    } catch {
+      alert("파일 다운로드에 실패했습니다. 잠시 후 다시 시도해 주세요.");
+      return;
+    }
 
     // 비로그인 포함 다운로드 로그 기록
     try {

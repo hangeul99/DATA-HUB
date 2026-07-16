@@ -181,7 +181,7 @@ export default function Navbar() {
                 </Link>
               ))}
               <hr className="border-neutral-100 my-2" />
-              {user ? (
+              {user === undefined ? null : user ? (
                 <div className="flex flex-col gap-2">
                   {isAdmin && (
                     <Link href="/admin" onClick={() => setMobileOpen(false)}

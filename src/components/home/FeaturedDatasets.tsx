@@ -1,114 +1,164 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { motion, useReducedMotion } from "framer-motion";
-import { ArrowRight, ArrowUpRight, Download } from "lucide-react";
+import { BarChart2, BookOpen, TrendingUp, MapPin, ArrowRight, Download } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
+
+// ── 카테고리별 아이콘 설정 ────────────────────────────────────
+const CATEGORY_STYLE: Record<string, { icon: React.ElementType; iconBg: string }> = {
+  "통계/공공 데이터": { icon: BarChart2,  iconBg: "bg-blue-50 text-blue-600" },
+  "연구/학술 데이터": { icon: BookOpen,   iconBg: "bg-brand-50 text-brand-600" },
+  "금융/경제 데이터": { icon: TrendingUp, iconBg: "bg-emerald-50 text-emerald-600" },
+  "지역/업체 데이터": { icon: MapPin,     iconBg: "bg-orange-50 text-orange-600" },
+};
 
 interface Dataset {
   id: string;
   title: string;
   category: string;
   description: string;
+  tags: string[];
   downloads: number;
   created_at: string;
 }
 
-const ease = [0.16, 1, 0.3, 1] as const;
-
 export default function FeaturedDatasets() {
-  const reduce = useReducedMotion() ?? false;
-  const [datasets, setDatasets] = useState<Dataset[] | null>(null); // null = 로딩 중
+  const headerRef = useRef<HTMLDivElement>(null);
+  const gridRef = useRef<HTMLDivElement>(null);
+  const [datasets, setDatasets] = useState<Dataset[]>([]);
 
+  // ── 다운로드 수 상위 6개 fetch ─────────────────────────────
   useEffect(() => {
-    createClient()
+    const supabase = createClient();
+    supabase
       .from("datasets")
-      .select("id, title, category, description, downloads, created_at")
+      .select("id, title, category, description, tags, downloads, created_at")
       .eq("is_active", true)
       .order("downloads", { ascending: false })
       .limit(6)
       .then(({ data }) => setDatasets(data ?? []));
   }, []);
 
-  // 최신 2개 = 신규, 다운로드 1위 = 인기
-  const newest = new Set(
-    [...(datasets ?? [])]
+  // ── 스크롤 페이드인 애니메이션 ────────────────────────────
+  useEffect(() => {
+    const targets = [headerRef.current, gridRef.current];
+    targets.forEach((el, i) => {
+      if (!el) return;
+      el.style.opacity = "0";
+      el.style.transform = "translateY(28px)";
+      const observer = new IntersectionObserver(
+        ([entry]) => {
+          if (entry.isIntersecting) {
+            setTimeout(() => {
+              if (!el) return;
+              el.style.transition = "opacity 0.65s ease, transform 0.65s ease";
+              el.style.opacity = "1";
+              el.style.transform = "translateY(0)";
+            }, i * 150);
+            observer.disconnect();
+          }
+        },
+        { threshold: 0.1 }
+      );
+      observer.observe(el);
+    });
+  }, []);
+
+  // ── 배지: 최다 조회 1개 → 인기, 최신 2개 → 신규 ──────────
+  const topDownloadsId = datasets.length > 0 ? datasets[0].id : null;
+  const newest2 = new Set(
+    [...datasets]
       .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
-      .slice(0, 2).map((d) => d.id)
+      .slice(0, 2)
+      .map((d) => d.id)
   );
-  const topId = datasets?.[0]?.id;
-  const badge = (d: Dataset) => (newest.has(d.id) ? "신규" : d.id === topId ? "인기" : null);
+
+  const getBadge = (ds: Dataset) => {
+    if (newest2.has(ds.id)) return "신규";
+    if (ds.id === topDownloadsId) return "인기";
+    return null;
+  };
 
   return (
-    <section className="py-20 md:py-24 bg-neutral-50 border-t border-neutral-200">
+    <section className="py-24 bg-neutral-50">
       <div className="max-w-7xl mx-auto px-6 lg:px-8">
-        <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4">
-          <div className="max-w-[60ch]">
-            <h2 className="text-3xl md:text-4xl font-semibold tracking-tight text-neutral-900">
-              많이 찾는 데이터셋
-            </h2>
-            <p className="mt-4 text-base text-neutral-600 leading-relaxed">
-              다운로드 기준 상위 여섯 개입니다.
-            </p>
+        <div ref={headerRef} className="flex items-end justify-between mb-12">
+          <div>
+            <p className="text-brand-600 font-semibold text-sm uppercase tracking-widest mb-3">Featured</p>
+            <h2 className="text-3xl md:text-4xl font-bold text-neutral-900">주목할 만한 데이터셋</h2>
           </div>
-          <Link href="/datasets"
-            className="inline-flex items-center gap-1.5 text-sm font-medium text-neutral-900 hover:text-brand-600 transition-colors duration-150 outline-none focus-visible:ring-2 focus-visible:ring-brand-400 rounded-xl">
-            데이터 탐색하기 <ArrowRight size={14} strokeWidth={1.75} />
+          <Link
+            href="/datasets"
+            className="hidden sm:flex items-center gap-1.5 text-sm font-semibold text-brand-600 hover:text-brand-700 transition-colors"
+          >
+            전체 보기
+            <ArrowRight size={14} />
           </Link>
         </div>
 
-        {/* 원장(ledger) 목록: 2열, 행 사이 border-t만 */}
-        <div className="mt-12 grid grid-cols-1 md:grid-cols-2 gap-x-12">
-          {datasets === null ? (
-            Array.from({ length: 6 }).map((_, i) => (
-              <div key={i} className="py-5 border-t border-neutral-200" aria-hidden>
-                <div className="h-3 w-24 rounded bg-neutral-200/70" />
-                <div className="mt-3 h-4 w-3/4 rounded bg-neutral-200/70" />
-                <div className="mt-2 h-3 w-1/2 rounded bg-neutral-200/50" />
-              </div>
-            ))
-          ) : datasets.length === 0 ? (
-            <p className="col-span-full py-10 border-t border-neutral-200 text-sm text-neutral-500">
-              아직 등록된 데이터셋이 없습니다. 관리자 페이지에서 첫 데이터셋을 등록하세요.
-            </p>
-          ) : (
-            datasets.map((d, i) => {
-              const b = badge(d);
-              return (
-                <motion.div
-                  key={d.id}
-                  initial={reduce ? false : { opacity: 0, y: 12 }}
-                  whileInView={{ opacity: 1, y: 0 }}
-                  viewport={{ once: true, amount: 0.4 }}
-                  transition={{ duration: 0.45, delay: (i % 2) * 0.05 + Math.floor(i / 2) * 0.04, ease }}
-                >
-                  <Link href={`/datasets/${d.id}`}
-                    className="group block py-5 border-t border-neutral-200 outline-none focus-visible:ring-2 focus-visible:ring-brand-400 rounded-sm">
-                    <div className="flex items-center gap-2 text-xs text-neutral-500">
-                      <span>{d.category}</span>
-                      {b && (
-                        <span className={`px-1.5 py-0.5 rounded-md text-[11px] font-medium ${
-                          b === "신규" ? "bg-brand-50 text-brand-700" : "bg-amber-50 text-amber-700"
-                        }`}>{b}</span>
-                      )}
+        <div ref={gridRef} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+          {datasets.map((ds) => {
+            const style = CATEGORY_STYLE[ds.category] ?? { icon: BarChart2, iconBg: "bg-neutral-100 text-neutral-500" };
+            const Icon = style.icon;
+            const badge = getBadge(ds);
+            return (
+              <Link
+                key={ds.id}
+                href={`/datasets/${ds.id}`}
+                className="group bg-white rounded-2xl border border-neutral-100 hover:border-brand-200 hover:shadow-brand transition-all duration-300 flex flex-col"
+              >
+                <div className="p-5 flex-1">
+                  <div className="flex items-start justify-between mb-4">
+                    <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${style.iconBg}`}>
+                      <Icon size={18} />
                     </div>
-                    <div className="mt-1.5 flex items-start justify-between gap-4">
-                      <h3 className="text-base font-medium text-neutral-900 group-hover:text-brand-600 transition-colors duration-150 leading-snug">
-                        {d.title}
-                      </h3>
-                      <ArrowUpRight size={16} strokeWidth={1.75}
-                        className="flex-shrink-0 mt-1 text-neutral-400 transition-transform duration-150 group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
-                    </div>
-                    <p className="mt-1 text-sm text-neutral-600 line-clamp-1">{d.description}</p>
-                    <p className="mt-2 inline-flex items-center gap-1 text-xs text-neutral-500 tabular-nums">
-                      <Download size={12} strokeWidth={1.75} /> {d.downloads.toLocaleString()}
-                    </p>
-                  </Link>
-                </motion.div>
-              );
-            })
-          )}
+                    {badge && (
+                      <span className={`text-xs font-bold px-2.5 py-1 rounded-full ${
+                        badge === "신규" ? "bg-brand-500 text-white" : "bg-amber-400 text-amber-900"
+                      }`}>
+                        {badge}
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-xs text-neutral-400 font-medium mb-1">{ds.category}</p>
+                  <h3 className="font-semibold text-neutral-900 text-sm leading-snug mb-2 group-hover:text-brand-700 transition-colors">
+                    {ds.title}
+                  </h3>
+                  <p className="text-xs text-neutral-500 leading-relaxed line-clamp-2">{ds.description}</p>
+                </div>
+
+                <div className="px-5 pb-4 flex items-center justify-between">
+                  <div className="flex gap-1.5 flex-wrap">
+                    {ds.tags?.slice(0, 2).map((tag) => (
+                      <span key={tag} className="text-xs px-2 py-0.5 bg-neutral-100 text-neutral-500 rounded-md font-mono">
+                        {tag}
+                      </span>
+                    ))}
+                  </div>
+                  <div className="flex items-center gap-1 text-xs text-neutral-400">
+                    <Download size={11} />
+                    {ds.downloads.toLocaleString()}
+                  </div>
+                </div>
+
+                <div className="px-5 pb-5">
+                  <span className="block w-full text-center text-sm font-semibold text-brand-600 bg-brand-50 hover:bg-brand-500 hover:text-white py-2.5 rounded-xl transition-all duration-200 active:scale-95">
+                    신청하기
+                  </span>
+                </div>
+              </Link>
+            );
+          })}
+        </div>
+
+        <div className="mt-8 text-center sm:hidden">
+          <Link
+            href="/datasets"
+            className="inline-flex items-center gap-2 text-sm font-semibold text-brand-600 hover:text-brand-700"
+          >
+            전체 데이터셋 보기 <ArrowRight size={14} />
+          </Link>
         </div>
       </div>
     </section>

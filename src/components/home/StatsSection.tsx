@@ -1,80 +1,93 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { useInView, useReducedMotion } from "framer-motion";
 import { createClient } from "@/lib/supabase/client";
 
 interface StatItem { value: number; suffix: string; label: string; }
 
-// 숫자 카운트업 — 화면에 들어왔을 때 한 번만, 감속 모션 설정이면 즉시 최종값
-function useCountUp(target: number, started: boolean, instant: boolean) {
+function useCountUp(target: number, duration = 1400, started: boolean) {
   const [count, setCount] = useState(0);
   useEffect(() => {
-    if (!started || instant) return;
-    const duration = 1200;
-    const start = performance.now();
-    let raf = 0;
-    const tick = (now: number) => {
-      const p = Math.min((now - start) / duration, 1);
-      const eased = 1 - Math.pow(1 - p, 3);
-      setCount(Math.round(target * eased));
-      if (p < 1) raf = requestAnimationFrame(tick);
-    };
-    raf = requestAnimationFrame(tick);
-    return () => cancelAnimationFrame(raf);
-  }, [target, started, instant]);
-  return instant && started ? target : count;
+    if (!started) return;
+    let cur = 0;
+    const step = target / (duration / 16);
+    const timer = setInterval(() => {
+      cur += step;
+      if (cur >= target) { setCount(target); clearInterval(timer); }
+      else setCount(Math.floor(cur));
+    }, 16);
+    return () => clearInterval(timer);
+  }, [target, duration, started]);
+  return count;
 }
 
-function Stat({ value, suffix, label, started, instant }: StatItem & { started: boolean; instant: boolean }) {
-  const count = useCountUp(value, started, instant);
+function StatCard({ value, suffix, label, delay, started }: StatItem & { delay: number; started: boolean }) {
+  const count = useCountUp(value, 1400, started);
+  const ref = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!ref.current) return;
+    ref.current.style.opacity = "0";
+    ref.current.style.transform = "translateY(24px)";
+    setTimeout(() => {
+      if (!ref.current) return;
+      ref.current.style.transition = "opacity 0.6s ease, transform 0.6s ease";
+      ref.current.style.opacity = "1";
+      ref.current.style.transform = "translateY(0)";
+    }, delay);
+  }, [delay, started]);
   return (
-    <div className="py-10 px-6 first:pl-0 last:pr-0">
-      <div className="text-4xl md:text-5xl font-semibold tabular-nums tracking-tight text-neutral-900">
-        {count.toLocaleString()}<span className="text-brand-600">{suffix}</span>
+    <div ref={ref} className="text-center">
+      <div className="text-4xl md:text-5xl font-bold text-brand-600 tabular-nums">
+        {count.toLocaleString()}{suffix}
       </div>
-      <div className="mt-2 text-sm text-neutral-500">{label}</div>
+      <div className="mt-2 text-sm text-neutral-500 font-medium">{label}</div>
     </div>
   );
 }
 
 export default function StatsSection() {
-  const ref = useRef<HTMLDivElement>(null);
-  const inView = useInView(ref, { once: true, amount: 0.4 });
-  const reduce = useReducedMotion() ?? false;
-
-  const [stats, setStats] = useState<StatItem[]>([
+  const sectionRef = useRef<HTMLDivElement>(null);
+  const [started, setStarted]   = useState(false);
+  const [stats, setStats]       = useState<StatItem[]>([
     { value: 0, suffix: "+", label: "등록 데이터셋" },
-    { value: 0, suffix: "+", label: "이용 신청" },
-    { value: 0, suffix: "+", label: "누적 다운로드" },
-    { value: 4, suffix: "개", label: "데이터 분야" },
+    { value: 0, suffix: "+", label: "총 신청 건수" },
+    { value: 0, suffix: "+", label: "총 다운로드" },
+    { value: 4, suffix: "개", label: "데이터 카테고리" },
   ]);
 
+  // Supabase에서 실시간 수치 조회
   useEffect(() => {
     const supabase = createClient();
     (async () => {
-      try {
-        const [{ count: datasets }, { count: applications }, { count: downloads }] = await Promise.all([
-          supabase.from("datasets").select("*", { count: "exact", head: true }).eq("is_active", true),
-          supabase.from("applications").select("*", { count: "exact", head: true }),
-          supabase.from("download_logs").select("*", { count: "exact", head: true }),
-        ]);
-        setStats([
-          { value: datasets ?? 0,     suffix: "+", label: "등록 데이터셋" },
-          { value: applications ?? 0, suffix: "+", label: "이용 신청" },
-          { value: downloads ?? 0,    suffix: "+", label: "누적 다운로드" },
-          { value: 4,                 suffix: "개", label: "데이터 분야" },
-        ]);
-      } catch { /* 수치 조회 실패해도 화면은 유지 */ }
+      const [{ count: datasets }, { count: applications }, { count: downloads }] = await Promise.all([
+        supabase.from("datasets").select("*", { count: "exact", head: true }).eq("is_active", true),
+        supabase.from("applications").select("*", { count: "exact", head: true }),
+        supabase.from("download_logs").select("*", { count: "exact", head: true }),
+      ]);
+      setStats([
+        { value: datasets  ?? 0, suffix: "+", label: "등록 데이터셋" },
+        { value: applications ?? 0, suffix: "+", label: "총 신청 건수" },
+        { value: downloads ?? 0, suffix: "+", label: "총 다운로드" },
+        { value: 4, suffix: "개", label: "데이터 카테고리" },
+      ]);
     })();
   }, []);
 
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      ([entry]) => { if (entry.isIntersecting) { setStarted(true); observer.disconnect(); } },
+      { threshold: 0.3 }
+    );
+    if (sectionRef.current) observer.observe(sectionRef.current);
+    return () => observer.disconnect();
+  }, []);
+
   return (
-    <section className="bg-neutral-50">
+    <section ref={sectionRef} className="py-20 bg-white border-b border-neutral-100">
       <div className="max-w-7xl mx-auto px-6 lg:px-8">
-        <div ref={ref} className="grid grid-cols-2 md:grid-cols-4 md:divide-x divide-neutral-200 border-y border-neutral-200">
-          {stats.map((s) => (
-            <Stat key={s.label} {...s} started={inView} instant={reduce} />
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-10">
+          {stats.map((s, i) => (
+            <StatCard key={s.label} {...s} delay={i * 100} started={started} />
           ))}
         </div>
       </div>

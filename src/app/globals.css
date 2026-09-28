@@ -61,12 +61,6 @@
 
   --font-sans: var(--font-pretendard);
   --font-display: var(--font-pretendard);
-
-  /* ── 모션 이징 (DESIGN.md 6장) — className="ease-out-expo" ── */
-  --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
-
-  /* ── 브랜드 틴트 그림자 (DESIGN.md 4장) — className="shadow-tinted" ── */
-  --shadow-tinted: 0 1px 2px rgba(11, 96, 99, 0.06), 0 12px 32px -12px rgba(11, 96, 99, 0.14);
 }
 
 /* ── 한국어 전용 폰트 (Pretendard) ──
@@ -96,8 +90,10 @@ body {
   font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  word-break: keep-all; /* 한글 단어 중간 줄바꿈 방지 */
 }
+
+/* 스크롤바 완전 제거 → 초록 번쩍임·레이아웃 shift 원천 차단 (스크롤 동작은 유지) */
+::-webkit-scrollbar { width: 0; }
 
 /* 그라디언트 텍스트 유틸리티 클래스 — className="gradient-text" 로 사용 */
 .gradient-text {

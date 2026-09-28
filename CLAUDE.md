@@ -207,3 +207,9 @@ lhg9449@gmail.com → lhg****@gmail.com
 경고: amber-xxx
 위험: red-xxx
 ```
+
+## 디자인 규칙
+- UI 작업 전에 반드시 루트의 DESIGN.md를 읽고 그 토큰(색·타이포·간격)만 사용한다.
+- 간격은 DESIGN.md의 base unit 배수로만 쓴다.
+- 작업 후 playwright MCP로 데스크톱/모바일(375px) 화면을 캡처해 스스로 검수한다.
+- 디자인 기준은 emil-design-eng, 레이아웃 참고는 design-taste-frontend 스킬을 쓴다.

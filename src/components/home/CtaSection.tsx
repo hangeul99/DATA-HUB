@@ -1,71 +1,50 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+/* ============================================================
+   CtaSection — 페이지 하단 가입 유도 (시안 v7)
+
+   김해 풍경 사진을 짙은 틸로 덮어 분위기만 살리고 글자 대비는 유지합니다.
+   ★ 사진 교체: public/images/home/gimhae-cta.jpg 교체 + CREDIT 문구 수정
+============================================================ */
+
+import { useRef } from "react";
+import Image from "next/image";
 import Link from "next/link";
-import { ArrowRight, Database } from "lucide-react";
+import { useReveal } from "./motion";
+
+// 위키미디어 공용 사진 — CC BY 4.0 라이선스라 출처 표기 필수
+const CREDIT = "사진 xiquinhosilva, CC BY 4.0";
 
 export default function CtaSection() {
-  const ref = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    const el = ref.current;
-    if (!el) return;
-    el.style.opacity = "0";
-    el.style.transform = "translateY(32px)";
-    const observer = new IntersectionObserver(
-      ([entry]) => {
-        if (entry.isIntersecting) {
-          el.style.transition = "opacity 0.7s ease, transform 0.7s ease";
-          el.style.opacity = "1";
-          el.style.transform = "translateY(0)";
-          observer.disconnect();
-        }
-      },
-      { threshold: 0.2 }
-    );
-    observer.observe(el);
-    return () => observer.disconnect();
-  }, []);
+  const sectionRef = useRef<HTMLElement>(null);
+  useReveal(sectionRef);
 
   return (
-    <section className="py-24 bg-white">
-      <div className="max-w-4xl mx-auto px-6 text-center">
-        <div
-          ref={ref}
-          className="relative bg-gradient-to-br from-navy-800 via-brand-700 to-brand-600 rounded-3xl px-8 py-16 md:py-20 overflow-hidden"
-        >
-          {/* Glow */}
-          <div className="absolute top-0 right-0 w-64 h-64 bg-brand-400/20 rounded-full blur-3xl" />
-          <div className="absolute bottom-0 left-0 w-64 h-64 bg-navy-600/30 rounded-full blur-3xl" />
+    <section ref={sectionRef} className="px-4 pb-28 md:pb-36">
+      <div className="reveal relative mx-auto max-w-[1208px] overflow-hidden rounded-3xl bg-[linear-gradient(135deg,#0E253C,#094D50_60%,#0B6063)] px-6 py-24 text-center text-white md:py-[120px]">
+        {/* 배경: 사진(흑백 톤으로 섞음) → 틸 그림자 → 도트 무늬 */}
+        <Image src="/images/home/gimhae-cta.jpg" alt="" fill sizes="(max-width:1240px) 100vw, 1208px"
+          className="object-cover opacity-[.34] mix-blend-luminosity" />
+        <div aria-hidden="true" className="absolute inset-0 bg-[radial-gradient(ellipse_at_50%_40%,rgba(9,77,80,.35),rgba(7,18,32,.75))]" />
+        <div aria-hidden="true" className="absolute inset-0 opacity-25 [background-image:radial-gradient(rgba(255,255,255,.22)_1px,transparent_1.2px)] [background-size:24px_24px] [mask-image:radial-gradient(ellipse_60%_70%_at_50%_50%,#000,transparent)]" />
 
-          <div className="relative z-10">
-            <div className="w-14 h-14 rounded-2xl bg-white/10 flex items-center justify-center mx-auto mb-6">
-              <Database size={28} className="text-white" />
-            </div>
-            <h2 className="text-3xl md:text-4xl font-bold text-white mb-4">
-              지금 바로 시작하세요
-            </h2>
-            <p className="text-white/70 text-base md:text-lg max-w-xl mx-auto mb-8 leading-relaxed">
-              회원가입 후 원하는 데이터를 신청하면
-              <br />빠른 승인으로 연구와 프로젝트에 바로 활용할 수 있습니다.
-            </p>
-            <div className="flex flex-col sm:flex-row gap-4 justify-center">
-              <Link
-                href="/signup"
-                className="inline-flex items-center justify-center gap-2 bg-white text-brand-700 font-semibold px-8 py-4 rounded-2xl hover:bg-brand-50 transition-colors duration-200 active:scale-95"
-              >
-                회원가입 하기
-                <ArrowRight size={16} />
-              </Link>
-              <Link
-                href="/datasets"
-                className="inline-flex items-center justify-center gap-2 bg-white/10 border border-white/20 text-white font-semibold px-8 py-4 rounded-2xl hover:bg-white/20 transition-colors duration-200 active:scale-95"
-              >
-                데이터 먼저 보기
-              </Link>
-            </div>
+        <div className="relative">
+          <h2 className="text-[34px] sm:text-5xl lg:text-[64px] font-extrabold leading-[1.18] tracking-[-.035em]">
+            필요한 데이터,<br />지금 신청하세요
+          </h2>
+          <p className="mx-auto mt-5 max-w-[26em] text-[17px] sm:text-lg text-white/80">
+            회원가입 후 신청하면 검토를 거쳐 연구와 프로젝트에 바로 쓸 수 있어요.
+          </p>
+          <div className="mt-9 flex flex-wrap justify-center gap-3">
+            <Link href="/signup" className="press inline-flex h-[52px] items-center rounded-full bg-[#4FAFAF] px-7 font-bold text-[#04282A] hover:bg-[#8FD3D3]">
+              시작하기
+            </Link>
+            <Link href="/datasets" className="press inline-flex h-[52px] items-center rounded-full px-7 font-bold text-white shadow-[inset_0_0_0_1.5px_rgba(255,255,255,.4)] hover:bg-white/[.08]">
+              데이터 둘러보기
+            </Link>
           </div>
         </div>
+        <span className="absolute bottom-3 right-5 text-[11px] text-white/50">{CREDIT}</span>
       </div>
     </section>
   );

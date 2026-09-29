@@ -1,128 +1,210 @@
 "use client";
 
-import { useEffect, useRef } from "react";
-import Link from "next/link";
+/* ============================================================
+   HeroSection — 홈 최상단 (시안 v7 "우주" 히어로)
+
+   배경: 네이비→틸 그라디언트 위에
+         반짝이는 별(캔버스) + 도트 무늬(마우스 스프링 패럴랙스)
+         + 궤도 링 3개 + 행성 지평선 + 필름 그레인
+   내용: 로고 → 센터명 → 타이틀 → 설명 → 검색 (글 요소 4개로 제한)
+
+   ★ 문구 수정: 아래 JSX 텍스트를 바로 고치면 됩니다.
+============================================================ */
+
+import { useEffect, useRef, useState, type FormEvent } from "react";
 import Image from "next/image";
-import { ArrowRight, Search, ChevronDown } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { Search } from "lucide-react";
+import { prefersReducedMotion } from "./motion";
+
+// 타이틀 어절 — 순서대로 흐림→선명 (accent = 밝은 틸)
+const TITLE_LINES: { w: string; accent?: boolean }[][] = [
+  [{ w: "데이터로" }, { w: "여는" }],
+  [{ w: "지역", accent: true }, { w: "혁신의", accent: true }, { w: "시대", accent: true }],
+];
+
+/** 별 캔버스 — 크기·밝기가 다른 별이 천천히 반짝임. 화면 밖이면 멈춤 */
+function useStarfield(canvasRef: React.RefObject<HTMLCanvasElement | null>) {
+  useEffect(() => {
+    const cv = canvasRef.current;
+    const ctx = cv?.getContext("2d");
+    if (!cv || !ctx) return;
+    const reduce = prefersReducedMotion();
+
+    type Star = { x: number; y: number; r: number; b: number; sp: number; ph: number; teal: boolean };
+    let stars: Star[] = [];
+    let W = 0, H = 0, raf = 0, running = false;
+
+    const draw = (t: number) => {
+      ctx.clearRect(0, 0, W, H);
+      for (const s of stars) {
+        const a = s.b * (reduce ? 1 : 0.55 + 0.45 * Math.sin((t / 1000) * s.sp + s.ph));
+        ctx.globalAlpha = Math.max(0, a);
+        ctx.fillStyle = s.teal ? "#8FD3D3" : "#FFFFFF";
+        ctx.beginPath(); ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2); ctx.fill();
+        if (s.r > 1.2) { // 큰 별은 은은하게 번짐
+          ctx.globalAlpha = a * 0.25;
+          ctx.beginPath(); ctx.arc(s.x, s.y, s.r * 3.2, 0, Math.PI * 2); ctx.fill();
+        }
+      }
+      ctx.globalAlpha = 1;
+    };
+
+    // 캔버스 크기를 맞추고 별 배치 (고정 난수 → 새로고침해도 같은 하늘)
+    const setup = () => {
+      const r = cv.getBoundingClientRect();
+      const dpr = Math.min(window.devicePixelRatio || 1, 2);
+      W = r.width; H = r.height;
+      cv.width = W * dpr; cv.height = H * dpr;
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      let seed = 5;
+      const rnd = () => { seed = (seed * 9301 + 49297) % 233280; return seed / 233280; };
+      const n = Math.round((W * H) / 4800);
+      stars = Array.from({ length: n }, () => {
+        const big = rnd() < 0.08;
+        return {
+          x: rnd() * W, y: rnd() * H * 0.92,
+          r: big ? 1.1 + rnd() * 0.9 : 0.35 + rnd() * 0.7,
+          b: 0.35 + rnd() * 0.6, sp: 0.4 + rnd() * 1.4, ph: rnd() * 6.28, teal: rnd() < 0.18,
+        };
+      });
+      draw(0);
+    };
+
+    const loop = (t: number) => { draw(t); if (running) raf = requestAnimationFrame(loop); };
+
+    setup();
+    let resizeTimer: ReturnType<typeof setTimeout>;
+    const onResize = () => { clearTimeout(resizeTimer); resizeTimer = setTimeout(setup, 150); };
+    window.addEventListener("resize", onResize);
+
+    // 화면에 보일 때만 애니메이션 (배터리 절약)
+    const io = new IntersectionObserver(([e]) => {
+      if (reduce) return;
+      if (e.isIntersecting && !running) { running = true; raf = requestAnimationFrame(loop); }
+      else if (!e.isIntersecting && running) { running = false; cancelAnimationFrame(raf); }
+    });
+    io.observe(cv);
+
+    return () => {
+      running = false; cancelAnimationFrame(raf); clearTimeout(resizeTimer);
+      window.removeEventListener("resize", onResize); io.disconnect();
+    };
+  }, [canvasRef]);
+}
 
 export default function HeroSection() {
-  const logoRef = useRef<HTMLDivElement>(null);
-  const titleRef = useRef<HTMLHeadingElement>(null);
-  const subRef = useRef<HTMLParagraphElement>(null);
-  const ctaRef = useRef<HTMLDivElement>(null);
+  const router = useRouter();
+  const sectionRef = useRef<HTMLElement>(null);
+  const starsRef = useRef<HTMLCanvasElement>(null);
+  const dotsRef = useRef<HTMLDivElement>(null);
+  const [query, setQuery] = useState("");
 
+  useStarfield(starsRef);
+
+  // ── 도트 무늬: 마우스를 스프링처럼 살짝 늦게 따라감 (transform 직접 변경 → 리렌더 없음) ──
   useEffect(() => {
-    const els = [logoRef.current, titleRef.current, subRef.current, ctaRef.current];
-    els.forEach((el, i) => {
-      if (!el) return;
-      el.style.opacity = "0";
-      el.style.transform = "translateY(28px)";
-      setTimeout(() => {
-        if (!el) return;
-        el.style.transition = "opacity 0.75s ease, transform 0.75s ease";
-        el.style.opacity = "1";
-        el.style.transform = "translateY(0)";
-      }, 100 + i * 160);
-    });
+    const hero = sectionRef.current, dots = dotsRef.current;
+    if (!hero || !dots || prefersReducedMotion()) return;
+    if (!window.matchMedia("(hover: hover) and (pointer: fine)").matches) return;
+
+    let tx = 0, ty = 0, cx = 0, cy = 0, raf = 0;
+    const step = () => {
+      cx += (tx - cx) * 0.08; cy += (ty - cy) * 0.08;
+      dots.style.transform = `translate3d(${cx.toFixed(2)}px, ${cy.toFixed(2)}px, 0)`;
+      raf = Math.abs(tx - cx) > 0.05 || Math.abs(ty - cy) > 0.05 ? requestAnimationFrame(step) : 0;
+    };
+    const kick = () => { if (!raf) raf = requestAnimationFrame(step); };
+    const onMove = (e: PointerEvent) => {
+      const r = hero.getBoundingClientRect();
+      tx = ((e.clientX - r.left) / r.width - 0.5) * -22;
+      ty = ((e.clientY - r.top) / r.height - 0.5) * -22;
+      kick();
+    };
+    const onLeave = () => { tx = 0; ty = 0; kick(); };
+    hero.addEventListener("pointermove", onMove);
+    hero.addEventListener("pointerleave", onLeave);
+    return () => {
+      cancelAnimationFrame(raf);
+      hero.removeEventListener("pointermove", onMove);
+      hero.removeEventListener("pointerleave", onLeave);
+    };
   }, []);
 
+  // ── 검색 제출 → 데이터셋 목록으로 검색어 전달 ──
+  const onSearch = (e: FormEvent) => {
+    e.preventDefault();
+    const q = query.trim();
+    router.push(q ? `/datasets?q=${encodeURIComponent(q)}` : "/datasets");
+  };
+
+  let wordIndex = 2; // 로고(0)·센터명(1) 다음부터 어절 순번
+
   return (
-    <section className="relative min-h-screen flex flex-col items-center justify-center overflow-hidden">
+    <section
+      ref={sectionRef}
+      className="relative overflow-hidden flex items-center justify-center text-center text-white min-h-[min(940px,100svh)] pt-28 pb-36 md:pt-32 md:pb-40 bg-[linear-gradient(135deg,#071220_0%,#063A3C_58%,#0B6063_100%)]"
+    >
+      {/* ── 배경 레이어 (장식) ── */}
+      <div aria-hidden="true" className="pointer-events-none absolute inset-0">
+        <canvas ref={starsRef} className="absolute inset-0 w-full h-full" />
+        <div ref={dotsRef} className="hero-dots absolute -inset-20 opacity-20" />
+        <div className="absolute left-1/2 top-[42%] w-[960px] h-[680px] -translate-x-1/2 -translate-y-1/2 blur-[30px] bg-[radial-gradient(closest-side,rgba(13,115,119,.42),transparent)]" />
+        <div className="hero-ring absolute left-1/2 top-[44%] w-[560px] h-[560px] -ml-[280px] -mt-[280px]" />
+        <div className="hero-ring hero-ring-2 absolute left-1/2 top-[44%] w-[820px] h-[820px] -ml-[410px] -mt-[410px]" />
+        <div className="hero-ring hero-ring-3 absolute left-1/2 top-[44%] w-[1120px] h-[1120px] -ml-[560px] -mt-[560px]" />
+        <div className="hero-horizon absolute left-1/2 bottom-0 w-[170%] h-[340px] -translate-x-1/2 translate-y-[62%]" />
+        <div className="hero-grain absolute inset-0" />
+      </div>
 
-      {/* 배경 그라디언트 */}
-      <div className="absolute inset-0 bg-gradient-to-br from-navy-900 via-brand-800 to-brand-600" />
-
-      {/* 배경 그리드 패턴 */}
-      <div
-        className="absolute inset-0 opacity-[0.06]"
-        style={{
-          backgroundImage: `linear-gradient(rgba(255,255,255,0.2) 1px, transparent 1px),
-            linear-gradient(90deg, rgba(255,255,255,0.2) 1px, transparent 1px)`,
-          backgroundSize: "60px 60px",
-        }}
-      />
-
-      {/* 빛번짐 */}
-      <div className="absolute top-1/3 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[900px] h-[700px] bg-brand-500/15 rounded-full blur-3xl pointer-events-none" />
-
-      {/* 콘텐츠 */}
-      <div className="relative z-10 max-w-6xl mx-auto px-6 text-center">
-
-        {/* 로고 + 센터명 영역 */}
-        <div ref={logoRef} className="flex flex-col items-center mb-8 sm:mb-12">
-          {/* 글로컬 로고 */}
-          <div className="relative mb-4 sm:mb-6">
-            <div className="relative w-32 h-32 sm:w-40 sm:h-40 md:w-48 md:h-48 lg:w-56 lg:h-56 drop-shadow-2xl">
-              <Image src="/logo.png" alt="인제대학교 글로컬대학 로고" fill sizes="(max-width:640px) 128px,(max-width:768px) 160px,(max-width:1024px) 192px,224px"
-                style={{ objectFit: "contain" }} priority draggable={false} />
-            </div>
-          </div>
-          <h2 className="text-white text-2xl sm:text-3xl md:text-4xl font-extrabold tracking-tight">
-            데이터거버넌스센터
-          </h2>
-        </div>
-
-        {/* 구분선 */}
-        <div className="w-16 h-px bg-white/20 mx-auto mb-8 sm:mb-10" />
-
-        {/* 메인 타이틀 */}
-        <h1
-          ref={titleRef}
-          className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold text-white leading-tight tracking-tight"
-        >
-          데이터로 여는
-          <br />
-          <span className="text-brand-300">지역 혁신의 시대</span>
-        </h1>
-
-        {/* 서브 문구 */}
-        <p
-          ref={subRef}
-          className="mt-4 sm:mt-6 text-sm sm:text-base md:text-lg text-white/60 max-w-2xl mx-auto leading-relaxed"
-        >
-          연구자·기업·지자체·일반인 모두를 위한 인제대학교 데이터 플랫폼.
-          <br className="hidden md:block" />
-          통계·공공·연구·금융 데이터를 한 곳에서 탐색하고 신청하세요.
+      {/* ── 콘텐츠 ── */}
+      <div className="relative max-w-[860px] px-6">
+        <Image
+          src="/logo.png" alt="인제대학교 글로컬대학 로고" width={176} height={240} priority draggable={false}
+          className="enter mx-auto mb-3.5 w-[120px] sm:w-[150px] lg:w-[176px] h-auto drop-shadow-[0_20px_40px_rgba(0,0,0,.45)]"
+          style={{ "--i": 0 } as React.CSSProperties}
+        />
+        <p className="enter text-xl sm:text-2xl lg:text-[26px] font-extrabold tracking-[-.02em] text-white/90" style={{ "--i": 1 } as React.CSSProperties}>
+          데이터거버넌스센터
         </p>
 
-        {/* 검색바 */}
-        <div ref={ctaRef} className="mt-10 flex flex-col sm:flex-row items-center gap-3 max-w-2xl mx-auto">
-          <div className="relative flex-1 w-full">
-            <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-neutral-400" size={17} />
-            <input
-              type="text"
-              placeholder="데이터 검색 (예: 인구통계, 주가, 논문...)"
-              className="w-full pl-11 pr-4 py-4 rounded-2xl bg-white/95 text-neutral-800 text-sm outline-none focus:ring-2 focus:ring-brand-400 placeholder:text-neutral-400 shadow-lg"
-            />
-          </div>
-          <Link
-            href="/datasets"
-            className="flex-shrink-0 flex items-center gap-2 bg-brand-500 hover:bg-brand-400 text-white font-semibold px-7 py-4 rounded-2xl transition-colors duration-200 active:scale-95 shadow-brand-lg"
-          >
-            탐색하기
-            <ArrowRight size={15} />
-          </Link>
-        </div>
-
-        {/* 카테고리 태그 */}
-        <div className="mt-5 flex flex-wrap justify-center gap-2">
-          {["통계/공공 데이터", "연구/학술", "금융/경제", "지역/업체"].map((tag) => (
-            <Link
-              key={tag}
-              href={`/datasets?category=${tag}`}
-              className="text-xs px-3 py-1.5 rounded-full bg-white/10 hover:bg-white/20 text-white/60 hover:text-white border border-white/10 transition-all duration-200"
-            >
-              {tag}
-            </Link>
+        <h1 className="mt-9 text-[40px] sm:text-6xl lg:text-[76px] font-extrabold leading-[1.12] tracking-[-.045em] text-balance">
+          {TITLE_LINES.map((line, li) => (
+            <span key={li} className="block">
+              {line.map((part) => (
+                <span key={part.w}>
+                  <span className={`enter inline-block ${part.accent ? "text-[#8FD3D3]" : ""}`} style={{ "--i": wordIndex++ } as React.CSSProperties}>
+                    {part.w}
+                  </span>{" "}
+                </span>
+              ))}
+            </span>
           ))}
-        </div>
+        </h1>
+
+        <p className="enter mt-5 mx-auto max-w-[30em] text-[17px] sm:text-lg lg:text-xl leading-relaxed text-white/80" style={{ "--i": 8 } as React.CSSProperties}>
+          통계, 공공, 연구, 금융 데이터를 한 곳에서 찾고 신청하세요.
+        </p>
+
+        {/* 검색 — 제출 시 /datasets?q=검색어 로 이동 */}
+        <form onSubmit={onSearch} role="search"
+          className="enter mt-10 mx-auto max-w-[580px] flex items-center gap-2 h-[58px] sm:h-16 pl-5 sm:pl-6 pr-2 rounded-full bg-white shadow-[0_18px_50px_-14px_rgba(0,0,0,.55)] transition-shadow focus-within:shadow-[0_0_0_4px_rgba(79,175,175,.45),0_18px_50px_-14px_rgba(0,0,0,.55)]"
+          style={{ "--i": 9 } as React.CSSProperties}>
+          <Search size={20} className="flex-none text-neutral-500" aria-hidden="true" />
+          <label htmlFor="hero-search" className="sr-only">데이터 검색</label>
+          <input
+            id="hero-search" type="search" value={query} onChange={(e) => setQuery(e.target.value)}
+            placeholder="어떤 데이터를 찾으세요?"
+            className="flex-1 min-w-0 h-full bg-transparent text-base text-neutral-900 outline-none placeholder:text-neutral-500"
+          />
+          <button type="submit" className="press flex-none h-11 sm:h-12 px-4 sm:px-6 rounded-full bg-brand-500 hover:bg-brand-600 text-white font-bold">
+            검색
+          </button>
+        </form>
       </div>
 
-      {/* 스크롤 인디케이터 */}
-      <div className="absolute bottom-8 left-1/2 -translate-x-1/2 flex flex-col items-center gap-1.5 text-white/30 animate-bounce">
-        <span className="text-[10px] tracking-widest uppercase">Scroll</span>
-        <ChevronDown size={14} />
-      </div>
+      {/* 스크롤 안내 선 */}
+      <span aria-hidden="true" className="hero-cue hidden sm:block absolute left-1/2 bottom-28 w-px h-9 bg-gradient-to-b from-white/55 to-transparent" />
     </section>
   );
 }

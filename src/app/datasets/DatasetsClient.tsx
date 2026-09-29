@@ -205,10 +205,13 @@ export default function DatasetsClient() {
     return () => subscription.unsubscribe();
   }, []);
 
-  // ── URL ?category= 파라미터로 초기 필터 적용 ─────────────
+  // ── URL ?category= / ?q= 파라미터로 초기 필터 적용 ─────────────
+  // (홈 히어로 검색창·카테고리 칩에서 넘어올 때 사용)
   useEffect(() => {
     const cat = searchParams.get("category");
     if (cat && CATEGORIES.includes(cat)) setCategory(cat);
+    const q = searchParams.get("q");
+    if (q) setQuery(q);
   }, [searchParams]);
 
   // ── 지역/업체 접근 권한 + 신청 여부 확인 ─────────────────

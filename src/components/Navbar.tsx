@@ -67,20 +67,29 @@ export default function Navbar() {
 
   const linkColor = isHome && !scrolled ? "text-white" : "text-neutral-700";
 
+  // 홈 첫 화면에서는 로고·로그인/시작하기를 숨김 (히어로에 큰 로고와 검색이 이미 있음)
+  // → 스크롤해서 흰 메뉴바가 되면 부드럽게 나타남. 자리는 그대로 두어 메뉴 위치가 흔들리지 않음
+  const hideOnHeroTop = isHome && !scrolled;
+  const heroTopHidden = hideOnHeroTop
+    ? "opacity-0 invisible -translate-y-1 pointer-events-none"
+    : "opacity-100 visible translate-y-0";
+
   return (
     <>
       <header className="fixed top-0 left-0 right-0 z-50">
-        {/* 배경 레이어: backdrop-blur 제거 → 홈 히어로 색이 비치지 않음, opacity로 부드럽게 전환 */}
-        <div aria-hidden="true" className={`absolute inset-0 -z-10 bg-white shadow-sm border-b border-neutral-200/60 [transition:opacity_150ms] ${
+        {/* 배경 레이어: 스크롤하면 반투명 흰 유리 바로 전환 (90% 흰색이라 글씨 가독성 유지), opacity로 부드럽게 */}
+        <div aria-hidden="true" className={`absolute inset-0 -z-10 bg-white/90 backdrop-blur-xl backdrop-saturate-150 border-b border-neutral-200/60 shadow-[0_8px_30px_-20px_rgba(15,20,28,.25)] [transition:opacity_200ms] ${
           isHome && !scrolled ? "opacity-0" : "opacity-100"
         }`} />
         <div className="relative w-full px-4 md:px-6 lg:px-10">
           <div className="flex items-center justify-between h-16 md:h-20 gap-4">
 
             {/* 로고 */}
-            <Link href="/" className="flex items-center gap-2 flex-shrink-0 group outline-none focus:outline-none">
+            <Link href="/" aria-hidden={hideOnHeroTop || undefined} tabIndex={hideOnHeroTop ? -1 : undefined}
+              className={`flex items-center gap-2 flex-shrink-0 group outline-none focus:outline-none [transition:opacity_250ms,translate_300ms,visibility_250ms] ${heroTopHidden}`}>
+              {/* 스크롤하면 로고가 살짝 작아짐 */}
               {!logoError ? (
-                <div className="relative h-12 w-12 md:h-14 md:w-14 flex-shrink-0">
+                <div className={`relative flex-shrink-0 [transition:width_250ms,height_250ms] ${scrolled ? "h-10 w-10 md:h-11 md:w-11" : "h-12 w-12 md:h-14 md:w-14"}`}>
                   <Image src="/logo.png" alt="인제대학교 글로컬대학 로고" fill sizes="56px"
                     style={{ objectFit: "contain" }} priority draggable={false}
                     onError={() => setLogoError(true)} />
@@ -101,9 +110,11 @@ export default function Navbar() {
                   : pathname === link.href;
                 return (
                   <Link key={link.href} href={link.href}
-                    className={`text-xs xl:text-sm font-semibold px-2 py-1 rounded-md whitespace-nowrap outline-none focus:outline-none [transition:color_150ms,opacity_150ms] ${linkColor} ${
-                      isActive ? "opacity-100" : "opacity-55 hover:opacity-80"
-                    }`}>
+                    className={`relative text-xs xl:text-sm font-semibold px-2 py-1 rounded-md whitespace-nowrap outline-none focus-visible:ring-2 focus-visible:ring-brand-400 [transition:color_150ms,opacity_150ms] ${linkColor} ${
+                      isActive ? "opacity-100" : "opacity-55 hover:opacity-90"
+                    } after:absolute after:left-2 after:right-2 after:-bottom-0.5 after:h-0.5 after:rounded after:origin-left after:[transition:transform_250ms_cubic-bezier(.16,1,.3,1)] ${
+                      isHome && !scrolled ? "after:bg-brand-300" : "after:bg-brand-500"
+                    } ${isActive ? "after:scale-x-100" : "after:scale-x-0 hover:after:scale-x-100"}`}>
                     {link.label}
                   </Link>
                 );
@@ -137,7 +148,7 @@ export default function Navbar() {
                   </button>
                 </>
               ) : (
-                <>
+                <div className={`flex items-center gap-2 [transition:opacity_250ms,translate_300ms,visibility_250ms] ${heroTopHidden}`}>
                   <Link href="/login"
                     className={`text-xs font-medium px-3 py-1.5 rounded-lg outline-none focus:outline-none [transition:color_150ms,background-color_150ms] ${
                       isHome && !scrolled ? "text-white hover:bg-white/15" : "text-neutral-600 hover:bg-neutral-100"
@@ -152,7 +163,7 @@ export default function Navbar() {
                     }`}>
                     시작하기
                   </Link>
-                </>
+                </div>
               )}
             </div>
 

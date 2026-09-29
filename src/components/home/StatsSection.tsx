@@ -1,96 +1,113 @@
 "use client";
 
+/* ============================================================
+   StatsSection — 히어로 아래에 걸쳐 올라오는 유리 통계 카드 (시안 v7)
+
+   - 수치는 Supabase에서 실시간 조회 (개수만 세는 head 쿼리 → 가볍고 빠름)
+   - "최근 30일 +N" = 최근 30일 안에 생긴 행 개수
+   - 화면에 들어오면 숫자가 0부터 카운트업
+============================================================ */
+
 import { useEffect, useRef, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
+import { prefersReducedMotion, useInViewOnce } from "./motion";
 
-interface StatItem { value: number; suffix: string; label: string; }
+interface StatItem {
+  value: number;
+  unit: string;       // 숫자 뒤 단위 (개, 건, 회)
+  label: string;
+  recent?: number;    // 최근 30일 증가분 (0이면 표시 안 함)
+  note?: string;      // 증가분 대신 보여줄 보조 문구
+}
 
-function useCountUp(target: number, duration = 1400, started: boolean) {
+// ── 숫자 카운트업 (requestAnimationFrame → 화면 주사율에 맞춰 부드럽게) ──
+function useCountUp(target: number, started: boolean, duration = 1500) {
   const [count, setCount] = useState(0);
+
   useEffect(() => {
     if (!started) return;
-    let cur = 0;
-    const step = target / (duration / 16);
-    const timer = setInterval(() => {
-      cur += step;
-      if (cur >= target) { setCount(target); clearInterval(timer); }
-      else setCount(Math.floor(cur));
-    }, 16);
-    return () => clearInterval(timer);
-  }, [target, duration, started]);
+    const dur = prefersReducedMotion() ? 0 : duration; // 움직임 줄이기 → 바로 최종값
+    let raf = 0;
+    const t0 = performance.now();
+    const tick = (now: number) => {
+      const p = dur === 0 ? 1 : Math.min((now - t0) / dur, 1);
+      setCount(Math.round(target * (1 - Math.pow(1 - p, 4)))); // 끝에서 천천히 멈춤
+      if (p < 1) raf = requestAnimationFrame(tick);
+    };
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf); // 언마운트·값 변경 시 정리
+  }, [target, started, duration]);
+
   return count;
 }
 
-function StatCard({ value, suffix, label, delay, started }: StatItem & { delay: number; started: boolean }) {
-  const count = useCountUp(value, 1400, started);
-  const ref = useRef<HTMLDivElement>(null);
-  useEffect(() => {
-    if (!ref.current) return;
-    ref.current.style.opacity = "0";
-    ref.current.style.transform = "translateY(24px)";
-    setTimeout(() => {
-      if (!ref.current) return;
-      ref.current.style.transition = "opacity 0.6s ease, transform 0.6s ease";
-      ref.current.style.opacity = "1";
-      ref.current.style.transform = "translateY(0)";
-    }, delay);
-  }, [delay, started]);
+function Stat({ item, started, index }: { item: StatItem; started: boolean; index: number }) {
+  const count = useCountUp(item.value, started);
   return (
-    <div ref={ref} className="text-center">
-      <div className="text-4xl md:text-5xl font-bold text-brand-600 tabular-nums">
-        {count.toLocaleString()}{suffix}
-      </div>
-      <div className="mt-2 text-sm text-neutral-500 font-medium">{label}</div>
+    // 칸 사이 구분선: 첫 칸 없음. 모바일 2열에서는 3번째 칸이 줄 시작이라 PC(4열)에서만 표시
+    <div className={`relative px-5 py-6 sm:px-8 sm:py-8
+      ${index === 0 ? "" : "before:absolute before:left-0 before:top-7 before:bottom-7 before:w-px before:bg-neutral-200"}
+      ${index === 2 ? "before:hidden lg:before:block" : ""}
+      ${index >= 2 ? "border-t border-neutral-200 lg:border-t-0" : ""}`}>
+      <p className="text-sm sm:text-[15px] font-semibold text-neutral-500">{item.label}</p>
+      <p className="mt-1.5 text-[32px] sm:text-[44px] font-extrabold leading-none tracking-[-.035em] text-neutral-900 tabular-nums">
+        {count.toLocaleString()}
+        <span className="ml-1 text-base sm:text-[22px] font-bold text-neutral-500">{item.unit}</span>
+      </p>
+      <p className="mt-2 min-h-5 text-[13px] sm:text-sm font-semibold text-brand-600">
+        {item.recent && item.recent > 0 ? `최근 30일 +${item.recent.toLocaleString()}` : item.note ?? ""}
+      </p>
     </div>
   );
 }
 
 export default function StatsSection() {
-  const sectionRef = useRef<HTMLDivElement>(null);
-  const [started, setStarted]   = useState(false);
-  const [stats, setStats]       = useState<StatItem[]>([
-    { value: 0, suffix: "+", label: "등록 데이터셋" },
-    { value: 0, suffix: "+", label: "총 신청 건수" },
-    { value: 0, suffix: "+", label: "총 다운로드" },
-    { value: 4, suffix: "개", label: "데이터 카테고리" },
+  const cardRef = useRef<HTMLDivElement>(null);
+  const started = useInViewOnce(cardRef, 0.5);
+
+  const [stats, setStats] = useState<StatItem[]>([
+    { value: 0, unit: "개", label: "등록 데이터셋" },
+    { value: 0, unit: "건", label: "이용 신청" },
+    { value: 0, unit: "회", label: "다운로드" },
+    { value: 4, unit: "개", label: "데이터 분야", note: "통계, 연구, 금융, 지역" },
   ]);
 
-  // Supabase에서 실시간 수치 조회
+  // ── 전체 개수 + 최근 30일 개수를 한 번에 병렬 조회 ──
   useEffect(() => {
+    let cancelled = false; // 응답 전에 페이지를 떠나면 setState 하지 않음
     const supabase = createClient();
+    const since = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
+
     (async () => {
-      const [{ count: datasets }, { count: applications }, { count: downloads }] = await Promise.all([
+      const [ds, dsRecent, apps, appsRecent, dls, dlsRecent] = await Promise.all([
         supabase.from("datasets").select("*", { count: "exact", head: true }).eq("is_active", true),
+        supabase.from("datasets").select("*", { count: "exact", head: true }).eq("is_active", true).gte("created_at", since),
         supabase.from("applications").select("*", { count: "exact", head: true }),
+        supabase.from("applications").select("*", { count: "exact", head: true }).gte("created_at", since),
         supabase.from("download_logs").select("*", { count: "exact", head: true }),
+        supabase.from("download_logs").select("*", { count: "exact", head: true }).gte("created_at", since),
       ]);
+      if (cancelled) return;
       setStats([
-        { value: datasets  ?? 0, suffix: "+", label: "등록 데이터셋" },
-        { value: applications ?? 0, suffix: "+", label: "총 신청 건수" },
-        { value: downloads ?? 0, suffix: "+", label: "총 다운로드" },
-        { value: 4, suffix: "개", label: "데이터 카테고리" },
+        { value: ds.count ?? 0, unit: "개", label: "등록 데이터셋", recent: dsRecent.count ?? 0 },
+        { value: apps.count ?? 0, unit: "건", label: "이용 신청", recent: appsRecent.count ?? 0 },
+        { value: dls.count ?? 0, unit: "회", label: "다운로드", recent: dlsRecent.count ?? 0 },
+        { value: 4, unit: "개", label: "데이터 분야", note: "통계, 연구, 금융, 지역" },
       ]);
     })();
-  }, []);
 
-  useEffect(() => {
-    const observer = new IntersectionObserver(
-      ([entry]) => { if (entry.isIntersecting) { setStarted(true); observer.disconnect(); } },
-      { threshold: 0.3 }
-    );
-    if (sectionRef.current) observer.observe(sectionRef.current);
-    return () => observer.disconnect();
+    return () => { cancelled = true; };
   }, []);
 
   return (
-    <section ref={sectionRef} className="py-20 bg-white border-b border-neutral-100">
-      <div className="max-w-7xl mx-auto px-6 lg:px-8">
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-10">
-          {stats.map((s, i) => (
-            <StatCard key={s.label} {...s} delay={i * 100} started={started} />
-          ))}
+    // 음수 margin으로 히어로 하단(지평선 위)에 걸치게 배치
+    <div className="relative z-10 -mt-20 md:-mt-[84px]">
+      <div className="max-w-[1120px] mx-auto px-4 sm:px-6">
+        <div ref={cardRef}
+          className="grid grid-cols-2 lg:grid-cols-4 rounded-3xl bg-white/[.94] backdrop-blur-xl shadow-[0_30px_70px_-30px_rgba(7,18,32,.5),inset_0_0_0_1px_rgba(255,255,255,.7),0_0_0_1px_rgba(20,26,34,.04)]">
+          {stats.map((s, i) => <Stat key={s.label} item={s} started={started} index={i} />)}
         </div>
       </div>
-    </section>
+    </div>
   );
 }

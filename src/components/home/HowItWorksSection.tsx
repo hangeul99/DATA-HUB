@@ -1,102 +1,59 @@
 "use client";
 
-import { useEffect, useRef } from "react";
-import { Search, FileText, CheckCircle, Download, Upload } from "lucide-react";
+/* ============================================================
+   HowItWorksSection — 이용 절차 5단계 (시안 v7)
 
-const steps = [
-  {
-    step: "01",
-    icon: Search,
-    title: "데이터 탐색",
-    desc: "카테고리별 필터와 검색으로 원하는 데이터를 빠르게 찾으세요.",
-  },
-  {
-    step: "02",
-    icon: FileText,
-    title: "이용 신청",
-    desc: "이용 목적, 소속 기관 등을 입력하여 신청서를 제출합니다.",
-  },
-  {
-    step: "03",
-    icon: CheckCircle,
-    title: "관리자 승인",
-    desc: "검토 후 승인이 완료되면 이메일로 알림을 드립니다.",
-  },
-  {
-    step: "04",
-    icon: Download,
-    title: "데이터 다운로드",
-    desc: "승인된 데이터를 마이페이지에서 바로 다운로드 하세요.",
-  },
-  {
-    step: "05",
-    icon: Upload,
-    title: "결과물 제출",
-    desc: "활용 결과물(논문, 캡처, 앱 등)을 제출하여 기여를 공유하세요.",
-  },
+   화면에 들어오면 진행선이 채워지고, 번호가 1→5 순서로 켜집니다.
+   (PC: 가로 선 / 모바일: 세로 선)
+   ★ 단계 문구 수정: STEPS 배열
+============================================================ */
+
+import { useRef } from "react";
+import { useInViewOnce, useReveal } from "./motion";
+
+const STEPS = [
+  { title: "데이터 탐색", desc: "분야와 검색어로 원하는 데이터를 찾아요." },
+  { title: "이용 신청", desc: "이용 목적과 소속을 적어 신청해요." },
+  { title: "관리자 승인", desc: "검토가 끝나면 이메일로 알려 드려요." },
+  { title: "다운로드", desc: "마이페이지에서 바로 내려받아요." },
+  { title: "결과물 제출", desc: "논문, 앱 등 활용 결과를 공유해요." },
 ];
 
 export default function HowItWorksSection() {
-  const refs = useRef<(HTMLDivElement | null)[]>([]);
-
-  useEffect(() => {
-    refs.current.forEach((el, i) => {
-      if (!el) return;
-      el.style.opacity = "0";
-      el.style.transform = "translateY(28px)";
-      const observer = new IntersectionObserver(
-        ([entry]) => {
-          if (entry.isIntersecting) {
-            setTimeout(() => {
-              if (!el) return;
-              el.style.transition = "opacity 0.6s ease, transform 0.6s ease";
-              el.style.opacity = "1";
-              el.style.transform = "translateY(0)";
-            }, i * 120);
-            observer.disconnect();
-          }
-        },
-        { threshold: 0.15 }
-      );
-      observer.observe(el);
-    });
-  }, []);
+  const sectionRef = useRef<HTMLElement>(null);
+  const trackRef = useRef<HTMLDivElement>(null);
+  const go = useInViewOnce(trackRef, 0.4);
+  useReveal(sectionRef);
 
   return (
-    <section className="py-24 bg-white">
-      <div className="max-w-7xl mx-auto px-6 lg:px-8">
-        <div className="text-center mb-16">
-          <p className="text-brand-600 font-semibold text-sm uppercase tracking-widest mb-3">How It Works</p>
-          <h2 className="text-3xl md:text-4xl font-bold text-neutral-900">5단계로 완성되는 데이터 활용</h2>
-        </div>
+    <section ref={sectionRef} className="bg-[#F3F5F7] py-28 md:py-36">
+      <div className="mx-auto max-w-[1120px] px-6">
+        <h2 className="reveal text-center text-[32px] sm:text-[44px] lg:text-[52px] font-extrabold leading-[1.2] tracking-[-.035em] text-neutral-900">
+          신청부터 활용까지<br />다섯 단계면 충분해요
+        </h2>
 
-        <div className="relative">
-          {/* Connector line (desktop) */}
-          <div className="hidden lg:block absolute top-10 left-[10%] right-[10%] h-px bg-gradient-to-r from-transparent via-brand-200 to-transparent" />
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-8">
-            {steps.map((s, i) => {
-              const Icon = s.icon;
-              return (
-                <div
-                  key={s.step}
-                  ref={(el) => { refs.current[i] = el; }}
-                  className="flex flex-col items-center text-center"
-                >
-                  <div className="relative mb-5">
-                    <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-brand-500 to-navy-600 flex items-center justify-center shadow-brand">
-                      <Icon size={28} className="text-white" />
-                    </div>
-                    <span className="absolute -top-2 -right-2 w-6 h-6 rounded-full bg-brand-100 text-brand-700 text-xs font-bold flex items-center justify-center">
-                      {s.step}
-                    </span>
-                  </div>
-                  <h3 className="font-semibold text-neutral-900 text-base mb-2">{s.title}</h3>
-                  <p className="text-sm text-neutral-500 leading-relaxed">{s.desc}</p>
-                </div>
-              );
-            })}
+        {/* 바깥 div = 진행선 기준 위치, ol = 단계 목록 (ol 안에는 li만 둘 수 있어 선은 밖으로 분리) */}
+        <div ref={trackRef} className={`group relative mx-auto mt-16 max-w-[460px] md:mt-[72px] min-[860px]:max-w-none ${go ? "go" : ""}`}>
+          {/* 진행선 — 모바일은 세로, PC는 가로 */}
+          <div aria-hidden="true"
+            className="absolute left-[29px] top-[30px] bottom-[30px] w-0.5 overflow-hidden rounded bg-neutral-300 min-[860px]:left-[10%] min-[860px]:right-[10%] min-[860px]:top-[29px] min-[860px]:bottom-auto min-[860px]:h-0.5 min-[860px]:w-auto">
+            <i className="step-fill block h-full w-full bg-brand-500" />
           </div>
+
+          <ol className="relative grid grid-cols-1 gap-7 min-[860px]:grid-cols-5 min-[860px]:gap-5">
+          {STEPS.map((s, i) => (
+            <li key={s.title} className="relative flex items-start gap-4 min-[860px]:flex-col min-[860px]:items-center min-[860px]:text-center">
+              <span className="step-num flex h-[60px] w-[60px] flex-none items-center justify-center rounded-full bg-white text-[21px] font-extrabold text-neutral-500 shadow-[inset_0_0_0_2px_#CDD3DA] group-[.go]:bg-brand-500 group-[.go]:text-white group-[.go]:shadow-[0_10px_24px_-10px_rgba(13,115,119,.7)] group-[.go]:scale-[1.04]"
+                style={{ "--i": i } as React.CSSProperties}>
+                {i + 1}
+              </span>
+              <div>
+                <h3 className="text-[19px] font-extrabold text-neutral-900">{s.title}</h3>
+                <p className="mt-1.5 text-base leading-relaxed text-neutral-600 min-[860px]:mx-auto min-[860px]:max-w-[12em]">{s.desc}</p>
+              </div>
+            </li>
+          ))}
+          </ol>
         </div>
       </div>
     </section>

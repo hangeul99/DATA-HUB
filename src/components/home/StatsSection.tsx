@@ -41,20 +41,21 @@ function useCountUp(target: number, started: boolean, duration = 1500) {
   return count;
 }
 
+/* 한 칸: 예전 홈처럼 "가운데 정렬 · 틸색 큰 숫자 → 아래 라벨" 순서 (숫자가 먼저 눈에 들어옴) */
 function Stat({ item, started, index }: { item: StatItem; started: boolean; index: number }) {
   const count = useCountUp(item.value, started);
   return (
     // 칸 사이 구분선: 첫 칸 없음. 모바일 2열에서는 3번째 칸이 줄 시작이라 PC(4열)에서만 표시
-    <div className={`relative px-5 py-6 sm:px-8 sm:py-8
-      ${index === 0 ? "" : "before:absolute before:left-0 before:top-7 before:bottom-7 before:w-px before:bg-neutral-200"}
+    <div className={`relative flex flex-col items-center px-4 py-7 text-center sm:py-9
+      ${index === 0 ? "" : "before:absolute before:left-0 before:top-8 before:bottom-8 before:w-px before:bg-neutral-200"}
       ${index === 2 ? "before:hidden lg:before:block" : ""}
       ${index >= 2 ? "border-t border-neutral-200 lg:border-t-0" : ""}`}>
-      <p className="text-sm sm:text-[15px] font-semibold text-neutral-500">{item.label}</p>
-      <p className="mt-1.5 text-[32px] sm:text-[44px] font-extrabold leading-none tracking-[-.035em] text-neutral-900 tabular-nums">
+      <p className="text-4xl sm:text-5xl font-bold leading-none tracking-[-.02em] text-brand-600 tabular-nums">
         {count.toLocaleString()}
-        <span className="ml-1 text-base sm:text-[22px] font-bold text-neutral-500">{item.unit}</span>
+        <span className="ml-0.5 text-xl sm:text-2xl font-bold text-brand-500">{item.unit}</span>
       </p>
-      <p className="mt-2 min-h-5 text-[13px] sm:text-sm font-semibold text-brand-600">
+      <p className="mt-3 text-sm sm:text-[15px] font-medium text-neutral-600">{item.label}</p>
+      <p className="mt-1 min-h-5 text-xs sm:text-[13px] text-neutral-400">
         {item.recent && item.recent > 0 ? `최근 30일 +${item.recent.toLocaleString()}` : item.note ?? ""}
       </p>
     </div>
@@ -104,7 +105,7 @@ export default function StatsSection() {
     <div className="relative z-10 -mt-20 md:-mt-[84px]">
       <div className="max-w-[1120px] mx-auto px-4 sm:px-6">
         <div ref={cardRef}
-          className="grid grid-cols-2 lg:grid-cols-4 rounded-3xl bg-white/[.94] backdrop-blur-xl shadow-[0_30px_70px_-30px_rgba(7,18,32,.5),inset_0_0_0_1px_rgba(255,255,255,.7),0_0_0_1px_rgba(20,26,34,.04)]">
+          className="grid grid-cols-2 lg:grid-cols-4 rounded-3xl bg-white shadow-[0_30px_70px_-30px_rgba(7,18,32,.5),inset_0_0_0_1px_rgba(255,255,255,.7),0_0_0_1px_rgba(20,26,34,.04)]">
           {stats.map((s, i) => <Stat key={s.label} item={s} started={started} index={i} />)}
         </div>
       </div>

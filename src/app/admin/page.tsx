@@ -9,6 +9,7 @@ import {
 } from "lucide-react";
 import * as XLSX from "xlsx";
 import { createClient } from "@/lib/supabase/client";
+import BulkImportModal from "./BulkImportModal";
 
 // ── 탭 목록 — "다운로드 로그"는 "이용 현황"에 통합 ──────────────
 const ADMIN_TABS = ["실적 현황", "신청서 목록", "결과물 검토", "데이터 관리", "회원 관리", "이용 현황", "접근 권한 관리"];
@@ -213,6 +214,7 @@ export default function AdminPage() {
   const [authorized, setAuthorized] = useState(false);
   const [tab, setTab] = useState(0);
   const [showUpload, setShowUpload] = useState(false);
+  const [showBulk, setShowBulk] = useState(false); // 데이터허브 폴더 일괄 등록 창
 
   // ── 요약 카운트 ───────────────────────────────────────────────
   const [summary, setSummary] = useState<Summary>({ datasets: 0, applications: 0, downloads: 0, submissions: 0 });
@@ -758,7 +760,14 @@ export default function AdminPage() {
         {/* ── Tab 3: 데이터 관리 ─────────────────────────────────── */}
         {!loading && tab === 3 && (
           <div className="space-y-4">
-            <div className="flex justify-end">
+            <div className="flex justify-end gap-2">
+              {/* 데이터허브 폴더(00_관리/사이트등록_목록.json)를 읽어 여러 건을 한 번에 등록 */}
+              <button
+                onClick={() => setShowBulk(true)}
+                className="flex items-center gap-2 bg-white hover:bg-neutral-50 text-neutral-800 border border-neutral-200 font-semibold px-5 py-2.5 rounded-xl transition-colors active:scale-95"
+              >
+                <Upload size={16} /> 폴더 일괄 등록
+              </button>
               <button
                 onClick={() => setShowUpload(true)}
                 className="flex items-center gap-2 bg-brand-600 hover:bg-brand-700 text-white font-semibold px-5 py-2.5 rounded-xl transition-colors active:scale-95"
@@ -1038,6 +1047,17 @@ export default function AdminPage() {
           </div>
         )}
       </div>
+
+      {/* 폴더 일괄 등록 모달 */}
+      {showBulk && (
+        <BulkImportModal
+          onClose={() => setShowBulk(false)}
+          onUploaded={() => {
+            fetchSummary();
+            if (tab === 3) fetchTab(3);
+          }}
+        />
+      )}
 
       {/* 데이터셋 등록 모달 */}
       {showUpload && (

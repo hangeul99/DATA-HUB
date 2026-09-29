@@ -23,7 +23,8 @@ export default function SceneSection() {
       <div className="scene-sticky sticky top-0 h-svh overflow-hidden">
         {/* 사진 카드 (clip-path로 둥근 카드 → 화면 가득) */}
         <div className="scene-photo absolute inset-0 bg-navy-800">
-          <Image src={PHOTO} alt="김해 해반천을 따라 달리는 경전철과 인제대역" fill sizes="100vw" className="object-cover" />
+          {/* loading="eager": 스크롤해서 닿는 순간 큰 사진을 불러오면 끊기므로 미리 받아 둠 (우선순위는 낮게) */}
+          <Image src={PHOTO} alt="김해 해반천을 따라 달리는 경전철과 인제대역" fill sizes="100vw" loading="eager" fetchPriority="low" quality={70} className="object-cover" />
           {/* 글자가 잘 읽히도록 아래로 갈수록 어둡게 */}
           <div aria-hidden="true" className="absolute inset-0 bg-[linear-gradient(180deg,rgba(7,18,32,.15)_0%,rgba(7,18,32,.35)_45%,rgba(7,18,32,.78)_100%)]" />
         </div>

@@ -23,80 +23,67 @@ const TITLE_LINES: { w: string; accent?: boolean }[][] = [
   [{ w: "지역", accent: true }, { w: "혁신의", accent: true }, { w: "시대", accent: true }],
 ];
 
-/** 별 캔버스 — 크기·밝기가 다른 별이 천천히 반짝임. 화면 밖이면 멈춤 */
-function useStarfield(canvasRef: React.RefObject<HTMLCanvasElement | null>) {
+/**
+ * 별 캔버스 3장 — 별을 3묶음으로 나눠 각 캔버스에 "한 번만" 그림.
+ * 반짝임은 CSS가 캔버스 투명도만 바꿔서 처리 (매 프레임 다시 그리지 않아 가벼움)
+ * 화면 가로 크기가 바뀔 때만 다시 그림
+ */
+function useStarfield(layersRef: React.RefObject<(HTMLCanvasElement | null)[]>) {
   useEffect(() => {
-    const cv = canvasRef.current;
-    const ctx = cv?.getContext("2d");
-    if (!cv || !ctx) return;
-    const reduce = prefersReducedMotion();
+    const canvases = (layersRef.current ?? []).filter(Boolean) as HTMLCanvasElement[];
+    if (canvases.length === 0) return;
 
-    type Star = { x: number; y: number; r: number; b: number; sp: number; ph: number; teal: boolean };
-    let stars: Star[] = [];
-    let W = 0, H = 0, raf = 0, running = false;
-
-    const draw = (t: number) => {
-      ctx.clearRect(0, 0, W, H);
-      for (const s of stars) {
-        const a = s.b * (reduce ? 1 : 0.55 + 0.45 * Math.sin((t / 1000) * s.sp + s.ph));
-        ctx.globalAlpha = Math.max(0, a);
-        ctx.fillStyle = s.teal ? "#8FD3D3" : "#FFFFFF";
-        ctx.beginPath(); ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2); ctx.fill();
-        if (s.r > 1.2) { // 큰 별은 은은하게 번짐
-          ctx.globalAlpha = a * 0.25;
-          ctx.beginPath(); ctx.arc(s.x, s.y, s.r * 3.2, 0, Math.PI * 2); ctx.fill();
-        }
-      }
-      ctx.globalAlpha = 1;
-    };
-
-    // 캔버스 크기를 맞추고 별 배치 (고정 난수 → 새로고침해도 같은 하늘)
-    const setup = () => {
-      const r = cv.getBoundingClientRect();
+    const paint = () => {
+      const r = canvases[0].getBoundingClientRect();
       const dpr = Math.min(window.devicePixelRatio || 1, 2);
-      W = r.width; H = r.height;
-      cv.width = W * dpr; cv.height = H * dpr;
-      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-      let seed = 5;
+      const W = r.width, H = r.height;
+      const ctxs = canvases.map((cv) => {
+        cv.width = W * dpr; cv.height = H * dpr;
+        const ctx = cv.getContext("2d")!;
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+        ctx.clearRect(0, 0, W, H);
+        return ctx;
+      });
+      let seed = 5; // 고정 난수 → 새로고침해도 같은 하늘
       const rnd = () => { seed = (seed * 9301 + 49297) % 233280; return seed / 233280; };
       const n = Math.round((W * H) / 4800);
-      stars = Array.from({ length: n }, () => {
+      for (let i = 0; i < n; i++) {
         const big = rnd() < 0.08;
-        return {
-          x: rnd() * W, y: rnd() * H * 0.92,
-          r: big ? 1.1 + rnd() * 0.9 : 0.35 + rnd() * 0.7,
-          b: 0.35 + rnd() * 0.6, sp: 0.4 + rnd() * 1.4, ph: rnd() * 6.28, teal: rnd() < 0.18,
-        };
-      });
-      draw(0);
+        const x = rnd() * W, y = rnd() * H * 0.92;
+        const rad = big ? 1.1 + rnd() * 0.9 : 0.35 + rnd() * 0.7;
+        const alpha = 0.35 + rnd() * 0.6;
+        const ctx = ctxs[Math.floor(rnd() * ctxs.length)];
+        ctx.fillStyle = rnd() < 0.18 ? "#8FD3D3" : "#FFFFFF";
+        ctx.globalAlpha = alpha;
+        ctx.beginPath(); ctx.arc(x, y, rad, 0, Math.PI * 2); ctx.fill();
+        if (big) { // 큰 별은 은은하게 번짐
+          ctx.globalAlpha = alpha * 0.25;
+          ctx.beginPath(); ctx.arc(x, y, rad * 3.2, 0, Math.PI * 2); ctx.fill();
+        }
+      }
+      ctxs.forEach((c) => { c.globalAlpha = 1; });
     };
 
-    const loop = (t: number) => { draw(t); if (running) raf = requestAnimationFrame(loop); };
-
-    setup();
-    let resizeTimer: ReturnType<typeof setTimeout>;
-    const onResize = () => { clearTimeout(resizeTimer); resizeTimer = setTimeout(setup, 150); };
+    paint();
+    let timer: ReturnType<typeof setTimeout>;
+    let lastW = window.innerWidth;
+    const onResize = () => {
+      if (window.innerWidth === lastW) return; // 모바일 주소창 높이 변화로는 다시 그리지 않음
+      lastW = window.innerWidth;
+      clearTimeout(timer); timer = setTimeout(paint, 200);
+    };
     window.addEventListener("resize", onResize);
-
-    // 화면에 보일 때만 애니메이션 (배터리 절약)
-    const io = new IntersectionObserver(([e]) => {
-      if (reduce) return;
-      if (e.isIntersecting && !running) { running = true; raf = requestAnimationFrame(loop); }
-      else if (!e.isIntersecting && running) { running = false; cancelAnimationFrame(raf); }
-    });
-    io.observe(cv);
-
-    return () => {
-      running = false; cancelAnimationFrame(raf); clearTimeout(resizeTimer);
-      window.removeEventListener("resize", onResize); io.disconnect();
-    };
-  }, [canvasRef]);
+    return () => { clearTimeout(timer); window.removeEventListener("resize", onResize); };
+  }, [layersRef]);
 }
+
+// 별 캔버스 3장의 반짝임 박자 (서로 다르게 해서 자연스럽게)
+const STAR_LAYERS = [{ tw: "3.2s", delay: "0s" }, { tw: "4.6s", delay: "-1.5s" }, { tw: "6s", delay: "-3s" }];
 
 export default function HeroSection() {
   const router = useRouter();
   const sectionRef = useRef<HTMLElement>(null);
-  const starsRef = useRef<HTMLCanvasElement>(null);
+  const starsRef = useRef<(HTMLCanvasElement | null)[]>([]);
   const dotsRef = useRef<HTMLDivElement>(null);
   const [query, setQuery] = useState("");
 
@@ -147,9 +134,13 @@ export default function HeroSection() {
     >
       {/* ── 배경 레이어 (장식) ── */}
       <div aria-hidden="true" className="pointer-events-none absolute inset-0">
-        <canvas ref={starsRef} className="absolute inset-0 w-full h-full" />
+        {STAR_LAYERS.map((l, i) => (
+          <canvas key={i} ref={(el) => { starsRef.current[i] = el; }}
+            className="star-layer absolute inset-0 h-full w-full"
+            style={{ "--tw": l.tw, animationDelay: l.delay } as React.CSSProperties} />
+        ))}
         <div ref={dotsRef} className="hero-dots absolute -inset-20 opacity-20" />
-        <div className="absolute left-1/2 top-[42%] w-[960px] h-[680px] -translate-x-1/2 -translate-y-1/2 blur-[30px] bg-[radial-gradient(closest-side,rgba(13,115,119,.42),transparent)]" />
+        <div className="absolute left-1/2 top-[42%] w-[960px] h-[680px] -translate-x-1/2 -translate-y-1/2 bg-[radial-gradient(closest-side,rgba(13,115,119,.4),transparent)]" />
         <div className="hero-ring absolute left-1/2 top-[44%] w-[560px] h-[560px] -ml-[280px] -mt-[280px]" />
         <div className="hero-ring hero-ring-2 absolute left-1/2 top-[44%] w-[820px] h-[820px] -ml-[410px] -mt-[410px]" />
         <div className="hero-ring hero-ring-3 absolute left-1/2 top-[44%] w-[1120px] h-[1120px] -ml-[560px] -mt-[560px]" />

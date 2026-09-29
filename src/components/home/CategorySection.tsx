@@ -75,9 +75,8 @@ function LineViz() {
 /** 점 지도 — 김해 권역을 닮은 덩어리, 밀집 지점은 틸로 강조 */
 export function DotMap({ w, h, step, hot, base }: { w: number; h: number; step: number; hot: [number, number][]; base: string }) {
   const dots = useMemo(() => {
-    const out: { x: number; y: number; r: number; hot: boolean; o: number; i: number }[] = [];
+    const out: { x: number; y: number; r: number; hot: boolean; o: number }[] = [];
     const cx = w * 0.52, cy = h * 0.55;
-    let k = 0;
     for (let y = step; y < h; y += step) {
       for (let x = step; x < w; x += step) {
         const dx = (x - cx) / (w * 0.42), dy = (y - cy) / (h * 0.46);
@@ -86,16 +85,16 @@ export function DotMap({ w, h, step, hot, base }: { w: number; h: number; step: 
         const d = Math.min(...hot.map(([hx, hy]) => Math.hypot(x - hx, y - hy)));
         const near = Math.max(0, 1 - d / (step * 4.5));
         const isHot = near > 0.15;
-        out.push({ x, y, r: step * 0.22 + near * step * 0.2, hot: isHot, o: isHot ? 0.55 + near * 0.45 : 1, i: k++ % 60 });
+        out.push({ x, y, r: step * 0.22 + near * step * 0.2, hot: isHot, o: isHot ? 0.55 + near * 0.45 : 1 });
       }
     }
     return out;
   }, [w, h, step, hot]);
   return (
-    <svg viewBox={`0 0 ${w} ${h}`} fill="none" aria-hidden="true" className="block w-full h-auto overflow-visible">
+    // 점이 수백 개라 점마다 애니메이션하면 무거움 → 묶음(viz-group) 전체를 한 번에 나타나게
+    <svg viewBox={`0 0 ${w} ${h}`} fill="none" aria-hidden="true" className="viz-group block w-full h-auto overflow-visible">
       {dots.map((p) => (
-        <circle key={`${p.x}-${p.y}`} className="viz-pt" style={{ "--i": p.i, "--o": p.o.toFixed(2) } as React.CSSProperties}
-          cx={p.x} cy={p.y} r={p.r.toFixed(1)} fill={p.hot ? "#0D7377" : base} />
+        <circle key={`${p.x}-${p.y}`} cx={p.x} cy={p.y} r={p.r.toFixed(1)} fill={p.hot ? "#0D7377" : base} opacity={p.o.toFixed(2)} />
       ))}
     </svg>
   );

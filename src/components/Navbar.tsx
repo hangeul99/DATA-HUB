@@ -77,8 +77,8 @@ export default function Navbar() {
   return (
     <>
       <header className="fixed top-0 left-0 right-0 z-50">
-        {/* 배경 레이어: 스크롤하면 반투명 흰 유리 바로 전환 (90% 흰색이라 글씨 가독성 유지), opacity로 부드럽게 */}
-        <div aria-hidden="true" className={`absolute inset-0 -z-10 bg-white/90 backdrop-blur-xl backdrop-saturate-150 border-b border-neutral-200/60 shadow-[0_8px_30px_-20px_rgba(15,20,28,.25)] [transition:opacity_200ms] ${
+        {/* 배경 레이어: 스크롤하면 흰 바로 전환 (흐림 효과는 스크롤마다 뒤를 다시 그려 무거워서 뺌), opacity로 부드럽게 */}
+        <div aria-hidden="true" className={`absolute inset-0 -z-10 bg-white/[.96] border-b border-neutral-200/60 shadow-[0_8px_30px_-20px_rgba(15,20,28,.25)] [transition:opacity_200ms] ${
           isHome && !scrolled ? "opacity-0" : "opacity-100"
         }`} />
         <div className="relative w-full px-4 md:px-6 lg:px-10">

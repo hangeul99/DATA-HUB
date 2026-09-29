@@ -23,7 +23,7 @@ export default function CtaSection() {
     <section ref={sectionRef} className="px-4 pb-28 md:pb-36">
       <div className="reveal relative mx-auto max-w-[1208px] overflow-hidden rounded-3xl bg-[linear-gradient(135deg,#0E253C,#094D50_60%,#0B6063)] px-6 py-24 text-center text-white md:py-[120px]">
         {/* 배경: 사진(흑백 톤으로 섞음) → 틸 그림자 → 도트 무늬 */}
-        <Image src="/images/home/gimhae-cta.jpg" alt="" fill sizes="(max-width:1240px) 100vw, 1208px"
+        <Image src="/images/home/gimhae-cta.jpg" alt="" fill sizes="(max-width:1240px) 100vw, 1208px" loading="eager" fetchPriority="low" quality={60}
           className="object-cover opacity-[.34] mix-blend-luminosity" />
         <div aria-hidden="true" className="absolute inset-0 bg-[radial-gradient(ellipse_at_50%_40%,rgba(9,77,80,.35),rgba(7,18,32,.75))]" />
         <div aria-hidden="true" className="absolute inset-0 opacity-25 [background-image:radial-gradient(rgba(255,255,255,.22)_1px,transparent_1.2px)] [background-size:24px_24px] [mask-image:radial-gradient(ellipse_60%_70%_at_50%_50%,#000,transparent)]" />

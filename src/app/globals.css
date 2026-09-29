@@ -138,7 +138,8 @@ body {
     will-change: transform;
   }
   /* ── 히어로: 궤도 링 + 빛점 ── */
-  .hero-ring { border-radius: 9999px; border: 1px solid rgba(255,255,255,.08); animation: hero-spin 18s linear infinite; }
+  /* will-change: 회전을 GPU 레이어에서 처리 → 매 프레임 다시 그리지 않음 */
+  .hero-ring { border-radius: 9999px; border: 1px solid rgba(255,255,255,.08); animation: hero-spin 18s linear infinite; will-change: rotate; }
   .hero-ring::before {
     content: ""; position: absolute; top: -3px; left: 50%; width: 6px; height: 6px; border-radius: 9999px;
     background: #8FD3D3; box-shadow: 0 0 14px #4FAFAF;
@@ -156,9 +157,13 @@ body {
   }
   /* ── 히어로: 필름 그레인 (그라디언트 줄무늬 제거) ── */
   .hero-grain {
-    opacity: .06; mix-blend-mode: overlay;
+    opacity: .035; /* 합성 모드(overlay)는 매 프레임 비용이 커서 일반 투명도로 */
     background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
   }
+  /* ── 히어로: 별 반짝임 — 별을 캔버스 3장에 나눠 한 번만 그리고, 캔버스마다 투명도만 바꿈 (GPU 처리) ── */
+  .star-layer { animation: twinkle var(--tw, 4s) ease-in-out infinite alternate; will-change: opacity; }
+  @keyframes twinkle { from { opacity: 1; } to { opacity: .35; } }
+
   /* ── 히어로: 스크롤 안내 선 ── */
   .hero-cue { transform-origin: top; animation: hero-cue 2.2s var(--ease-in-out) infinite; }
   @keyframes hero-cue { 0% { scale: 1 0; opacity: 1; } 60% { scale: 1 1; opacity: 1; } 100% { scale: 1 1; opacity: 0; } }
@@ -176,7 +181,8 @@ body {
   .reveal-pre { opacity: 0; translate: 0 32px; }
 
   /* ── 사진 장면: 스크롤하면 둥근 사진 카드가 화면 가득 펼쳐짐 (토스식) ── */
-  .scene-photo { clip-path: inset(9% 6% 9% 6% round 40px); }
+  /* 사진 카드: 작게 시작해서 화면 가득 커짐. clip-path 대신 scale → GPU가 처리해서 스크롤이 부드러움 */
+  .scene-photo { scale: .86; border-radius: 28px; overflow: hidden; will-change: scale; contain: paint; }
   .scene-cap2 { opacity: 0; }
   @supports (animation-timeline: view()) {
     .scene-track { view-timeline-name: --scene; }
@@ -184,18 +190,20 @@ body {
     .scene-cap1 { animation: scene-in-out linear both; animation-timeline: --scene; animation-range: contain 8% contain 55%; }
     .scene-cap2 { animation: scene-in linear both; animation-timeline: --scene; animation-range: contain 58% contain 78%; }
   }
-  @keyframes scene-open { to { clip-path: inset(0 0 0 0 round 0); } }
+  /* 모서리 둥글기는 고정 (둥글기를 바꾸면 매번 다시 그려야 해서 무거움) → 크기만 GPU로 변경 */
+  @keyframes scene-open { to { scale: 1; } }
   @keyframes scene-in-out {
-    0% { opacity: 0; translate: 0 40px; filter: blur(6px); }
-    25%, 75% { opacity: 1; translate: 0 0; filter: blur(0); }
-    100% { opacity: 0; translate: 0 -40px; filter: blur(6px); }
+    0% { opacity: 0; translate: 0 40px; }
+    25%, 75% { opacity: 1; translate: 0 0; }
+    100% { opacity: 0; translate: 0 -40px; }
   }
-  @keyframes scene-in { from { opacity: 0; translate: 0 40px; filter: blur(6px); } to { opacity: 1; translate: 0 0; filter: blur(0); } }
+  /* 문장 전환: 흐림(blur)은 스크롤마다 계산이 무거워 빼고 투명도·이동만 */
+  @keyframes scene-in { from { opacity: 0; translate: 0 40px; } to { opacity: 1; translate: 0 0; } }
   /* 스크롤 연동 미지원 브라우저: 펼쳐진 사진 위에 두 문장을 모두 표시 */
   @supports not (animation-timeline: view()) {
     .scene-track { height: auto !important; }
     .scene-sticky { position: relative !important; height: auto !important; min-height: 720px; }
-    .scene-photo { clip-path: inset(0 16px round 24px); }
+    .scene-photo { scale: .96; border-radius: 24px; }
     .scene-cap1 { bottom: auto !important; top: 16%; }
     .scene-cap2 { opacity: 1; }
   }
@@ -209,6 +217,9 @@ body {
   .seen .viz-area { opacity: 1; }
   .viz-pt { opacity: 0; transform-box: fill-box; transform-origin: center; scale: .6; transition: opacity .5s ease, scale .6s var(--ease-out); transition-delay: calc(var(--i) * 18ms + 200ms); }
   .seen .viz-pt { opacity: var(--o, 1); scale: 1; }
+  /* 점이 많은 그림(점 지도)은 묶음 전체를 한 번에 나타나게 → 점 수백 개를 따로 움직이지 않아 가벼움 */
+  .viz-group { opacity: 0; scale: .96; transform-origin: center; transition: opacity .8s ease .2s, scale 1s var(--ease-expo) .2s; }
+  .seen .viz-group, .run .viz-group { opacity: 1; scale: 1; }
 
   /* ── 자동 분석 데모: 파일 → 분석 완료 → 열 종류 → 차트 순서 ── */
   .demo-a, .demo-b { transition: opacity .3s ease, filter .3s ease, scale .3s var(--ease-out); }
@@ -232,11 +243,12 @@ body {
   }
 
   /* ── 인기 데이터셋 흐름 띠: 카드 묶음 2벌을 -50%까지 흘려 끊김 없이 반복 ── */
-  .marquee-mask {
-    -webkit-mask-image: linear-gradient(90deg, transparent, #000 6%, #000 94%, transparent);
-            mask-image: linear-gradient(90deg, transparent, #000 6%, #000 94%, transparent);
-  }
-  .marquee-belt { animation: marquee var(--dur, 48s) linear infinite; }
+  /* 양 끝이 흐려지는 효과: 마스크 대신 배경색 그라디언트 덮개 (움직이는 띠를 매번 재합성하지 않음) */
+  .marquee-mask { position: relative; }
+  .marquee-mask::before, .marquee-mask::after { content: ""; position: absolute; top: 0; bottom: 0; width: 6%; z-index: 1; pointer-events: none; }
+  .marquee-mask::before { left: 0; background: linear-gradient(90deg, var(--background), transparent); }
+  .marquee-mask::after { right: 0; background: linear-gradient(-90deg, var(--background), transparent); }
+  .marquee-belt { animation: marquee var(--dur, 48s) linear infinite; will-change: translate; }
   @keyframes marquee { to { translate: -50% 0; } }
   /* 키보드로 카드에 들어오면 멈춤. 마우스를 올리면 멈추지 않고 느려짐 (FeaturedDatasets.tsx에서 속도 조절) */
   .marquee-mask:focus-within .marquee-belt,
@@ -250,15 +262,16 @@ body {
 /* 움직임 줄이기: 이동·회전·확대는 끄고 내용은 모두 보이게 */
 @media (prefers-reduced-motion: reduce) {
   .enter { animation: none; opacity: 1; translate: none; filter: none; }
-  .hero-ring, .hero-cue { animation: none; }
+  .hero-ring, .hero-cue, .star-layer { animation: none; }
   .reveal { transition: opacity .3s ease; }
   .reveal-pre { translate: none; }
   .scene-photo, .scene-cap1, .scene-cap2 { animation: none !important; }
   .scene-track { height: auto !important; }
   .scene-sticky { position: relative !important; height: auto !important; min-height: 720px; }
-  .scene-photo { clip-path: inset(0 16px round 24px); }
+  .scene-photo { scale: .96; border-radius: 24px; }
   .scene-cap1 { bottom: auto !important; top: 16%; }
   .scene-cap2 { opacity: 1; }
+  .viz-group { opacity: 1; scale: 1; transition: none; }
   .viz-bar, .viz-pt, .demo-hbar, .demo-chip { scale: 1; translate: none; transition-duration: .01s; transition-delay: 0s; }
   .viz-draw { stroke-dashoffset: 0; transition: none; }
   .step-fill, .step-num { transition-delay: 0s; }

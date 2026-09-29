@@ -67,6 +67,13 @@ export default function Navbar() {
 
   const linkColor = isHome && !scrolled ? "text-white" : "text-neutral-700";
 
+  // 홈 첫 화면에서는 로고·로그인/시작하기를 숨김 (히어로에 큰 로고와 검색이 이미 있음)
+  // → 스크롤해서 흰 메뉴바가 되면 부드럽게 나타남. 자리는 그대로 두어 메뉴 위치가 흔들리지 않음
+  const hideOnHeroTop = isHome && !scrolled;
+  const heroTopHidden = hideOnHeroTop
+    ? "opacity-0 invisible -translate-y-1 pointer-events-none"
+    : "opacity-100 visible translate-y-0";
+
   return (
     <>
       <header className="fixed top-0 left-0 right-0 z-50">
@@ -78,7 +85,8 @@ export default function Navbar() {
           <div className="flex items-center justify-between h-16 md:h-20 gap-4">
 
             {/* 로고 */}
-            <Link href="/" className="flex items-center gap-2 flex-shrink-0 group outline-none focus:outline-none">
+            <Link href="/" aria-hidden={hideOnHeroTop || undefined} tabIndex={hideOnHeroTop ? -1 : undefined}
+              className={`flex items-center gap-2 flex-shrink-0 group outline-none focus:outline-none [transition:opacity_250ms,translate_300ms,visibility_250ms] ${heroTopHidden}`}>
               {/* 스크롤하면 로고가 살짝 작아짐 */}
               {!logoError ? (
                 <div className={`relative flex-shrink-0 [transition:width_250ms,height_250ms] ${scrolled ? "h-10 w-10 md:h-11 md:w-11" : "h-12 w-12 md:h-14 md:w-14"}`}>
@@ -140,7 +148,7 @@ export default function Navbar() {
                   </button>
                 </>
               ) : (
-                <>
+                <div className={`flex items-center gap-2 [transition:opacity_250ms,translate_300ms,visibility_250ms] ${heroTopHidden}`}>
                   <Link href="/login"
                     className={`text-xs font-medium px-3 py-1.5 rounded-lg outline-none focus:outline-none [transition:color_150ms,background-color_150ms] ${
                       isHome && !scrolled ? "text-white hover:bg-white/15" : "text-neutral-600 hover:bg-neutral-100"
@@ -155,7 +163,7 @@ export default function Navbar() {
                     }`}>
                     시작하기
                   </Link>
-                </>
+                </div>
               )}
             </div>
 

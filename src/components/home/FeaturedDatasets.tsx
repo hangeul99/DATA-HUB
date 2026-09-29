@@ -1,34 +1,20 @@
 "use client";
 
 /* ============================================================
-   FeaturedDatasets — 주목할 만한 데이터셋 (시안 v3)
+   FeaturedDatasets — 지금 많이 찾는 데이터 (시안 v7)
 
-   - 다운로드 수 상위 6개를 불러와 카드로 표시
-   - 카테고리 탭으로 즉시 필터 (추가 DB 요청 없이 받아온 6개 안에서 거름)
-   - 배지: 최다 다운로드 1개 = 인기, 가장 최근 등록 2개 = 신규
+   다운로드 상위 데이터셋 카드가 왼쪽으로 끊김 없이 흘러갑니다.
+   - 같은 카드 묶음을 2벌 이어 붙이고 -50%까지 흘려서 무한 반복 (복제본은 스크린리더·탭 이동 제외)
+   - 마우스를 올리면 멈추지 않고 천천히 흐름 (속도 1 → 0.25)
+   - 멈춤/재생 버튼 제공 (움직이는 콘텐츠는 멈출 수 있어야 하는 접근성 기준)
+   - 화면 밖이면 정지, 움직임 줄이기 설정이면 손으로 넘기는 가로 스크롤
 ============================================================ */
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
-import { ArrowRight, Download } from "lucide-react";
+import { Pause, Play } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
-import { useReveal } from "./motion";
-
-// ── 카테고리별 색 점 (카드 좌상단) ──
-const CATEGORY_DOT: Record<string, string> = {
-  "통계/공공 데이터": "bg-[#2D5F8F]",
-  "연구/학술 데이터": "bg-brand-500",
-  "금융/경제 데이터": "bg-[#1F8A5B]",
-  "지역/업체 데이터": "bg-[#C2621B]",
-};
-
-// 탭에 표시할 짧은 이름
-const SHORT_NAME: Record<string, string> = {
-  "통계/공공 데이터": "통계/공공",
-  "연구/학술 데이터": "연구/학술",
-  "금융/경제 데이터": "금융/경제",
-  "지역/업체 데이터": "지역/업체",
-};
+import { useReducedMotion, useReveal } from "./motion";
 
 interface Dataset {
   id: string;
@@ -41,18 +27,25 @@ interface Dataset {
   created_at: string;
 }
 
-/** 파일 경로에서 확장자 추출 → "CSV", "XLSX" 등. 없으면 null */
+/** 파일 경로에서 확장자 추출 → "CSV", "XLSX" 등 */
 function fileFormat(path: string | null): string | null {
   const ext = path?.split(".").pop();
-  return ext && ext.length <= 5 && ext !== path ? ext.toUpperCase() : null;
+  return ext && ext !== path && ext.length <= 5 ? ext.toUpperCase() : null;
 }
+
+const SPEED = 40; // 초당 이동 px
 
 export default function FeaturedDatasets() {
   const sectionRef = useRef<HTMLElement>(null);
+  const maskRef = useRef<HTMLDivElement>(null);
+  const beltRef = useRef<HTMLDivElement>(null);
   const [datasets, setDatasets] = useState<Dataset[]>([]);
-  const [activeTab, setActiveTab] = useState<string>("all");
+  const [paused, setPaused] = useState(false);
+  const reduce = useReducedMotion(); // 움직임 줄이기 → 흐르지 않고 손으로 넘김
 
-  // ── 다운로드 수 상위 6개 ──
+  useReveal(sectionRef);
+
+  // ── 다운로드 상위 8개 ──
   useEffect(() => {
     let cancelled = false;
     createClient()
@@ -60,15 +53,12 @@ export default function FeaturedDatasets() {
       .select("id, title, category, year, description, downloads, file_path, created_at")
       .eq("is_active", true)
       .order("downloads", { ascending: false })
-      .limit(6)
+      .limit(8)
       .then(({ data }) => { if (!cancelled) setDatasets(data ?? []); });
     return () => { cancelled = true; };
   }, []);
 
-  // 데이터가 도착해 카드가 생기면 스크롤 모션 다시 등록
-  useReveal(sectionRef, [datasets.length]);
-
-  // ── 배지 계산 (datasets가 바뀔 때만 다시 계산) ──
+  // ── 배지: 최다 다운로드 1개 = 인기, 가장 최근 등록 2개 = 신규 ──
   const badges = useMemo(() => {
     const map = new Map<string, "신규" | "인기">();
     if (datasets.length === 0) return map;
@@ -76,109 +66,103 @@ export default function FeaturedDatasets() {
     [...datasets]
       .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
       .slice(0, 2)
-      .forEach((d) => map.set(d.id, "신규")); // 신규가 인기보다 우선
+      .forEach((d) => map.set(d.id, "신규"));
     return map;
   }, [datasets]);
 
-  // ── 탭 목록: 받아온 데이터에 실제로 있는 카테고리만 ──
-  const tabs = useMemo(() => {
-    const counts = new Map<string, number>();
-    for (const d of datasets) counts.set(d.category, (counts.get(d.category) ?? 0) + 1);
-    return [
-      { key: "all", label: "전체", count: datasets.length },
-      ...Array.from(counts, ([cat, count]) => ({ key: cat, label: SHORT_NAME[cat] ?? cat, count })),
-    ];
+  // 카드가 적으면 화면을 채우도록 반복 → 그 묶음을 2벌 (두 번째 벌은 복제본)
+  const loop = useMemo(() => {
+    if (datasets.length === 0) return [];
+    const times = Math.max(1, Math.ceil(6 / datasets.length));
+    return Array.from({ length: times }, () => datasets).flat();
   }, [datasets]);
 
-  const visible = activeTab === "all" ? datasets : datasets.filter((d) => d.category === activeTab);
+  // ── 흐름 속도·정지 제어 (Web Animations API로 CSS 애니메이션 속도만 조절) ──
+  useEffect(() => {
+    const mask = maskRef.current, belt = beltRef.current;
+    if (!mask || !belt || loop.length === 0 || reduce) return;
+
+    // 카드 수와 상관없이 일정한 속도
+    belt.style.setProperty("--dur", `${(belt.scrollWidth / 2 / SPEED).toFixed(1)}s`);
+
+    // 화면 밖이면 정지 (배터리 절약)
+    const io = new IntersectionObserver(([e]) => { belt.style.animationPlayState = e.isIntersecting ? "" : "paused"; });
+    io.observe(mask);
+
+    // 마우스를 올리면 1 → 0.25로 부드럽게 감속, 떠나면 원래 속도
+    let rate = 1, target = 1, raf = 0;
+    const ease = () => {
+      rate += (target - rate) * 0.12;
+      const anim = belt.getAnimations()[0];
+      if (anim) anim.playbackRate = rate;
+      raf = Math.abs(target - rate) > 0.01 ? requestAnimationFrame(ease) : 0;
+    };
+    const onEnter = (e: PointerEvent) => { if (e.pointerType === "mouse") { target = 0.25; if (!raf) raf = requestAnimationFrame(ease); } };
+    const onLeave = () => { target = 1; if (!raf) raf = requestAnimationFrame(ease); };
+    mask.addEventListener("pointerenter", onEnter);
+    mask.addEventListener("pointerleave", onLeave);
+
+    return () => {
+      io.disconnect(); cancelAnimationFrame(raf);
+      mask.removeEventListener("pointerenter", onEnter);
+      mask.removeEventListener("pointerleave", onLeave);
+    };
+  }, [loop.length, reduce]);
+
+  const renderCard = (ds: Dataset, key: string, clone: boolean) => {
+    const badge = badges.get(ds.id);
+    const fmt = fileFormat(ds.file_path);
+    return (
+      <Link
+        key={key}
+        href={`/datasets/${ds.id}`}
+        aria-hidden={clone || undefined}
+        tabIndex={clone ? -1 : undefined}
+        className="flex min-h-[252px] w-[min(340px,78vw)] flex-none flex-col rounded-3xl bg-white p-7 shadow-[inset_0_0_0_1px_#E3E7EC] [transition:translate_300ms_var(--ease-out),box-shadow_300ms] [@media(hover:hover)]:hover:-translate-y-1.5 [@media(hover:hover)]:hover:shadow-[inset_0_0_0_1px_#E3E7EC,0_24px_50px_-24px_rgba(20,26,34,.28)]"
+      >
+        <span className="flex items-center gap-2 text-sm font-bold text-brand-600">
+          {ds.category.replace(" 데이터", "")}
+          {badge && (
+            <span className={`rounded-full px-2 py-0.5 text-xs font-extrabold ${badge === "신규" ? "bg-brand-500 text-white" : "bg-[#FFE7A3] text-[#5C3D00]"}`}>
+              {badge}
+            </span>
+          )}
+        </span>
+        <h3 className="mt-3 text-[21px] font-extrabold leading-snug tracking-[-.03em] text-neutral-900 line-clamp-2">{ds.title}</h3>
+        <p className="mb-5 mt-2.5 text-base leading-relaxed text-neutral-600 line-clamp-2">{ds.description}</p>
+        <div className="mt-auto flex justify-between border-t border-neutral-200 pt-4 text-sm text-neutral-500">
+          <span>{[fmt, ds.year].filter(Boolean).join(", ")}</span>
+          <span>다운로드 <b className="text-neutral-900 tabular-nums">{ds.downloads.toLocaleString()}</b></span>
+        </div>
+      </Link>
+    );
+  };
+
+  if (datasets.length === 0) return null; // 데이터가 없으면 섹션 자체를 숨김
 
   return (
-    <section ref={sectionRef} className="py-24 md:py-28 bg-white border-y border-neutral-100">
-      <div className="max-w-7xl mx-auto px-6 lg:px-8">
-        <div className="reveal flex items-end justify-between gap-4 flex-wrap">
-          <div>
-            <p className="font-mono text-xs font-medium tracking-[.16em] uppercase text-brand-600 mb-3.5">Featured</p>
-            <h2 className="text-[28px] md:text-[42px] font-extrabold text-neutral-900 tracking-tight leading-tight">주목할 만한 데이터셋</h2>
-          </div>
-          <Link href="/datasets" className="group inline-flex items-center gap-1.5 py-2 text-sm font-bold text-brand-600 hover:text-brand-700">
-            전체 보기 <ArrowRight size={14} className="transition-transform group-hover:translate-x-0.5" />
-          </Link>
-        </div>
+    <section ref={sectionRef} className="overflow-hidden pb-28 pt-32 md:pt-36">
+      <h2 className="reveal px-6 text-center text-[32px] sm:text-[44px] lg:text-[52px] font-extrabold leading-[1.2] tracking-[-.035em] text-neutral-900">
+        지금 많이 찾는 데이터
+      </h2>
 
-        {/* 카테고리 탭 */}
-        {datasets.length > 0 && (
-          <div role="tablist" aria-label="카테고리 필터" className="reveal mt-7 flex flex-wrap gap-1.5">
-            {tabs.map((tab) => {
-              const selected = activeTab === tab.key;
-              return (
-                <button
-                  key={tab.key}
-                  type="button"
-                  role="tab"
-                  aria-selected={selected}
-                  onClick={() => setActiveTab(tab.key)}
-                  className={`inline-flex items-center gap-2 px-3.5 py-2 rounded-full border text-[13px] font-semibold [transition:background-color_150ms,color_150ms,border-color_150ms] ${
-                    selected
-                      ? "bg-neutral-900 text-white border-neutral-900"
-                      : "bg-white text-neutral-600 border-neutral-200 hover:border-brand-200 hover:text-brand-700"
-                  }`}
-                >
-                  {tab.label}
-                  <em className={`not-italic font-mono text-[11px] ${selected ? "text-brand-200" : "text-neutral-400"}`}>{tab.count}</em>
-                </button>
-              );
-            })}
-          </div>
-        )}
-
-        <div className="mt-7 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-[18px]">
-          {visible.map((ds, i) => {
-            const badge = badges.get(ds.id);
-            const fmt = fileFormat(ds.file_path);
-            return (
-              <div key={ds.id} className="reveal" style={{ "--d": `${i * 0.06}s` } as React.CSSProperties}>
-                <Link
-                  href={`/datasets/${ds.id}`}
-                  className="group h-full flex flex-col bg-white rounded-[18px] border border-neutral-200 p-[22px] [transition:translate_250ms_var(--ease-out-expo),border-color_250ms,box-shadow_250ms] hover:-translate-y-1 hover:border-brand-200 hover:shadow-[0_20px_48px_-20px_rgba(11,96,99,.35)]"
-                >
-                  <div className="flex items-center justify-between mb-3.5">
-                    <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-neutral-500">
-                      <i className={`w-2 h-2 rounded-[2px] ${CATEGORY_DOT[ds.category] ?? "bg-neutral-400"}`} />
-                      {ds.category}
-                    </span>
-                    {badge && (
-                      <span className={`text-[11px] font-extrabold px-2.5 py-1 rounded-full ${
-                        badge === "신규" ? "bg-brand-500 text-white" : "bg-amber-400 text-amber-950"
-                      }`}>
-                        {badge}
-                      </span>
-                    )}
-                  </div>
-                  <h3 className="font-bold text-neutral-900 text-base leading-snug group-hover:text-brand-700 transition-colors">{ds.title}</h3>
-                  <p className="mt-2 mb-4 flex-1 text-[13px] text-neutral-500 leading-relaxed line-clamp-2">{ds.description}</p>
-
-                  {/* 메타: 파일 형식 · 기준 연도 · 다운로드 수 */}
-                  <div className="flex items-center justify-between pt-3.5 border-t border-dashed border-neutral-200 font-mono text-xs text-neutral-500">
-                    <span className="inline-flex gap-1.5">
-                      {fmt && <code className="text-[11px] font-medium bg-neutral-100 text-neutral-600 px-2 py-0.5 rounded-md">{fmt}</code>}
-                      {ds.year && <code className="text-[11px] font-medium bg-neutral-100 text-neutral-600 px-2 py-0.5 rounded-md">{ds.year}</code>}
-                    </span>
-                    <span className="inline-flex items-center gap-1 tabular-nums">
-                      <Download size={12} aria-hidden="true" />
-                      <span className="sr-only">다운로드</span>
-                      {ds.downloads.toLocaleString()}
-                    </span>
-                  </div>
-
-                  <span className="mt-3.5 block text-center text-[13px] font-bold text-brand-600 bg-brand-50 group-hover:bg-brand-500 group-hover:text-white py-[11px] rounded-xl [transition:background-color_150ms,color_150ms]">
-                    신청하기
-                  </span>
-                </Link>
-              </div>
-            );
-          })}
+      <div ref={maskRef}
+        className={`mt-11 py-2 pb-7 ${reduce ? "overflow-x-auto" : "marquee-mask overflow-hidden"} ${paused ? "marquee-paused" : ""}`}>
+        <div ref={beltRef} className={`flex w-max gap-4 pl-4 ${reduce ? "" : "marquee-belt"}`}>
+          {loop.map((ds, i) => renderCard(ds, `a-${i}-${ds.id}`, false))}
+          {!reduce && loop.map((ds, i) => renderCard(ds, `b-${i}-${ds.id}`, true))}
         </div>
       </div>
+
+      {!reduce && (
+        <div className="flex justify-center">
+          <button type="button" onClick={() => setPaused((p) => !p)} aria-pressed={paused}
+            aria-label={paused ? "다시 움직이기" : "움직임 멈추기"}
+            className="press flex h-11 w-11 items-center justify-center rounded-full bg-[#F3F5F7] text-neutral-900 hover:bg-neutral-200">
+            {paused ? <Play size={16} fill="currentColor" /> : <Pause size={16} fill="currentColor" />}
+          </button>
+        </div>
+      )}
     </section>
   );
 }

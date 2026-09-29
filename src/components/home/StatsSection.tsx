@@ -1,10 +1,10 @@
 "use client";
 
 /* ============================================================
-   StatsSection — 히어로 아래에 걸쳐 올라오는 유리 카드 (시안 v3)
+   StatsSection — 히어로 아래에 걸쳐 올라오는 유리 통계 카드 (시안 v7)
 
    - 수치는 Supabase에서 실시간 조회 (개수만 세는 head 쿼리 → 가볍고 빠름)
-   - "이번 달 +N"은 최근 30일 안에 생긴 행 개수
+   - "최근 30일 +N" = 최근 30일 안에 생긴 행 개수
    - 화면에 들어오면 숫자가 0부터 카운트업
 ============================================================ */
 
@@ -14,28 +14,24 @@ import { prefersReducedMotion, useInViewOnce } from "./motion";
 
 interface StatItem {
   value: number;
-  suffix: string;
+  unit: string;       // 숫자 뒤 단위 (개, 건, 회)
   label: string;
-  recent?: number;   // 최근 30일 증가분 (없으면 표시 안 함)
-  note?: string;     // 증가분 대신 보여줄 보조 문구
-  live?: boolean;    // LIVE 뱃지 표시 여부
+  recent?: number;    // 최근 30일 증가분 (0이면 표시 안 함)
+  note?: string;      // 증가분 대신 보여줄 보조 문구
 }
 
 // ── 숫자 카운트업 (requestAnimationFrame → 화면 주사율에 맞춰 부드럽게) ──
-function useCountUp(target: number, started: boolean, duration = 1400) {
+function useCountUp(target: number, started: boolean, duration = 1500) {
   const [count, setCount] = useState(0);
 
   useEffect(() => {
     if (!started) return;
-    // 움직임 줄이기 설정이면 0ms → 첫 프레임에 바로 최종 숫자 표시
-    const dur = prefersReducedMotion() ? 0 : duration;
-
+    const dur = prefersReducedMotion() ? 0 : duration; // 움직임 줄이기 → 바로 최종값
     let raf = 0;
     const t0 = performance.now();
     const tick = (now: number) => {
       const p = dur === 0 ? 1 : Math.min((now - t0) / dur, 1);
-      const eased = 1 - Math.pow(1 - p, 3); // 끝에서 천천히 멈춤
-      setCount(Math.round(target * eased));
+      setCount(Math.round(target * (1 - Math.pow(1 - p, 4)))); // 끝에서 천천히 멈춤
       if (p < 1) raf = requestAnimationFrame(tick);
     };
     raf = requestAnimationFrame(tick);
@@ -48,41 +44,35 @@ function useCountUp(target: number, started: boolean, duration = 1400) {
 function Stat({ item, started, index }: { item: StatItem; started: boolean; index: number }) {
   const count = useCountUp(item.value, started);
   return (
-    // 칸 사이 세로 구분선: 첫 칸은 없음, 3번째 칸은 모바일 2열에서 줄 시작이라 PC(4열)에서만 표시
-    <div className={`relative flex flex-col gap-1.5 px-5 py-5 sm:px-7 sm:py-7 ${
-      index === 0 ? "" : "before:absolute before:left-0 before:top-6 before:bottom-6 before:w-px before:bg-neutral-200"
-    } ${index === 2 ? "before:hidden lg:before:block" : ""}`}>
-      <div className="flex items-center gap-2 text-xs sm:text-[13px] font-medium text-neutral-500">
-        {item.label}
-        {item.live && (
-          <span className="font-mono text-[10px] tracking-[.06em] text-brand-600 bg-brand-50 px-1.5 py-0.5 rounded">LIVE</span>
-        )}
-      </div>
-      <div className="text-[32px] sm:text-[40px] font-black text-brand-700 tabular-nums tracking-[-.03em] leading-none">
+    // 칸 사이 구분선: 첫 칸 없음. 모바일 2열에서는 3번째 칸이 줄 시작이라 PC(4열)에서만 표시
+    <div className={`relative px-5 py-6 sm:px-8 sm:py-8
+      ${index === 0 ? "" : "before:absolute before:left-0 before:top-7 before:bottom-7 before:w-px before:bg-neutral-200"}
+      ${index === 2 ? "before:hidden lg:before:block" : ""}
+      ${index >= 2 ? "border-t border-neutral-200 lg:border-t-0" : ""}`}>
+      <p className="text-sm sm:text-[15px] font-semibold text-neutral-500">{item.label}</p>
+      <p className="mt-1.5 text-[32px] sm:text-[44px] font-extrabold leading-none tracking-[-.035em] text-neutral-900 tabular-nums">
         {count.toLocaleString()}
-        <small className="ml-0.5 text-lg sm:text-xl font-bold text-brand-500">{item.suffix}</small>
-      </div>
-      <div className="font-mono text-[11px] text-brand-600 min-h-4">
-        {item.recent !== undefined && item.recent > 0
-          ? `▲ 최근 30일 +${item.recent.toLocaleString()}`
-          : item.note ?? ""}
-      </div>
+        <span className="ml-1 text-base sm:text-[22px] font-bold text-neutral-500">{item.unit}</span>
+      </p>
+      <p className="mt-2 min-h-5 text-[13px] sm:text-sm font-semibold text-brand-600">
+        {item.recent && item.recent > 0 ? `최근 30일 +${item.recent.toLocaleString()}` : item.note ?? ""}
+      </p>
     </div>
   );
 }
 
 export default function StatsSection() {
-  const sectionRef = useRef<HTMLDivElement>(null);
-  const started = useInViewOnce(sectionRef, 0.4);
+  const cardRef = useRef<HTMLDivElement>(null);
+  const started = useInViewOnce(cardRef, 0.5);
 
   const [stats, setStats] = useState<StatItem[]>([
-    { value: 0, suffix: "+", label: "등록 데이터셋", live: true },
-    { value: 0, suffix: "+", label: "총 신청 건수" },
-    { value: 0, suffix: "+", label: "총 다운로드" },
-    { value: 4, suffix: "개", label: "데이터 카테고리", note: "통계 · 연구 · 금융 · 지역" },
+    { value: 0, unit: "개", label: "등록 데이터셋" },
+    { value: 0, unit: "건", label: "이용 신청" },
+    { value: 0, unit: "회", label: "다운로드" },
+    { value: 4, unit: "개", label: "데이터 분야", note: "통계, 연구, 금융, 지역" },
   ]);
 
-  // ── Supabase 실시간 수치 조회 (전체 개수 + 최근 30일 개수를 한 번에 병렬로) ──
+  // ── 전체 개수 + 최근 30일 개수를 한 번에 병렬 조회 ──
   useEffect(() => {
     let cancelled = false; // 응답 전에 페이지를 떠나면 setState 하지 않음
     const supabase = createClient();
@@ -99,10 +89,10 @@ export default function StatsSection() {
       ]);
       if (cancelled) return;
       setStats([
-        { value: ds.count ?? 0, suffix: "+", label: "등록 데이터셋", live: true, recent: dsRecent.count ?? 0 },
-        { value: apps.count ?? 0, suffix: "+", label: "총 신청 건수", recent: appsRecent.count ?? 0 },
-        { value: dls.count ?? 0, suffix: "+", label: "총 다운로드", recent: dlsRecent.count ?? 0 },
-        { value: 4, suffix: "개", label: "데이터 카테고리", note: "통계 · 연구 · 금융 · 지역" },
+        { value: ds.count ?? 0, unit: "개", label: "등록 데이터셋", recent: dsRecent.count ?? 0 },
+        { value: apps.count ?? 0, unit: "건", label: "이용 신청", recent: appsRecent.count ?? 0 },
+        { value: dls.count ?? 0, unit: "회", label: "다운로드", recent: dlsRecent.count ?? 0 },
+        { value: 4, unit: "개", label: "데이터 분야", note: "통계, 연구, 금융, 지역" },
       ]);
     })();
 
@@ -110,13 +100,12 @@ export default function StatsSection() {
   }, []);
 
   return (
-    // 음수 margin으로 히어로 하단에 걸치게 배치
-    <div ref={sectionRef} className="relative z-10 -mt-20 md:-mt-24">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="grid grid-cols-2 lg:grid-cols-4 overflow-hidden rounded-[22px] border border-white/70 bg-white/[.92] backdrop-blur-xl shadow-[0_30px_70px_-30px_rgba(7,18,32,.55),inset_0_1px_0_rgba(255,255,255,.8)]">
-          {stats.map((s, i) => (
-            <Stat key={s.label} item={s} started={started} index={i} />
-          ))}
+    // 음수 margin으로 히어로 하단(지평선 위)에 걸치게 배치
+    <div className="relative z-10 -mt-20 md:-mt-[84px]">
+      <div className="max-w-[1120px] mx-auto px-4 sm:px-6">
+        <div ref={cardRef}
+          className="grid grid-cols-2 lg:grid-cols-4 rounded-3xl bg-white/[.94] backdrop-blur-xl shadow-[0_30px_70px_-30px_rgba(7,18,32,.5),inset_0_0_0_1px_rgba(255,255,255,.7),0_0_0_1px_rgba(20,26,34,.04)]">
+          {stats.map((s, i) => <Stat key={s.label} item={s} started={started} index={i} />)}
         </div>
       </div>
     </div>

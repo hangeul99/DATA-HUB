@@ -8,7 +8,7 @@
      첫 화면 아래에 있는 요소만 잠깐 숨겼다가 스크롤로 들어오면 보여줌.
 ============================================================ */
 
-import { useEffect, useState, type RefObject, type MouseEvent } from "react";
+import { useEffect, useState, useSyncExternalStore, type RefObject } from "react";
 
 /** 사용자가 OS에서 "움직임 줄이기"를 켰는지 확인 */
 export function prefersReducedMotion(): boolean {
@@ -81,13 +81,17 @@ export function useInViewOnce(ref: RefObject<HTMLElement | null>, threshold = 0.
 }
 
 /**
- * 스포트라이트 카드용 마우스 핸들러.
- * 커서 좌표를 CSS 변수(--mx, --my)로 넘겨 globals.css의 .spotlight가 빛을 그림.
- * React state를 쓰지 않으므로 마우스를 움직여도 리렌더가 일어나지 않음.
+ * "움직임 줄이기" 설정을 React 상태처럼 구독 (설정을 바꾸면 즉시 반영)
+ * 서버 렌더링에서는 false로 시작 → 화면 깨짐 없음
  */
-export function handleSpotlightMove(e: MouseEvent<HTMLElement>) {
-  const el = e.currentTarget;
-  const r = el.getBoundingClientRect();
-  el.style.setProperty("--mx", `${e.clientX - r.left}px`);
-  el.style.setProperty("--my", `${e.clientY - r.top}px`);
+export function useReducedMotion(): boolean {
+  return useSyncExternalStore(
+    (onChange) => {
+      const mq = window.matchMedia("(prefers-reduced-motion: reduce)");
+      mq.addEventListener("change", onChange);
+      return () => mq.removeEventListener("change", onChange);
+    },
+    () => window.matchMedia("(prefers-reduced-motion: reduce)").matches,
+    () => false,
+  );
 }

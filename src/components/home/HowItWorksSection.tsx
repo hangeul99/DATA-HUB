@@ -1,81 +1,59 @@
 "use client";
 
 /* ============================================================
-   HowItWorksSection — 이용 절차 5단계 (시안 v3)
+   HowItWorksSection — 이용 절차 5단계 (시안 v7)
 
-   화면에 들어오면 진행선이 왼쪽→오른쪽으로 채워지고,
-   단계 타일이 순서대로 점등(회색 → 틸 그라디언트)됩니다.
-   ★ 단계 문구 수정: steps 배열
+   화면에 들어오면 진행선이 채워지고, 번호가 1→5 순서로 켜집니다.
+   (PC: 가로 선 / 모바일: 세로 선)
+   ★ 단계 문구 수정: STEPS 배열
 ============================================================ */
 
-import { useEffect, useRef, useState } from "react";
-import { Search, FileText, CheckCircle, Download, Upload } from "lucide-react";
-import { prefersReducedMotion, useInViewOnce, useReveal } from "./motion";
+import { useRef } from "react";
+import { useInViewOnce, useReveal } from "./motion";
 
-const steps = [
-  { step: "01", icon: Search, title: "데이터 탐색", desc: "카테고리별 필터와 검색으로 원하는 데이터를 찾으세요." },
-  { step: "02", icon: FileText, title: "이용 신청", desc: "이용 목적, 소속 기관을 입력해 신청서를 제출합니다." },
-  { step: "03", icon: CheckCircle, title: "관리자 승인", desc: "검토 후 승인이 완료되면 이메일로 알려 드립니다." },
-  { step: "04", icon: Download, title: "데이터 다운로드", desc: "승인된 데이터를 마이페이지에서 바로 내려받으세요." },
-  { step: "05", icon: Upload, title: "결과물 제출", desc: "논문, 캡처, 앱 등 활용 결과를 제출해 기여를 공유하세요." },
+const STEPS = [
+  { title: "데이터 탐색", desc: "분야와 검색어로 원하는 데이터를 찾아요." },
+  { title: "이용 신청", desc: "이용 목적과 소속을 적어 신청해요." },
+  { title: "관리자 승인", desc: "검토가 끝나면 이메일로 알려 드려요." },
+  { title: "다운로드", desc: "마이페이지에서 바로 내려받아요." },
+  { title: "결과물 제출", desc: "논문, 앱 등 활용 결과를 공유해요." },
 ];
 
 export default function HowItWorksSection() {
   const sectionRef = useRef<HTMLElement>(null);
-  const stepsRef = useRef<HTMLDivElement>(null);
-  const started = useInViewOnce(stepsRef, 0.35);
-  const [litCount, setLitCount] = useState(0); // 점등된 단계 수
-
+  const trackRef = useRef<HTMLDivElement>(null);
+  const go = useInViewOnce(trackRef, 0.4);
   useReveal(sectionRef);
 
-  // ── 단계 순차 점등 (타이머는 언마운트 시 모두 정리) ──
-  useEffect(() => {
-    if (!started) return;
-    const reduce = prefersReducedMotion(); // 움직임 줄이기 → 지연 없이 한 번에 점등
-    const timers = steps.map((_, i) => setTimeout(() => setLitCount(i + 1), reduce ? 0 : 200 + i * 260));
-    return () => timers.forEach(clearTimeout);
-  }, [started]);
-
   return (
-    <section ref={sectionRef} className="py-24 md:py-28 bg-neutral-50">
-      <div className="max-w-7xl mx-auto px-6 lg:px-8">
-        <div className="reveal text-center">
-          <p className="font-mono text-xs font-medium tracking-[.16em] uppercase text-brand-600 mb-3.5">How It Works</p>
-          <h2 className="text-[28px] md:text-[42px] font-extrabold text-neutral-900 tracking-tight leading-tight">5단계로 완성되는 데이터 활용</h2>
-          <p className="mt-3.5 text-neutral-500 text-base max-w-xl mx-auto">탐색부터 결과물 제출까지, 신청 한 번으로 이어지는 흐름입니다.</p>
-        </div>
+    <section ref={sectionRef} className="bg-[#F3F5F7] py-28 md:py-36">
+      <div className="mx-auto max-w-[1120px] px-6">
+        <h2 className="reveal text-center text-[32px] sm:text-[44px] lg:text-[52px] font-extrabold leading-[1.2] tracking-[-.035em] text-neutral-900">
+          신청부터 활용까지<br />다섯 단계면 충분해요
+        </h2>
 
-        <div ref={stepsRef} className="relative mt-16 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-8 lg:gap-7">
-          {/* 진행선 (PC에서만) */}
-          <div aria-hidden="true" className="hidden lg:block absolute top-9 left-[10%] right-[10%] h-0.5 rounded bg-neutral-200 overflow-hidden">
-            <div
-              className="h-full origin-left bg-gradient-to-r from-brand-500 to-brand-300 transition-transform duration-[1600ms] ease-[cubic-bezier(.16,1,.3,1)]"
-              style={{ transform: `scaleX(${started ? 1 : 0})` }}
-            />
+        {/* 바깥 div = 진행선 기준 위치, ol = 단계 목록 (ol 안에는 li만 둘 수 있어 선은 밖으로 분리) */}
+        <div ref={trackRef} className={`group relative mx-auto mt-16 max-w-[460px] md:mt-[72px] min-[860px]:max-w-none ${go ? "go" : ""}`}>
+          {/* 진행선 — 모바일은 세로, PC는 가로 */}
+          <div aria-hidden="true"
+            className="absolute left-[29px] top-[30px] bottom-[30px] w-0.5 overflow-hidden rounded bg-neutral-300 min-[860px]:left-[10%] min-[860px]:right-[10%] min-[860px]:top-[29px] min-[860px]:bottom-auto min-[860px]:h-0.5 min-[860px]:w-auto">
+            <i className="step-fill block h-full w-full bg-brand-500" />
           </div>
 
-          {steps.map((s, i) => {
-            const Icon = s.icon;
-            const lit = i < litCount;
-            return (
-              <div key={s.step} className="reveal relative text-center" style={{ "--d": `${i * 0.1}s` } as React.CSSProperties}>
-                <div className={`relative w-[72px] h-[72px] mx-auto mb-[18px] rounded-[18px] flex items-center justify-center border [transition:background-color_500ms,color_500ms,box-shadow_500ms,border-color_500ms,translate_500ms_var(--ease-out-expo)] ${
-                  lit
-                    ? "bg-gradient-to-br from-brand-500 to-navy-700 text-white border-transparent shadow-[0_14px_34px_-12px_rgba(13,115,119,.6)] -translate-y-1"
-                    : "bg-white text-neutral-400 border-neutral-200"
-                }`}>
-                  <Icon size={26} aria-hidden="true" />
-                  <b className={`absolute -top-2 -right-2 w-[26px] h-[26px] rounded-full flex items-center justify-center font-mono text-[11px] font-medium border [transition:background-color_500ms,color_500ms,border-color_500ms] ${
-                    lit ? "bg-brand-100 text-brand-700 border-transparent" : "bg-white text-neutral-500 border-neutral-200"
-                  }`}>
-                    {s.step}
-                  </b>
-                </div>
-                <h3 className="font-bold text-neutral-900 text-base">{s.title}</h3>
-                <p className="mt-1.5 text-[13px] text-neutral-500 leading-relaxed">{s.desc}</p>
+          <ol className="relative grid grid-cols-1 gap-7 min-[860px]:grid-cols-5 min-[860px]:gap-5">
+          {STEPS.map((s, i) => (
+            <li key={s.title} className="relative flex items-start gap-4 min-[860px]:flex-col min-[860px]:items-center min-[860px]:text-center">
+              <span className="step-num flex h-[60px] w-[60px] flex-none items-center justify-center rounded-full bg-white text-[21px] font-extrabold text-neutral-500 shadow-[inset_0_0_0_2px_#CDD3DA] group-[.go]:bg-brand-500 group-[.go]:text-white group-[.go]:shadow-[0_10px_24px_-10px_rgba(13,115,119,.7)] group-[.go]:scale-[1.04]"
+                style={{ "--i": i } as React.CSSProperties}>
+                {i + 1}
+              </span>
+              <div>
+                <h3 className="text-[19px] font-extrabold text-neutral-900">{s.title}</h3>
+                <p className="mt-1.5 text-base leading-relaxed text-neutral-600 min-[860px]:mx-auto min-[860px]:max-w-[12em]">{s.desc}</p>
               </div>
-            );
-          })}
+            </li>
+          ))}
+          </ol>
         </div>
       </div>
     </section>

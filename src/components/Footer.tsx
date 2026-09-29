@@ -2,12 +2,27 @@ import Link from "next/link";
 import Image from "next/image";
 import { Mail } from "lucide-react";
 
+// 푸터 링크 묶음 — 항목 추가/수정은 여기서
+const LINK_GROUPS = [
+  { title: "서비스", links: [
+    { href: "/datasets", label: "데이터 탐색" },
+    { href: "/analysis", label: "데이터 분석" },
+    { href: "/policy", label: "정책" },
+  ] },
+  { title: "참여", links: [
+    { href: "/survey", label: "만족도 조사" },
+    { href: "/board/free", label: "게시판" },
+    { href: "/login", label: "로그인" },
+  ] },
+];
+
 export default function Footer() {
   return (
     <footer className="bg-neutral-900 text-neutral-400">
       {/* 모바일 세로 여백/간격 축소 */}
       <div className="max-w-7xl mx-auto px-6 lg:px-8 py-8 md:py-14">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 md:gap-10">
+        {/* 모바일 1열 → 태블릿 2열 → PC 4열 (브랜드 칸만 넓게) */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-[1.6fr_1fr_1fr_1fr] gap-8 md:gap-10">
           {/* Brand */}
           <div className="space-y-4">
             <div className="flex items-center gap-3">
@@ -32,30 +47,26 @@ export default function Footer() {
             </p>
           </div>
 
-          {/* Links */}
-          <div className="space-y-3">
-            <h4 className="text-white font-semibold text-sm">바로가기</h4>
-            <ul className="space-y-2 text-sm">
-              {[
-                { href: "/datasets", label: "데이터 탐색" },
-                { href: "/analysis", label: "데이터 분석" },
-                { href: "/login", label: "로그인" },
-              ].map((l) => (
-                <li key={l.href}>
-                  <Link href={l.href} className="hover:text-brand-400 transition-colors">
-                    {l.label}
-                  </Link>
-                </li>
-              ))}
-            </ul>
-          </div>
+          {/* 링크 묶음 */}
+          {LINK_GROUPS.map((group) => (
+            <div key={group.title} className="space-y-3">
+              <h4 className="text-white font-semibold text-sm">{group.title}</h4>
+              <ul className="space-y-2 text-sm">
+                {group.links.map((l) => (
+                  <li key={l.href}>
+                    <Link href={l.href} className="hover:text-brand-200 transition-colors">{l.label}</Link>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ))}
 
           {/* Contact */}
           <div className="space-y-3">
             <h4 className="text-white font-semibold text-sm">문의</h4>
             <a
               href="mailto:han9449@inje.ac.kr"
-              className="flex items-center gap-2 text-sm hover:text-brand-400 transition-colors"
+              className="flex items-center gap-2 font-mono text-[13px] text-neutral-300 hover:text-brand-200 transition-colors"
             >
               <Mail size={14} />
               han9449@inje.ac.kr

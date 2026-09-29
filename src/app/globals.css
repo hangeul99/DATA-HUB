@@ -61,6 +61,8 @@
 
   --font-sans: var(--font-pretendard);
   --font-display: var(--font-pretendard);
+  /* 숫자·라벨용 고정폭 글꼴 (layout.tsx에서 next/font로 로드) */
+  --font-mono: var(--font-plex-mono), ui-monospace, SFMono-Regular, Menlo, monospace;
 }
 
 /* ── 한국어 전용 폰트 (Pretendard) ──
@@ -109,4 +111,106 @@ body {
 }
 .shadow-brand-lg {
   box-shadow: 0 12px 40px -8px rgba(13, 115, 119, 0.35), 0 4px 12px rgba(13, 115, 119, 0.15);
+}
+
+/* ============================================================
+   홈 v3 전용 효과 (히어로 배경, 스포트라이트 카드, 진입 모션)
+   ★ 움직임 줄이기(prefers-reduced-motion) 설정 시 모두 정지됨
+============================================================ */
+
+/* 아래 효과 클래스는 components 레이어 → Tailwind 유틸리티 클래스가 우선 적용됨 */
+@layer components {
+  /* 공통 easing — 빠르게 시작해서 부드럽게 멈춤 */
+  :root { --ease-out-expo: cubic-bezier(.16, 1, .3, 1); }
+  
+  /* 히어로: 가장자리로 갈수록 사라지는 도트 그리드 */
+  .hero-dots {
+    background-image: radial-gradient(rgba(255,255,255,.3) 1px, transparent 1.2px);
+    background-size: 28px 28px;
+    -webkit-mask-image: radial-gradient(ellipse 70% 65% at 50% 45%, #000 30%, transparent 100%);
+            mask-image: radial-gradient(ellipse 70% 65% at 50% 45%, #000 30%, transparent 100%);
+    transform: translate(var(--px, 0), var(--py, 0));
+    transition: transform .6s var(--ease-out-expo);
+    will-change: transform;
+  }
+  
+  /* 히어로: 대각선으로 천천히 지나가는 빛줄기 */
+  .hero-beam {
+    background: linear-gradient(115deg, transparent 35%, rgba(79,175,175,.16) 50%, transparent 65%);
+    background-size: 220% 100%;
+    animation: hero-beam 9s var(--ease-out-expo) infinite alternate;
+  }
+  @keyframes hero-beam { from { background-position: 0% 0; } to { background-position: 100% 0; } }
+  
+  /* 히어로: 천천히 도는 궤도 링 + 빛점 */
+  .hero-ring {
+    border-radius: 9999px;
+    border: 1px solid rgba(255,255,255,.07);
+    animation: hero-ring 14s linear infinite;
+  }
+  .hero-ring::before {
+    content: ""; position: absolute; top: -3px; left: 50%;
+    width: 6px; height: 6px; border-radius: 9999px;
+    background: #4FAFAF; box-shadow: 0 0 12px #4FAFAF;
+  }
+  @keyframes hero-ring { to { transform: rotate(360deg); } } /* 위치 이동은 Tailwind translate가 담당 */
+  
+  /* 히어로: 필름 그레인 — 그라디언트 줄무늬(밴딩)를 없애 줌 */
+  .hero-grain {
+    opacity: .055; mix-blend-mode: overlay;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  }
+  
+  /* 히어로 뱃지 앞의 깜빡이는 점 */
+  .pulse-dot { animation: pulse-dot 2s ease-out infinite; }
+  @keyframes pulse-dot { from { box-shadow: 0 0 0 0 rgba(79,175,175,.6); } to { box-shadow: 0 0 0 8px rgba(79,175,175,0); } }
+  
+  /* 스크롤 안내 선 */
+  .scroll-cue { animation: scroll-cue 1.8s ease-in-out infinite; transform-origin: top; }
+  @keyframes scroll-cue { 0% { transform: scaleY(0); } 50% { transform: scaleY(1); } 100% { transform: scaleY(0); transform-origin: bottom; } }
+  
+  /* 진입 모션: 어절 단위로 흐림→선명 */
+  .word-in {
+    display: inline-block; opacity: 0; filter: blur(8px); transform: translateY(18px);
+    animation: word-in .8s var(--ease-out-expo) forwards; animation-delay: var(--d, 0s);
+  }
+  @keyframes word-in { to { opacity: 1; filter: blur(0); transform: none; } }
+  .fade-up { opacity: 0; transform: translateY(16px); animation: fade-up .8s var(--ease-out-expo) forwards; animation-delay: var(--d, 0s); }
+  @keyframes fade-up { to { opacity: 1; transform: none; } }
+  .pop-in { opacity: 0; transform: scale(.86); animation: pop-in 1s var(--ease-out-expo) forwards; animation-delay: var(--d, 0s); }
+  @keyframes pop-in { to { opacity: 1; transform: none; } }
+  
+  /* 스크롤 리빌: .reveal 요소는 보이는 상태가 기본, .reveal-pre일 때만 숨김
+     → 스크립트가 실패해도 내용이 사라지지 않음 */
+  .reveal { transition: opacity .7s var(--ease-out-expo), transform .7s var(--ease-out-expo); transition-delay: var(--d, 0s); }
+  .reveal-pre { opacity: 0; transform: translateY(28px); }
+  
+  /* 스포트라이트: 커서 위치(--mx, --my)에 빛이 따라다님 */
+  .spotlight { position: relative; overflow: hidden; }
+  .spotlight::before {
+    content: ""; position: absolute; inset: -1px; border-radius: inherit; padding: 1px; pointer-events: none;
+    background: radial-gradient(240px circle at var(--mx, 50%) var(--my, 50%), rgba(13,115,119,.9), transparent 65%);
+    -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+            mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+    -webkit-mask-composite: xor; mask-composite: exclude;
+    opacity: 0; transition: opacity .25s;
+  }
+  .spotlight::after {
+    content: ""; position: absolute; inset: 0; pointer-events: none;
+    background: radial-gradient(340px circle at var(--mx, 50%) var(--my, 50%), rgba(13,115,119,.10), transparent 60%);
+    opacity: 0; transition: opacity .25s;
+  }
+  .spotlight:hover::before, .spotlight:hover::after { opacity: 1; }
+  /* 어두운 배경 위 칩용 스포트라이트 (흰 빛) */
+  .spotlight-light::after { background: radial-gradient(120px circle at var(--mx, 50%) var(--my, 50%), rgba(255,255,255,.22), transparent 60%); }
+  .spotlight-light::before { display: none; }
+}
+
+/* 움직임 줄이기 설정: 모든 장식 모션 정지, 내용은 그대로 보이게 */
+@media (prefers-reduced-motion: reduce) {
+  .word-in, .fade-up, .pop-in { animation: none; opacity: 1; filter: none; transform: none; }
+  .reveal { transition: none; }
+  .reveal-pre { opacity: 1; transform: none; }
+  .hero-beam, .hero-ring, .pulse-dot, .scroll-cue { animation: none; }
+  .hero-dots { transition: none; }
 }

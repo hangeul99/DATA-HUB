@@ -3,7 +3,7 @@
 /* ============================================================
    HeroSection — 홈 최상단 (시안 v7 "우주" 히어로)
 
-   배경: 네이비→틸 그라디언트 위에
+   배경: 짙은 네이비(거의 검정) 위에 — 청록은 지평선 빛과 검색 버튼에만 (색 절제, A안)
          반짝이는 별(캔버스) + 도트 무늬(마우스 스프링 패럴랙스)
          + 궤도 링 3개 + 행성 지평선 + 필름 그레인
    내용: 로고 → 센터명 → 타이틀 → 설명 → 검색 (글 요소 4개로 제한)
@@ -53,7 +53,7 @@ function useStarfield(layersRef: React.RefObject<(HTMLCanvasElement | null)[]>) 
         const rad = big ? 1.1 + rnd() * 0.9 : 0.35 + rnd() * 0.7;
         const alpha = 0.35 + rnd() * 0.6;
         const ctx = ctxs[Math.floor(rnd() * ctxs.length)];
-        ctx.fillStyle = rnd() < 0.18 ? "#8FD3D3" : "#FFFFFF";
+        ctx.fillStyle = rnd() < 0.06 ? "#BFE3E3" : "#FFFFFF";
         ctx.globalAlpha = alpha;
         ctx.beginPath(); ctx.arc(x, y, rad, 0, Math.PI * 2); ctx.fill();
         if (big) { // 큰 별은 은은하게 번짐
@@ -130,7 +130,7 @@ export default function HeroSection() {
   return (
     <section
       ref={sectionRef}
-      className="relative overflow-hidden flex items-center justify-center text-center text-white min-h-[min(940px,100svh)] pt-28 pb-36 md:pt-32 md:pb-40 bg-[linear-gradient(135deg,#071220_0%,#063A3C_58%,#0B6063_100%)]"
+      className="relative overflow-hidden flex items-center justify-center text-center text-white min-h-[min(940px,100svh)] pt-28 pb-36 md:pt-32 md:pb-40 bg-[radial-gradient(90%_60%_at_50%_115%,rgba(13,115,119,.30),transparent_62%),linear-gradient(180deg,#05080F_0%,#08101D_55%,#0A1626_100%)]"
     >
       {/* ── 배경 레이어 (장식) ── */}
       <div aria-hidden="true" className="pointer-events-none absolute inset-0">
@@ -140,7 +140,7 @@ export default function HeroSection() {
             style={{ "--tw": l.tw, animationDelay: l.delay } as React.CSSProperties} />
         ))}
         <div ref={dotsRef} className="hero-dots absolute -inset-20 opacity-20" />
-        <div className="absolute left-1/2 top-[42%] w-[960px] h-[680px] -translate-x-1/2 -translate-y-1/2 bg-[radial-gradient(closest-side,rgba(13,115,119,.4),transparent)]" />
+        <div className="absolute left-1/2 top-[42%] w-[960px] h-[680px] -translate-x-1/2 -translate-y-1/2 bg-[radial-gradient(closest-side,rgba(13,115,119,.16),transparent)]" />
         <div className="hero-ring absolute left-1/2 top-[44%] w-[560px] h-[560px] -ml-[280px] -mt-[280px]" />
         <div className="hero-ring hero-ring-2 absolute left-1/2 top-[44%] w-[820px] h-[820px] -ml-[410px] -mt-[410px]" />
         <div className="hero-ring hero-ring-3 absolute left-1/2 top-[44%] w-[1120px] h-[1120px] -ml-[560px] -mt-[560px]" />
@@ -164,7 +164,7 @@ export default function HeroSection() {
             <span key={li} className="block">
               {line.map((part) => (
                 <span key={part.w}>
-                  <span className={`enter inline-block ${part.accent ? "text-[#8FD3D3]" : ""}`} style={{ "--i": wordIndex++ } as React.CSSProperties}>
+                  <span className={`enter inline-block ${part.accent ? "text-[#9AAFC2]" : ""}`} style={{ "--i": wordIndex++ } as React.CSSProperties}>
                     {part.w}
                   </span>{" "}
                 </span>

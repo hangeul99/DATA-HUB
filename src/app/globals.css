@@ -129,6 +129,15 @@ body {
     --ease-expo: cubic-bezier(.16, 1, .3, 1);
   }
 
+  /* ── 글자 크기 규칙 (사이트 전체 6단계) — 새 페이지는 이 클래스만 사용 ──
+     t-display 홈 대표 문장 / t-h1 페이지 제목 / t-h2 섹션 제목 / t-h3 소제목 / t-body 본문 / t-caption 보조 */
+  .t-display { font-size: clamp(40px, 6.4vw, 76px); font-weight: 800; line-height: 1.12; letter-spacing: -.045em; text-wrap: balance; }
+  .t-h1 { font-size: clamp(28px, 3.8vw, 42px); font-weight: 800; line-height: 1.22; letter-spacing: -.03em; color: #111827; text-wrap: balance; }
+  .t-h2 { font-size: clamp(28px, 4.2vw, 48px); font-weight: 800; line-height: 1.2; letter-spacing: -.035em; color: #111827; text-wrap: balance; }
+  .t-h3 { font-size: 20px; font-weight: 800; line-height: 1.35; letter-spacing: -.02em; color: #111827; }
+  .t-body { font-size: 17px; line-height: 1.75; }
+  .t-caption { font-size: 13px; line-height: 1.5; color: #6B7280; }
+
   /* ── 히어로: 도트 무늬 (가장자리로 갈수록 사라짐) ── */
   .hero-dots {
     background-image: radial-gradient(rgba(255,255,255,.32) 1px, transparent 1.2px);
@@ -142,7 +151,7 @@ body {
   .hero-ring { border-radius: 9999px; border: 1px solid rgba(255,255,255,.08); animation: hero-spin 18s linear infinite; will-change: rotate; }
   .hero-ring::before {
     content: ""; position: absolute; top: -3px; left: 50%; width: 6px; height: 6px; border-radius: 9999px;
-    background: #8FD3D3; box-shadow: 0 0 14px #4FAFAF;
+    background: #BFE3E3; box-shadow: 0 0 12px rgba(191,227,227,.8);
   }
   .hero-ring-2 { border-color: rgba(255,255,255,.05); animation-duration: 30s; animation-direction: reverse; }
   .hero-ring-2::before { background: #fff; box-shadow: 0 0 12px rgba(255,255,255,.8); }
@@ -152,8 +161,8 @@ body {
   /* ── 히어로: 행성 지평선 ── */
   .hero-horizon {
     border-radius: 50%;
-    background: radial-gradient(ellipse at 50% 0%, rgba(79,175,175,.28), rgba(7,18,32,0) 60%);
-    box-shadow: inset 0 2px 0 rgba(143,211,211,.55), 0 -18px 60px -10px rgba(79,175,175,.45);
+    background: radial-gradient(ellipse at 50% 0%, rgba(79,175,175,.16), rgba(7,13,24,0) 60%);
+    box-shadow: inset 0 1.5px 0 rgba(143,211,211,.45), 0 -16px 50px -14px rgba(79,175,175,.35);
   }
   /* ── 히어로: 필름 그레인 (그라디언트 줄무늬 제거) ── */
   .hero-grain {

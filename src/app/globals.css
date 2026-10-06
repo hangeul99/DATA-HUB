@@ -203,19 +203,11 @@ body {
   .hero-cue { transform-origin: top; animation: hero-cue 2.2s var(--ease-in-out) infinite; }
   @keyframes hero-cue { 0% { scale: 1 0; opacity: 1; } 60% { scale: 1 1; opacity: 1; } 100% { scale: 1 1; opacity: 0; } }
 
-  /* ── 히어로 점지도: 강조 점 맥박 / 숫자 카드 떠다님 / 제목 밑줄 긋기 ── */
+  /* ── 히어로 점지도: 강조 점 맥박 / 숫자 카드 떠다님 ── */
   .map-pulse { animation: map-pulse 3.2s var(--ease-in-out) infinite; transform-origin: 50% 50%; will-change: transform, opacity; }
   @keyframes map-pulse { 0%, 100% { opacity: .78; scale: 1; } 50% { opacity: 1; scale: 1.025; } }
   .card-float { animation: card-float 6s var(--ease-in-out) infinite; will-change: transform; }
   @keyframes card-float { 0%, 100% { translate: 0 0; } 50% { translate: 0 -8px; } }
-  /* 제목의 강조 단어 아래 앰버 밑줄이 왼쪽에서 오른쪽으로 그어짐 (등장 뒤 0.9초에) */
-  .hero-mark { position: relative; }
-  .hero-mark::after {
-    content: ""; position: absolute; left: 0; right: 0; bottom: .06em; height: .14em; border-radius: 2px;
-    background: linear-gradient(90deg, #E4B84E, #F0CF7A); opacity: .85; z-index: -1;
-    transform-origin: left; scale: 0 1; animation: hero-mark .7s var(--ease-expo) .9s forwards;
-  }
-  @keyframes hero-mark { to { scale: 1 1; } }
   /* 검색창: 처음 한 번 앰버 빛이 스치고 지나감 */
   .hero-search { position: relative; overflow: hidden; }
   .hero-search::after {
@@ -320,7 +312,6 @@ body {
 @media (prefers-reduced-motion: reduce) {
   .enter { animation: none; opacity: 1; translate: none; filter: none; }
   .hero-ring, .hero-cue, .star-layer, .map-pulse, .card-float, .hero-search::after { animation: none; }
-  .hero-mark::after { animation: none; scale: 1 1; }
   .reveal { transition: opacity .3s ease; }
   .reveal-pre { translate: none; }
   .scene-photo, .scene-cap1, .scene-cap2 { animation: none !important; }

@@ -118,7 +118,7 @@ export default function HeroSection() {
             <i aria-hidden="true" className="h-1.5 w-1.5 rounded-full bg-accent-400" />인제대학교 데이터거버넌스센터
           </p>
           <h1 id="hero-title" className="enter mt-4 font-[family-name:var(--font-hahmlet)] text-[40px] font-bold leading-[1.14] tracking-[-.02em] text-balance sm:text-[54px] lg:text-[72px]" style={{ "--i": 1 } as React.CSSProperties}>
-            김해를<br />데이터로 <em className="hero-mark not-italic">읽는</em> 곳
+            김해를<br />데이터로 <em className="not-italic text-accent-300">읽는</em> 곳
           </h1>
           <p className="enter mt-5 max-w-[32em] text-[17px] leading-[1.8] text-[#B4C3D3] sm:text-lg" style={{ "--i": 2 } as React.CSSProperties}>
             산업단지부터 상권, 유동인구, 학교까지. 센터가 모으고 개인정보를 걸러낸 지역 데이터를 찾아 신청하고, 받은 파일은 여기서 바로 분석해 보세요.

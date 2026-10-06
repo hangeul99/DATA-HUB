@@ -1,7 +1,7 @@
 /* ============================================================
    정책 페이지 (/policy)
 
-   구성: 머리글 → 운영 가이드라인 PDF 카드 → [왼쪽 목차 | 오른쪽 정책 5종 전문]
+   구성: 머리글 → 운영 가이드라인 PDF 카드 → 정책 5종 카드(누르면 본문으로) → [왼쪽 목차 | 오른쪽 정책 5종 전문]
    ★ 정책 문구는 이 파일이 아니라 ./policies.ts 에서 고칩니다.
    ★ 가이드라인 PDF 교체: public/docs/ 의 파일을 바꾸고 policies.ts 의 GUIDELINE_PDF 수정
    서버 컴포넌트 — 자바스크립트 없이 바로 그려져 가볍고, 검색엔진이 본문을 읽을 수 있음
@@ -57,16 +57,16 @@ export default function PolicyPage() {
 
         {/* ── 머리글 ── */}
         <header className="border-b border-neutral-200/70 bg-white">
-          <div className="mx-auto max-w-[1400px] px-5 py-12 sm:px-6 sm:py-16">
-            <h1 className="text-3xl font-extrabold tracking-[-.03em] text-neutral-900 sm:text-[40px]">정책</h1>
-            <p className="mt-3 max-w-[40em] text-base leading-relaxed text-neutral-600 sm:text-[17px]">
+          <div className="mx-auto max-w-[1400px] px-4 pb-8 pt-9 sm:px-6 sm:pt-10">
+            <h1 className="t-h1">정책</h1>
+            <p className="mt-2 max-w-[60ch] text-base text-neutral-600">
               데이터거버넌스센터는 데이터를 안전하게 공개하고 공정하게 활용하도록 아래 정책에 따라 데이터허브를 운영합니다.
             </p>
-            <p className="mt-4 text-sm text-neutral-500">시행일 {EFFECTIVE_DATE}</p>
+            <p className="mt-2.5 text-sm text-neutral-500">시행일 {EFFECTIVE_DATE} · 정책이 바뀌면 시행 7일 전에 공지합니다 · 문의 han9449@inje.ac.kr</p>
           </div>
         </header>
 
-        <div className="mx-auto max-w-[1400px] px-5 py-10 sm:px-6 sm:py-14">
+        <div className="mx-auto max-w-[1400px] px-4 pb-14 pt-7 sm:px-6">
 
           {/* ── 운영 가이드라인 PDF ── */}
           <section aria-labelledby="guideline-title"
@@ -101,7 +101,22 @@ export default function PolicyPage() {
             </div>
           </section>
 
-          <div className="mt-12 grid grid-cols-[minmax(0,1fr)] gap-10 lg:grid-cols-[220px_minmax(0,1fr)] lg:gap-14">
+          {/* ── 정책 5종 한눈에 (누르면 아래 본문으로) ── */}
+          <ul className="mt-6 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
+            {POLICIES.map((p, i) => (
+              <li key={p.id}>
+                <a href={`#${p.id}`}
+                  className="flex h-full flex-col gap-1.5 rounded-2xl border border-neutral-200 bg-white p-[18px] transition-[transform,box-shadow] duration-200 hover:-translate-y-0.5 hover:shadow-[0_18px_40px_-24px_rgba(10,22,38,.35)]">
+                  <span className="text-xs font-extrabold tracking-[.04em] text-accent-700">정책 {i + 1}</span>
+                  <span className="text-[17px] font-extrabold text-neutral-900">{p.title}</span>
+                  <span className="flex-1 text-sm text-neutral-500">{p.summary}</span>
+                  <span className="mt-1 text-[12.5px] text-neutral-500">{p.articles.length}개 조 · 시행 {EFFECTIVE_DATE}</span>
+                </a>
+              </li>
+            ))}
+          </ul>
+
+          <div className="mt-9 grid grid-cols-[minmax(0,1fr)] gap-8 lg:grid-cols-[220px_minmax(0,1fr)] lg:gap-10">
 
             {/* ── 목차 (PC에서 스크롤해도 따라옴) ── */}
             <nav aria-label="정책 목차" className="lg:sticky lg:top-28 lg:self-start">

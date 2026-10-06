@@ -16,6 +16,7 @@ import { useRouter } from "next/navigation";
 import { Search } from "lucide-react";
 import GimhaeDotMap from "./GimhaeDotMap";
 import { useHubStats } from "./useHubStats";
+import { useCountUp } from "./useCountUp";
 
 /**
  * 별 캔버스 3장 — 별을 3묶음으로 나눠 각 캔버스에 "한 번만" 그림.
@@ -67,13 +68,14 @@ function useStarfield(layersRef: React.RefObject<(HTMLCanvasElement | null)[]>) 
 const STAR_LAYERS = [{ tw: "3.2s", delay: "0s" }, { tw: "4.6s", delay: "-1.5s" }, { tw: "6s", delay: "-3s" }];
 
 /** 통계 한 칸 — 숫자 + 단위 + 설명 */
-function Fact({ value, unit, label, index }: { value: string; unit?: string; label: string; index: number }) {
+function Fact({ value, text, unit, label, index, started }: { value?: number; text?: string; unit?: string; label: string; index: number; started: boolean }) {
+  const n = useCountUp(value ?? 0, started); // 숫자는 0에서 굴러 올라감
   return (
     <li className="enter flex flex-col gap-1" style={{ "--i": index } as React.CSSProperties}>
-      <b className="text-[26px] font-extrabold leading-none tracking-[-.02em] tabular-nums sm:text-3xl">
-        {value}{unit && <small className="ml-0.5 text-base font-bold text-accent-300">{unit}</small>}
+      <b className="text-[28px] font-extrabold leading-none tracking-[-.02em] tabular-nums sm:text-[32px]">
+        {text ?? (started ? n.toLocaleString() : "–")}{unit && <small className="ml-0.5 text-base font-bold text-accent-300">{unit}</small>}
       </b>
-      <span className="text-[13px] text-[#9AAFC2]">{label}</span>
+      <span className="text-sm text-[#B4C3D3]">{label}</span>
     </li>
   );
 }
@@ -92,7 +94,6 @@ export default function HeroSection() {
     router.push(q ? `/datasets?q=${encodeURIComponent(q)}` : "/datasets");
   };
 
-  const n = (v: number) => (stats.loaded ? v.toLocaleString() : "–");
   const latest = stats.latest ? `${Number(stats.latest.slice(5, 7))}.${Number(stats.latest.slice(8, 10))}` : "–";
 
   return (
@@ -113,19 +114,19 @@ export default function HeroSection() {
       <div className="relative mx-auto grid max-w-[1200px] grid-cols-1 items-center gap-10 px-4 pb-16 pt-28 sm:px-6 md:pt-32 lg:grid-cols-[minmax(0,1.05fr)_minmax(0,.95fr)] lg:gap-14 lg:pb-24">
         {/* ── 왼쪽: 글 ── */}
         <div>
-          <p className="enter inline-flex items-center gap-2 text-[13px] font-bold tracking-[.06em] text-accent-300" style={{ "--i": 0 } as React.CSSProperties}>
+          <p className="enter inline-flex items-center gap-2 text-sm font-bold tracking-[.06em] text-accent-300" style={{ "--i": 0 } as React.CSSProperties}>
             <i aria-hidden="true" className="h-1.5 w-1.5 rounded-full bg-accent-400" />인제대학교 데이터거버넌스센터
           </p>
           <h1 id="hero-title" className="enter mt-4 font-[family-name:var(--font-hahmlet)] text-[40px] font-bold leading-[1.14] tracking-[-.02em] text-balance sm:text-[54px] lg:text-[72px]" style={{ "--i": 1 } as React.CSSProperties}>
-            김해를<br />데이터로 <em className="not-italic text-accent-300">읽는</em> 곳
+            김해를<br />데이터로 <em className="hero-mark not-italic">읽는</em> 곳
           </h1>
-          <p className="enter mt-5 max-w-[34em] text-[17px] leading-[1.75] text-[#9AAFC2]" style={{ "--i": 2 } as React.CSSProperties}>
+          <p className="enter mt-5 max-w-[32em] text-[17px] leading-[1.8] text-[#B4C3D3] sm:text-lg" style={{ "--i": 2 } as React.CSSProperties}>
             산업단지부터 상권, 유동인구, 학교까지. 센터가 모으고 개인정보를 걸러낸 지역 데이터를 찾아 신청하고, 받은 파일은 여기서 바로 분석해 보세요.
           </p>
 
           {/* 검색 — 제출 시 /datasets?q=검색어 로 이동 */}
           <form onSubmit={onSearch} role="search"
-            className="enter mt-8 flex h-[58px] max-w-[560px] items-center gap-2 rounded-full bg-white pl-[18px] pr-1.5 shadow-[0_20px_50px_-24px_rgba(0,0,0,.6)] transition-shadow focus-within:shadow-[0_0_0_4px_rgba(228,184,78,.45),0_20px_50px_-24px_rgba(0,0,0,.6)]"
+            className="hero-search enter mt-8 flex h-[58px] max-w-[560px] items-center gap-2 rounded-full bg-white pl-[18px] pr-1.5 shadow-[0_20px_50px_-24px_rgba(0,0,0,.6)] transition-shadow focus-within:shadow-[0_0_0_4px_rgba(228,184,78,.45),0_20px_50px_-24px_rgba(0,0,0,.6)]"
             style={{ "--i": 3 } as React.CSSProperties}>
             <Search size={18} className="flex-none text-neutral-500" aria-hidden="true" />
             <label htmlFor="hero-search" className="sr-only">데이터 검색</label>
@@ -137,10 +138,10 @@ export default function HeroSection() {
 
           {/* 공개 통계 4개 (실제 등록 데이터에서 계산) */}
           <ul aria-label="데이터허브 현황" className="mt-8 flex flex-wrap gap-x-9 gap-y-4">
-            <Fact index={4} value={n(stats.datasets)} unit="건" label="공개 데이터셋" />
-            <Fact index={4} value={n(stats.orgs)} unit="곳" label="제공 기관" />
-            <Fact index={5} value="4" unit="개" label="데이터 분야" />
-            <Fact index={5} value={latest} label={stats.latest ? `최신 기준일 · ${stats.latest.slice(0, 4)}년` : "최신 기준일"} />
+            <Fact index={4} started={stats.loaded} value={stats.datasets} unit="건" label="공개 데이터셋" />
+            <Fact index={4} started={stats.loaded} value={stats.orgs} unit="곳" label="제공 기관" />
+            <Fact index={5} started value={4} unit="개" label="데이터 분야" />
+            <Fact index={5} started text={latest} label={stats.latest ? `최신 기준일 · ${stats.latest.slice(0, 4)}년` : "최신 기준일"} />
           </ul>
         </div>
 

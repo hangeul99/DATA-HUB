@@ -393,7 +393,7 @@ export default function DatasetsClient() {
       <div className="bg-white border-b border-neutral-200">
         <div className="max-w-[1680px] mx-auto px-4 sm:px-6 pt-8 sm:pt-10">
           <h1 className="t-h1">데이터 탐색</h1>
-          <p className="mt-2 text-[15px] text-neutral-500">공공기관이 공개한 데이터를 개인정보를 걸러 정리했습니다. 신청 후 센터가 승인하면 내려받을 수 있습니다.</p>
+          <p className="mt-2 text-base text-neutral-600">공공기관이 공개한 데이터를 개인정보를 걸러 정리했습니다. 신청 후 센터가 승인하면 내려받을 수 있습니다.</p>
           {fetchError && <div className="mt-4 rounded-xl bg-red-50 px-4 py-3 text-sm text-red-600">{fetchError}</div>}
           {/* 모바일: 탭이 많아 넘칠 수 있으므로 가로 스크롤 허용 */}
           <div role="tablist" className="mt-6 flex gap-1 overflow-x-auto">
@@ -748,8 +748,8 @@ export default function DatasetsClient() {
                     {/* 제목 · 요약 · 메타 · 태그 */}
                     <div className="flex min-w-0 flex-1 flex-col gap-1.5">
                       <h3 className={`text-[16.5px] font-extrabold leading-[1.35] tracking-[-.01em] text-neutral-900 group-hover:text-brand-700 ${grid ? "" : "truncate"}`}>{ds.title}</h3>
-                      <p className={`text-[13.5px] leading-relaxed text-neutral-500 ${grid ? "line-clamp-2" : "truncate"}`}>{summaryOf(ds.description)}</p>
-                      <div className="flex flex-wrap gap-x-3 gap-y-1 text-[12.5px] text-neutral-500 tabular-nums">
+                      <p className={`text-sm leading-relaxed text-neutral-600 ${grid ? "line-clamp-2" : "truncate"}`}>{summaryOf(ds.description)}</p>
+                      <div className="flex flex-wrap gap-x-3 gap-y-1 text-[13px] text-neutral-500 tabular-nums">
                         {fmt && <b className="font-semibold text-neutral-700">{fmt}</b>}
                         {size && <span>{size}</span>}
                         {ds.year && <span>{ds.year}년 기준</span>}
@@ -758,7 +758,7 @@ export default function DatasetsClient() {
                       </div>
                       {grid && ds.tags?.length > 0 && (
                         <div className="flex flex-wrap gap-1.5">
-                          {ds.tags.slice(0, 4).map((t) => <span key={t} className="rounded-md bg-neutral-100 px-1.5 py-0.5 text-[11.5px] text-neutral-700">#{t}</span>)}
+                          {ds.tags.slice(0, 4).map((t) => <span key={t} className="rounded-md bg-neutral-100 px-1.5 py-0.5 text-xs text-neutral-700">#{t}</span>)}
                         </div>
                       )}
                     </div>

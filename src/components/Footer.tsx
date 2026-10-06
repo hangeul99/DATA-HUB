@@ -14,6 +14,11 @@ const LINK_GROUPS = [
     { href: "/board/free", label: "게시판" },
     { href: "/login", label: "로그인" },
   ] },
+  { title: "관련 사이트", links: [
+    { href: "https://ai-teaching-bice.vercel.app/", label: "AI솔루션센터", external: true },
+    { href: "https://mosquito-zero.vercel.app/", label: "모기제로 (모기지수)", external: true },
+    { href: "https://workmanager-ochre.vercel.app/dashboard", label: "업무 관리 시스템", external: true },
+  ] },
 ];
 
 export default function Footer() {
@@ -22,7 +27,7 @@ export default function Footer() {
       {/* 모바일 세로 여백/간격 축소 */}
       <div className="max-w-7xl mx-auto px-6 lg:px-8 py-8 md:py-14">
         {/* 모바일 1열 → 태블릿 2열 → PC 4열 (브랜드 칸만 넓게) */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-[1.6fr_1fr_1fr_1fr] gap-8 md:gap-10">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-[1.6fr_1fr_1fr_1fr_1fr] gap-8 md:gap-10">
           {/* Brand */}
           <div className="space-y-4">
             <div className="flex items-center gap-3">
@@ -54,7 +59,11 @@ export default function Footer() {
               <ul className="space-y-2 text-sm">
                 {group.links.map((l) => (
                   <li key={l.href}>
-                    <Link href={l.href} className="hover:text-brand-200 transition-colors">{l.label}</Link>
+                    {"external" in l && l.external ? (
+                      <a href={l.href} target="_blank" rel="noopener noreferrer" className="hover:text-brand-200 transition-colors">{l.label} ↗</a>
+                    ) : (
+                      <Link href={l.href} className="hover:text-brand-200 transition-colors">{l.label}</Link>
+                    )}
                   </li>
                 ))}
               </ul>

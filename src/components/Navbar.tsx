@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname, useRouter } from "next/navigation";
-import { Menu, X, LogOut, User, Settings } from "lucide-react";
+import { Menu, X, LogOut, User, Settings, ChevronDown, ExternalLink } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import type { User as SupabaseUser } from "@supabase/supabase-js";
 
@@ -15,6 +15,13 @@ const navLinks = [
   { href: "/policy",   label: "정책" },
   { href: "/survey",   label: "만족도 조사" },
   { href: "/board/free", label: "게시판" },
+];
+
+// 관련 사이트 — 새 탭으로 열림. ★ 추가·수정은 여기서
+const RELATED_SITES = [
+  { href: "https://ai-teaching-bice.vercel.app/", label: "AI솔루션센터", desc: "인제대학교 AI 교육·솔루션" },
+  { href: "https://mosquito-zero.vercel.app/",   label: "모기제로",      desc: "오늘의 김해 모기지수" },
+  { href: "https://workmanager-ochre.vercel.app/dashboard", label: "업무 관리 시스템", desc: "업무 실적·일정·회의 예약" },
 ];
 
 export default function Navbar() {
@@ -119,6 +126,25 @@ export default function Navbar() {
                   </Link>
                 );
               })}
+              {/* 관련 사이트 드롭다운 */}
+              <div className="relative group">
+                <button type="button" aria-haspopup="menu"
+                  className={`flex items-center gap-0.5 text-xs xl:text-sm font-semibold px-2 py-1 rounded-md whitespace-nowrap opacity-55 outline-none [transition:opacity_150ms] group-hover:opacity-90 group-focus-within:opacity-90 focus-visible:ring-2 focus-visible:ring-brand-400 ${linkColor}`}>
+                  관련 사이트 <ChevronDown size={13} aria-hidden="true" />
+                </button>
+                <div role="menu"
+                  className="invisible absolute left-1/2 top-full z-10 w-60 -translate-x-1/2 pt-2 opacity-0 [transition:opacity_150ms,visibility_150ms] group-hover:visible group-hover:opacity-100 group-focus-within:visible group-focus-within:opacity-100">
+                  <div className="overflow-hidden rounded-2xl border border-neutral-200 bg-white p-1.5 shadow-[0_20px_50px_-20px_rgba(10,22,38,.4)]">
+                    {RELATED_SITES.map((s) => (
+                      <a key={s.href} href={s.href} target="_blank" rel="noopener noreferrer" role="menuitem"
+                        className="flex items-start justify-between gap-2 rounded-xl px-3 py-2.5 hover:bg-neutral-50">
+                        <span><span className="block text-sm font-bold text-neutral-900">{s.label}</span><span className="block text-xs text-neutral-500">{s.desc}</span></span>
+                        <ExternalLink size={13} className="mt-1 flex-none text-neutral-400" aria-hidden="true" />
+                      </a>
+                    ))}
+                  </div>
+                </div>
+              </div>
             </nav>
 
             {/* 인증 영역 — lg 이상에서만 표시 / min-w 고정으로 auth 로드 시 nav 밀림 방지 */}
@@ -190,6 +216,15 @@ export default function Navbar() {
                   }`}>
                   {link.label}
                 </Link>
+              ))}
+              <hr className="border-neutral-100 my-2" />
+              <p className="px-3 pb-1 text-[11px] font-bold tracking-[.08em] text-neutral-400">관련 사이트</p>
+              {RELATED_SITES.map((s) => (
+                <a key={s.href} href={s.href} target="_blank" rel="noopener noreferrer"
+                  className="flex items-center justify-between gap-2 rounded-lg px-3 py-2 text-sm font-semibold text-neutral-600 hover:bg-neutral-50 hover:text-brand-600">
+                  <span>{s.label} <span className="ml-1 text-xs font-normal text-neutral-400">{s.desc}</span></span>
+                  <ExternalLink size={13} className="flex-none text-neutral-400" aria-hidden="true" />
+                </a>
               ))}
               <hr className="border-neutral-100 my-2" />
               {user === undefined ? null : user ? (

@@ -24,8 +24,21 @@ type TabId = (typeof TABS)[number]["id"];
 
 // ── 카테고리 / 연도 / 형식 목록 ──────────────────────────────
 const CATEGORIES = ["전체 카테고리", "통계/공공 데이터", "연구/학술 데이터", "금융/경제 데이터", "지역/업체 데이터"];
-const YEARS      = ["전체 연도", "2025", "2024", "2023", "2022 이전"];
+const YEARS      = ["전체 연도", "2026", "2025", "2024", "2023 이전"];
 const FILE_TYPES = ["전체 형식", "CSV", "Excel", "JSON", "Parquet", "TXT", "SAS/SPSS"];
+const SORTS = [["new", "최근 등록순"], ["name", "이름순"], ["size", "용량 큰 순"], ["downloads", "다운로드 많은 순"]] as const;
+type SortId = (typeof SORTS)[number][0];
+
+// ── 파일 형식·용량·요약·제공 기관 표시용 ──
+const fmtOf = (path: string | null) => {
+  const ext = path?.includes(".") ? path.split(".").pop()!.toLowerCase() : "";
+  return !ext ? "" : ext === "xlsx" || ext === "xls" ? "Excel" : ext.toUpperCase();
+};
+const sizeOf = (b: number | null) => !b ? "" : b < 1048576 ? `${Math.max(1, Math.round(b / 1024))}KB` : `${(b / 1048576).toFixed(1)}MB`;
+// 등록 7일 이내면 "신규" 표시
+const isRecent = (createdAt: string) => Date.now() - new Date(createdAt).getTime() < 7 * 24 * 60 * 60 * 1000;
+const summaryOf = (desc: string) => (desc ?? "").split("\n")[0];
+const orgOf = (desc: string) => desc?.match(/출처: ([^,\n]+),/)?.[1] ?? "";
 
 // ── 신청 처리 상태 표시 (applications.status) ──
 const STATUS_LABEL: Record<string, string> = { pending: "검토 중", approved: "승인됨", rejected: "반려됨" };
@@ -78,6 +91,7 @@ interface Dataset {
   tags: string[];
   downloads: number;
   file_path: string | null;
+  file_size: number | null;
   created_at: string;
 }
 
@@ -106,6 +120,7 @@ export default function DatasetsClient() {
   const [year, setYear]             = useState("전체 연도");
   const [fileType, setFileType]     = useState("전체 형식");
   const [view, setView]             = useState<"grid" | "list">("grid");
+  const [sort, setSort]             = useState<SortId>("new");
 
   // ── 선택 / 장바구니 상태 ──────────────────────────────────
   const [selected, setSelected] = useState<Set<string>>(new Set());
@@ -181,7 +196,7 @@ export default function DatasetsClient() {
     const supabase = createClient();
     supabase
       .from("datasets")
-      .select("id, title, category, year, description, tags, downloads, file_path, created_at")
+      .select("id, title, category, year, description, tags, downloads, file_path, file_size, created_at")
       .eq("is_active", true)
       .order("created_at", { ascending: false })
       .then(({ data, error }) => {
@@ -213,14 +228,26 @@ export default function DatasetsClient() {
   // 무거운 목록 재필터링은 한 박자 늦춰 타이핑 중 버벅임을 막는다.
   const deferredQuery = useDeferredValue(query);
   const filtered = useMemo(() => {
-    return datasets.filter((d) => {
-      const matchQ    = d.title.includes(deferredQuery) || d.description?.includes(deferredQuery);
+    const q = deferredQuery.trim().toLowerCase();
+    const list = datasets.filter((d) => {
+      const matchQ    = !q || (d.title + " " + (d.description ?? "") + " " + (d.tags ?? []).join(" ")).toLowerCase().includes(q);
       const matchCat  = category === "전체 카테고리" || d.category === category;
-      const matchYear = year === "전체 연도" || d.year === year;
-      const matchFile = fileType === "전체 형식" || d.tags?.includes(fileType);
+      const matchYear = year === "전체 연도" || (year === "2023 이전" ? Number(d.year) <= 2023 : d.year === year);
+      const matchFile = fileType === "전체 형식" || fmtOf(d.file_path) === fileType || d.tags?.includes(fileType);
       return matchQ && matchCat && matchYear && matchFile;
     });
-  }, [datasets, deferredQuery, category, year, fileType]);
+    if (sort === "name") list.sort((a, b) => a.title.localeCompare(b.title, "ko"));
+    if (sort === "size") list.sort((a, b) => (b.file_size ?? 0) - (a.file_size ?? 0));
+    if (sort === "downloads") list.sort((a, b) => (b.downloads ?? 0) - (a.downloads ?? 0));
+    return list; // "new"는 조회 순서(최근 등록순) 그대로
+  }, [datasets, deferredQuery, category, year, fileType, sort]);
+
+  // 분야별 건수 (칩에 표시)
+  const catCount = useMemo(() => {
+    const m: Record<string, number> = { "전체 카테고리": datasets.length };
+    for (const d of datasets) m[d.category] = (m[d.category] ?? 0) + 1;
+    return m;
+  }, [datasets]);
 
   const hasFilter = category !== "전체 카테고리" || year !== "전체 연도" || fileType !== "전체 형식" || query !== "";
 
@@ -362,22 +389,21 @@ export default function DatasetsClient() {
         />
       )}
 
-      {/* ── 탭 바 ── */}
+      {/* ── 페이지 머리: 제목 + 설명 + 탭 (왼쪽 정렬, 아래 목록과 같은 선) ── */}
       <div className="bg-white border-b border-neutral-200">
-        {/* 모바일: 탭이 많아 넘칠 수 있으므로 가로 스크롤 허용 */}
-        <div className="max-w-[1680px] mx-auto px-6 lg:px-8 overflow-x-auto">
-          <div className="flex justify-start sm:justify-center">
+        <div className="max-w-[1680px] mx-auto px-4 sm:px-6 pt-8 sm:pt-10">
+          <h1 className="t-h1">데이터 탐색</h1>
+          <p className="mt-2 text-[15px] text-neutral-500">공공기관이 공개한 데이터를 개인정보를 걸러 정리했습니다. 신청 후 센터가 승인하면 내려받을 수 있습니다.</p>
+          {fetchError && <div className="mt-4 rounded-xl bg-red-50 px-4 py-3 text-sm text-red-600">{fetchError}</div>}
+          {/* 모바일: 탭이 많아 넘칠 수 있으므로 가로 스크롤 허용 */}
+          <div role="tablist" className="mt-6 flex gap-1 overflow-x-auto">
             {TABS.map((tab) => (
-              <button key={tab.id} onClick={() => setActiveTab(tab.id)}
-                className={`relative px-3 sm:px-6 py-3 sm:py-4 text-xs sm:text-sm font-medium whitespace-nowrap transition-colors duration-150
-                  ${activeTab === tab.id ? "bg-neutral-900 text-white" : "text-neutral-500 hover:text-neutral-800 hover:bg-neutral-50"}
-                  ${tab.id === "cart" && cart.size > 0 ? "pr-8" : ""}`}>
+              <button key={tab.id} role="tab" aria-selected={activeTab === tab.id} onClick={() => setActiveTab(tab.id)}
+                className={`-mb-px whitespace-nowrap border-b-2 px-3.5 py-2.5 text-[15px] font-bold transition-colors ${
+                  activeTab === tab.id ? "border-brand-500 text-neutral-900" : "border-transparent text-neutral-500 hover:text-neutral-800"}`}>
                 {tab.label}
-                {/* 장바구니 개수 배지 */}
                 {tab.id === "cart" && cart.size > 0 && (
-                  <span className="absolute top-3 right-2 bg-brand-500 text-white text-[10px] font-bold min-w-[16px] h-4 flex items-center justify-center rounded-full px-1">
-                    {cart.size}
-                  </span>
+                  <span className="ml-1.5 rounded-full bg-accent-400 px-1.5 py-px text-xs font-extrabold text-navy-900 tabular-nums">{cart.size}</span>
                 )}
               </button>
             ))}
@@ -628,290 +654,148 @@ export default function DatasetsClient() {
 
       {/* ── 데이터 찾기 탭 ── */}
       {activeTab === "browse" && (
-        <>
-          {/* 페이지 헤더 + 필터 */}
-          <div className="bg-white border-b border-neutral-100">
-            <div className="max-w-[1680px] mx-auto px-6 lg:px-8 py-6 sm:py-10">
-              <h1 className="text-2xl sm:text-3xl font-bold text-neutral-900 mb-1">데이터 탐색</h1>
-              <p className="text-neutral-500 text-sm">
-                검증된 {datasets.length}개 데이터셋을 탐색하고 이용 신청하세요.
-              </p>
-
-              {/* 에러 */}
-              {fetchError && (
-                <div className="mt-4 text-sm text-red-500 bg-red-50 px-4 py-3 rounded-xl">{fetchError}</div>
-              )}
-
-              {/* 필터 행 — 모바일: 세로 배치, 데스크톱(sm↑): 한 줄 flex 복원 */}
-              <div className="mt-6 flex flex-col sm:flex-row gap-3 sm:flex-wrap">
-                {/* 셀렉트 3개: 모바일에서 2열 그리드로 공간 절약, sm↑ 개별 flex 항목 복원 */}
-                <div className="grid grid-cols-2 gap-3 sm:contents">
-                  <select value={category} onChange={(e) => setCategory(e.target.value)}
-                    className="col-span-2 sm:col-span-1 px-3 sm:px-4 py-2 sm:py-2.5 rounded-xl border border-neutral-200 text-xs sm:text-sm text-neutral-700 bg-white focus:outline-none focus:ring-2 focus:ring-brand-400">
-                    {CATEGORIES.map((c) => <option key={c}>{c}</option>)}
-                  </select>
-                  <select value={year} onChange={(e) => setYear(e.target.value)}
-                    className="px-3 sm:px-4 py-2 sm:py-2.5 rounded-xl border border-neutral-200 text-xs sm:text-sm text-neutral-700 bg-white focus:outline-none focus:ring-2 focus:ring-brand-400">
-                    {YEARS.map((y) => <option key={y}>{y}</option>)}
-                  </select>
-                  <select value={fileType} onChange={(e) => setFileType(e.target.value)}
-                    className="px-3 sm:px-4 py-2 sm:py-2.5 rounded-xl border border-neutral-200 text-xs sm:text-sm text-neutral-700 bg-white focus:outline-none focus:ring-2 focus:ring-brand-400">
-                    {FILE_TYPES.map((f) => <option key={f}>{f}</option>)}
-                  </select>
-                </div>
-
-                {/* 검색창 — 모바일 전체폭 유지 */}
-                <div className="relative flex-1 min-w-[180px]">
-                  <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-neutral-400" size={16} />
-                  <input type="text" value={query} onChange={(e) => setQuery(e.target.value)}
-                    placeholder="검색어를 입력하세요."
-                    className="w-full pl-10 pr-4 py-2 sm:py-2.5 rounded-xl border border-neutral-200 text-xs sm:text-sm text-neutral-700 bg-white focus:outline-none focus:ring-2 focus:ring-brand-400" />
-                </div>
-
-                {/* 액션 버튼들 — 모바일에서 한 줄로 압축 배치, sm↑ 개별 flex 항목 복원 */}
-                <div className="flex items-center gap-3 sm:contents">
-                  {/* 선택 데이터 담기 */}
-                  <button onClick={addSelectedToCart} disabled={selected.size === 0}
-                    className={`flex-1 sm:flex-none flex items-center justify-center gap-2 px-3 sm:px-4 py-2 sm:py-2.5 rounded-xl text-xs sm:text-sm font-semibold transition-all whitespace-nowrap
-                      ${selected.size > 0 ? "bg-brand-600 text-white hover:bg-brand-700 shadow-brand active:scale-95" : "bg-neutral-100 text-neutral-400 cursor-not-allowed"}`}>
-                    <CheckSquare size={15} />
-                    선택 데이터 담기
-                    {selected.size > 0 && (
-                      <span className="bg-white text-brand-700 text-xs font-bold px-1.5 py-0.5 rounded-full">{selected.size}</span>
-                    )}
-                  </button>
-
-                  {/* 장바구니 버튼 */}
-                  <button onClick={() => setActiveTab("cart")}
-                    className="relative flex items-center gap-2 px-3 sm:px-4 py-2 sm:py-2.5 rounded-xl text-xs sm:text-sm font-medium border border-neutral-200 bg-white hover:border-brand-300 transition-colors">
-                    <ShoppingCart size={15} className="text-neutral-500" />
-                    장바구니
-                    {cart.size > 0 && (
-                      <span className="absolute -top-1.5 -right-1.5 bg-brand-600 text-white text-[10px] font-bold min-w-[18px] h-[18px] flex items-center justify-center rounded-full">
-                        {cart.size}
-                      </span>
-                    )}
-                  </button>
-
-                  {/* 뷰 전환 */}
-                  <div className="flex items-center gap-1 bg-neutral-100 rounded-xl p-1">
-                    <button onClick={() => setView("grid")}
-                      className={`p-2 rounded-lg transition-colors ${view === "grid" ? "bg-white text-brand-600 shadow-sm" : "text-neutral-400 hover:text-neutral-600"}`}>
-                      <Grid3X3 size={16} />
-                    </button>
-                    <button onClick={() => setView("list")}
-                      className={`p-2 rounded-lg transition-colors ${view === "list" ? "bg-white text-brand-600 shadow-sm" : "text-neutral-400 hover:text-neutral-600"}`}>
-                      <List size={16} />
-                    </button>
-                  </div>
-                </div>
-              </div>
-
-              {/* 활성 필터 칩 */}
-              {hasFilter && (
-                <div className="mt-3 flex items-center gap-2 flex-wrap">
-                  <span className="text-xs text-neutral-500">필터:</span>
-                  {category !== "전체 카테고리" && (
-                    <button onClick={() => setCategory("전체 카테고리")} className="flex items-center gap-1 text-xs bg-brand-50 text-brand-700 px-2.5 py-1 rounded-full hover:bg-brand-100">
-                      {category} <X size={10} />
-                    </button>
-                  )}
-                  {year !== "전체 연도" && (
-                    <button onClick={() => setYear("전체 연도")} className="flex items-center gap-1 text-xs bg-brand-50 text-brand-700 px-2.5 py-1 rounded-full hover:bg-brand-100">
-                      {year} <X size={10} />
-                    </button>
-                  )}
-                  {fileType !== "전체 형식" && (
-                    <button onClick={() => setFileType("전체 형식")} className="flex items-center gap-1 text-xs bg-brand-50 text-brand-700 px-2.5 py-1 rounded-full hover:bg-brand-100">
-                      {fileType} <X size={10} />
-                    </button>
-                  )}
-                  {query && (
-                    <button onClick={() => setQuery("")} className="flex items-center gap-1 text-xs bg-brand-50 text-brand-700 px-2.5 py-1 rounded-full hover:bg-brand-100">
-                      &ldquo;{query}&rdquo; <X size={10} />
-                    </button>
-                  )}
-                  <button onClick={() => { setCategory("전체 카테고리"); setYear("전체 연도"); setFileType("전체 형식"); setQuery(""); }}
-                    className="text-xs text-neutral-400 hover:text-neutral-600">초기화</button>
-                </div>
-              )}
+        <div className="max-w-[1680px] mx-auto px-4 sm:px-6 pb-20 pt-5">
+          {/* 필터 줄: 검색(남는 폭) + 연도 + 형식 + 정렬 + 보기 전환 */}
+          <div className="flex flex-wrap items-center gap-2.5">
+            <label className="flex h-[50px] min-w-[240px] flex-[1_1_320px] items-center gap-2.5 rounded-[14px] border border-neutral-200 bg-white px-4 focus-within:border-brand-500 focus-within:ring-[3px] focus-within:ring-brand-100">
+              <Search size={18} className="flex-none text-neutral-400" aria-hidden="true" />
+              <span className="sr-only">데이터 검색</span>
+              <input type="search" value={query} onChange={(e) => setQuery(e.target.value)} placeholder="데이터 이름, 내용, 태그로 검색"
+                className="h-full min-w-0 flex-1 bg-transparent text-[15px] text-neutral-900 outline-none placeholder:text-neutral-400" />
+            </label>
+            {[
+              { value: year, set: setYear, opts: YEARS, label: "기준 연도" },
+              { value: fileType, set: setFileType, opts: FILE_TYPES, label: "파일 형식" },
+            ].map((sel) => (
+              <select key={sel.label} aria-label={sel.label} value={sel.value} onChange={(e) => sel.set(e.target.value)} className="ds-select">
+                {sel.opts.map((o) => <option key={o}>{o}</option>)}
+              </select>
+            ))}
+            <select aria-label="정렬" value={sort} onChange={(e) => setSort(e.target.value as SortId)} className="ds-select">
+              {SORTS.map(([id, label]) => <option key={id} value={id}>{label}</option>)}
+            </select>
+            <div role="group" aria-label="보기 방식" className="flex h-[50px] rounded-[14px] border border-neutral-200 bg-white p-1">
+              {([["grid", Grid3X3, "격자 보기"], ["list", List, "목록 보기"]] as const).map(([v, Icon, label]) => (
+                <button key={v} type="button" aria-pressed={view === v} aria-label={label} onClick={() => setView(v)}
+                  className={`grid w-[42px] place-items-center rounded-[10px] transition-colors ${view === v ? "bg-brand-500 text-white" : "text-neutral-400 hover:text-neutral-700"}`}>
+                  <Icon size={18} />
+                </button>
+              ))}
             </div>
           </div>
 
-          {/* 결과 목록 */}
-          <div className="max-w-[1680px] mx-auto px-6 lg:px-8 py-6 sm:py-8">
-            <p className="text-sm text-neutral-500 mb-6">
-              총 <span className="font-semibold text-neutral-900">{filtered.length}</span>개 데이터셋
-              {selected.size > 0 && <span className="ml-2 text-brand-600 font-medium">{selected.size}개 선택됨</span>}
-            </p>
+          {/* 분야 칩 (건수 포함) */}
+          <div role="group" aria-label="분야" className="mt-5 flex flex-wrap gap-2">
+            {CATEGORIES.map((c) => {
+              const on = category === c;
+              return (
+                <button key={c} type="button" aria-pressed={on} onClick={() => setCategory(c)}
+                  className={`h-9 rounded-full border px-3.5 text-sm font-semibold transition-colors ${on ? "border-navy-900 bg-navy-900 text-white" : "border-neutral-200 bg-white text-neutral-700 hover:bg-neutral-50"}`}>
+                  {c === "전체 카테고리" ? "전체" : c.replace(" 데이터", "")}
+                  <span className={`ml-1.5 font-medium tabular-nums ${on ? "text-accent-300" : "text-neutral-400"}`}>{catCount[c] ?? 0}</span>
+                </button>
+              );
+            })}
+          </div>
 
-            {/* 데이터 없음 */}
-            {filtered.length === 0 ? (
-              <div className="text-center py-24 text-neutral-400">
-                <Search size={48} className="mx-auto mb-4 opacity-30" />
-                <p className="text-base font-medium">
-                  {datasets.length === 0 ? "등록된 데이터셋이 없습니다." : "검색 결과가 없습니다."}
-                </p>
-                <p className="text-sm mt-1">
-                  {datasets.length === 0 ? "관리자가 데이터셋을 등록하면 이곳에 표시됩니다." : "다른 키워드나 필터를 시도해보세요."}
-                </p>
-              </div>
-            ) : view === "grid" ? (
-              // ── 그리드 뷰 ──
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-3 sm:gap-5">
-                {filtered.map((ds) => {
-                  const isSelected = selected.has(ds.id);
-                  const inCart = cart.has(ds.id);
-                  const isLocal = ds.category === "지역/업체 데이터";
-                  const isLocked = isLocal && !localDataApproved;
-                  return (
-                    <div key={ds.id}
-                      onClick={() => !isLocked && router.push(`/datasets/${ds.id}`)}
-                      className={`group bg-white rounded-2xl border transition-all duration-200 flex flex-col overflow-hidden cursor-pointer
-                        ${isLocked ? "border-accent-300" : isSelected ? "border-brand-400 ring-2 ring-brand-200 shadow-brand" : "border-neutral-100 hover:border-brand-200 hover:shadow-brand"}`}>
+          {/* 건수 + 필터 초기화 */}
+          <div className="mb-3.5 mt-5 flex flex-wrap items-center justify-between gap-2 text-sm text-neutral-500">
+            <span>총 <b className="font-bold text-neutral-900 tabular-nums">{filtered.length}</b>건{hasFilter && (
+              <button type="button" onClick={() => { setCategory("전체 카테고리"); setYear("전체 연도"); setFileType("전체 형식"); setQuery(""); }}
+                className="ml-3 inline-flex items-center gap-1 text-brand-600 hover:underline"><X size={12} /> 필터 초기화</button>)}</span>
+            <span className="hidden sm:inline">카드의 체크 상자로 여러 개를 골라 한 번에 담을 수 있습니다</span>
+          </div>
 
-                      {/* 잠금 배너 */}
-                      {isLocked && (
-                        <div className="bg-accent-50 border-b border-accent-200 px-3 py-1.5 flex items-center gap-1.5">
-                          <Lock size={11} className="text-accent-600 flex-shrink-0" />
-                          <span className="text-[10px] text-accent-700 font-medium">접근 권한 필요</span>
+          {/* 목록 (격자/목록 보기 공용 카드) */}
+          {filtered.length === 0 ? (
+            <div className="rounded-[18px] border border-neutral-200 bg-white px-5 py-16 text-center">
+              <p className="text-[17px] font-bold text-neutral-900">{datasets.length === 0 ? "아직 등록된 데이터가 없습니다" : "조건에 맞는 데이터가 없습니다"}</p>
+              <p className="mt-1.5 text-sm text-neutral-500">{datasets.length === 0 ? "센터가 데이터를 등록하면 여기에 보입니다." : "검색어를 줄이거나 다른 분야를 골라 보세요. 필요한 데이터는 게시판에 요청할 수 있습니다."}</p>
+            </div>
+          ) : (
+            <div className={view === "grid"
+              ? "grid grid-cols-1 gap-3.5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5"
+              : "overflow-hidden rounded-[18px] border border-neutral-200 bg-white"}>
+              {filtered.map((ds) => {
+                const isSelected = selected.has(ds.id);
+                const inCart = cart.has(ds.id);
+                const isLocked = ds.category === "지역/업체 데이터" && !localDataApproved;
+                const isNew = isRecent(ds.created_at);
+                const grid = view === "grid";
+                const go = () => (isLocked ? (user ? setShowAccessModal(true) : router.push("/login")) : router.push(`/datasets/${ds.id}`));
+                const fmt = fmtOf(ds.file_path), size = sizeOf(ds.file_size), org = orgOf(ds.description);
+                return (
+                  <article key={ds.id} onClick={go}
+                    className={`group relative cursor-pointer bg-white transition-[transform,box-shadow,border-color,background-color] duration-200 ${grid
+                      ? `flex flex-col gap-2.5 rounded-[18px] border p-[18px] pb-4 hover:-translate-y-0.5 hover:shadow-[0_18px_40px_-24px_rgba(10,22,38,.35)] ${isSelected ? "border-brand-400 ring-2 ring-brand-100" : "border-neutral-200 hover:border-neutral-300"}`
+                      : `flex items-center gap-3 border-b border-neutral-200 px-3.5 py-3.5 last:border-b-0 sm:gap-4 sm:px-[18px] ${isSelected ? "bg-brand-50" : "hover:bg-neutral-50"}`}`}>
+
+                    {/* 여러 개 선택용 체크 상자 */}
+                    <input type="checkbox" checked={isSelected} onChange={() => toggleSelect(ds.id)} onClick={(e) => e.stopPropagation()}
+                      aria-label={`${ds.title} 선택`}
+                      className={`h-5 w-5 flex-none cursor-pointer rounded border-neutral-300 accent-brand-500 ${grid ? "absolute right-3.5 top-3.5" : ""}`} />
+
+                    {/* 분야 + 배지 */}
+                    <div className={grid ? "flex items-center justify-between gap-2 pr-8" : "flex w-[110px] flex-none flex-col items-start gap-1.5 sm:w-[150px]"}>
+                      <span className="text-xs font-bold text-brand-600">{ds.category.replace(" 데이터", "")}</span>
+                      {isLocked ? (
+                        <span className="inline-flex items-center gap-1 rounded-md border border-accent-100 bg-accent-50 px-1.5 py-0.5 text-[11.5px] font-bold text-accent-700"><Lock size={11} /> 추가 승인 필요</span>
+                      ) : isNew && grid ? (
+                        <span className="rounded-md bg-accent-400 px-1.5 py-0.5 text-[11px] font-extrabold text-navy-900">신규</span>
+                      ) : null}
+                    </div>
+
+                    {/* 제목 · 요약 · 메타 · 태그 */}
+                    <div className="flex min-w-0 flex-1 flex-col gap-1.5">
+                      <h3 className={`text-[16.5px] font-extrabold leading-[1.35] tracking-[-.01em] text-neutral-900 group-hover:text-brand-700 ${grid ? "" : "truncate"}`}>{ds.title}</h3>
+                      <p className={`text-[13.5px] leading-relaxed text-neutral-500 ${grid ? "line-clamp-2" : "truncate"}`}>{summaryOf(ds.description)}</p>
+                      <div className="flex flex-wrap gap-x-3 gap-y-1 text-[12.5px] text-neutral-500 tabular-nums">
+                        {fmt && <b className="font-semibold text-neutral-700">{fmt}</b>}
+                        {size && <span>{size}</span>}
+                        {ds.year && <span>{ds.year}년 기준</span>}
+                        {org && <span className="hidden sm:inline">{org}</span>}
+                        <span className="inline-flex items-center gap-0.5"><Download size={11} /> {ds.downloads?.toLocaleString() ?? 0}</span>
+                      </div>
+                      {grid && ds.tags?.length > 0 && (
+                        <div className="flex flex-wrap gap-1.5">
+                          {ds.tags.slice(0, 4).map((t) => <span key={t} className="rounded-md bg-neutral-100 px-1.5 py-0.5 text-[11.5px] text-neutral-700">#{t}</span>)}
                         </div>
                       )}
-
-                      {/* 체크박스 + 배지 */}
-                      <div className="flex items-start justify-between px-4 pt-4 pb-2">
-                        <input type="checkbox" checked={isSelected} onChange={() => toggleSelect(ds.id)}
-                          onClick={e => e.stopPropagation()}
-                          disabled={isLocked}
-                          className="w-4 h-4 rounded border-neutral-300 text-brand-600 focus:ring-brand-400 cursor-pointer mt-0.5 disabled:opacity-30" />
-                        {new Date().getTime() - new Date(ds.created_at).getTime() < 7 * 24 * 60 * 60 * 1000 ? (
-                          <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-brand-500 text-white">신규</span>
-                        ) : <span />}
-                      </div>
-
-                      {/* 아이콘 + 정보 */}
-                      <div className="flex flex-col items-center px-4 pb-3 flex-1">
-                        <div className={`w-14 h-14 rounded-2xl flex items-center justify-center mb-3 text-lg font-bold relative ${iconColor[ds.category] ?? "bg-neutral-100 text-neutral-500"} ${isLocked ? "opacity-50" : ""}`}>
-                          {isLocked ? <Lock size={22} /> : ds.category[0]}
-                        </div>
-                        <p className="text-[10px] text-neutral-400 mb-1">{ds.category}</p>
-                        <h3 className={`font-semibold text-sm leading-snug mb-1.5 text-center transition-colors line-clamp-2 ${isLocked ? "text-neutral-400" : "text-neutral-900 group-hover:text-brand-700"}`}>
-                          {ds.title}
-                        </h3>
-                        <p className="text-[11px] text-neutral-500 leading-relaxed line-clamp-2 text-center">{ds.description}</p>
-                      </div>
-
-                      {/* 태그 + 다운로드 수 */}
-                      <div className="px-4 pb-2 flex items-center justify-between">
-                        <div className="flex gap-1 flex-wrap">
-                          {ds.tags?.map((t) => (
-                            <span key={t} className="text-[10px] px-1.5 py-0.5 bg-neutral-100 text-neutral-500 rounded font-mono">{t}</span>
-                          ))}
-                        </div>
-                        <div className="flex items-center gap-0.5 text-[10px] text-neutral-400">
-                          <Download size={10} /> {ds.downloads?.toLocaleString()}
-                        </div>
-                      </div>
-
-                      {/* 액션 버튼 */}
-                      <div className="border-t border-neutral-100 px-4 py-3 flex items-center gap-2">
-                        {isLocked ? (
-                          // 잠금 상태: 접근 권한 신청 버튼
-                          <button
-                            onClick={e => { e.stopPropagation(); user ? setShowAccessModal(true) : window.location.href = "/login"; }}
-                            className="flex-1 text-center text-xs font-semibold flex items-center justify-center gap-1.5 py-2 rounded-lg transition-colors active:scale-95 bg-accent-400 hover:bg-accent-300 text-navy-900"
-                          >
-                            {alreadyRequested ? (
-                              <><CheckSquare size={12} /> 신청 완료 (대기중)</>
-                            ) : (
-                              <><Lock size={12} /> 접근 권한 신청</>
-                            )}
-                          </button>
-                        ) : (
-                          <>
-                            <button title="설명자료 내려받기" onClick={e => { e.stopPropagation(); downloadDescription(ds); }}
-                              className="flex items-center justify-center w-8 h-8 rounded-lg bg-neutral-100 hover:bg-neutral-200 text-neutral-500 transition-colors">
-                              <FileText size={14} />
-                            </button>
-                            <button title="장바구니 담기" onClick={e => { e.stopPropagation(); addToCart(ds.id); }}
-                              className={`flex items-center justify-center w-8 h-8 rounded-lg transition-colors
-                                ${inCart ? "bg-brand-100 text-brand-600" : "bg-neutral-100 hover:bg-neutral-200 text-neutral-500"}`}>
-                              <ShoppingCart size={14} />
-                            </button>
-                            <Link href={`/datasets/${ds.id}`} title="미리보기"
-                              onClick={e => e.stopPropagation()}
-                              className="flex items-center justify-center w-8 h-8 rounded-lg bg-neutral-100 hover:bg-neutral-200 text-neutral-500 transition-colors">
-                              <Eye size={14} />
-                            </Link>
-                            <Link href={`/datasets/${ds.id}`}
-                              onClick={e => e.stopPropagation()}
-                              className="flex-1 text-center text-xs font-semibold text-white bg-brand-600 hover:bg-brand-700 py-2 rounded-lg transition-colors active:scale-95">
-                              신청하기
-                            </Link>
-                          </>
-                        )}
-                      </div>
                     </div>
-                  );
-                })}
-              </div>
-            ) : (
-              // ── 리스트 뷰 ──
-              <div className="flex flex-col gap-2">
-                {filtered.map((ds) => {
-                  const isSelected = selected.has(ds.id);
-                  const inCart = cart.has(ds.id);
-                  return (
-                    <div key={ds.id}
-                      onClick={() => router.push(`/datasets/${ds.id}`)}
-                      className={`group bg-white rounded-2xl border transition-all duration-200 flex items-center gap-2.5 sm:gap-4 px-3.5 sm:px-5 py-3 sm:py-4 cursor-pointer
-                        ${isSelected ? "border-brand-400 ring-2 ring-brand-200" : "border-neutral-100 hover:border-brand-200 hover:shadow-brand"}`}>
-                      <input type="checkbox" checked={isSelected} onChange={() => toggleSelect(ds.id)}
-                        onClick={e => e.stopPropagation()}
-                        className="w-4 h-4 rounded border-neutral-300 text-brand-600 focus:ring-brand-400 cursor-pointer flex-shrink-0" />
-                      {/* 모바일에서 아이콘 축소 */}
-                      <div className={`w-9 h-9 sm:w-11 sm:h-11 rounded-xl flex-shrink-0 flex items-center justify-center font-bold text-sm ${iconColor[ds.category] ?? "bg-neutral-100 text-neutral-500"}`}>
-                        {ds.category[0]}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-xs text-neutral-400 mb-0.5">{ds.category}</p>
-                        <h3 className="font-semibold text-sm text-neutral-900 group-hover:text-brand-700 transition-colors truncate">{ds.title}</h3>
-                        <p className="text-xs text-neutral-500 truncate mt-0.5">{ds.description}</p>
-                      </div>
-                      <div className="hidden sm:flex items-center gap-1.5 flex-shrink-0">
-                        {ds.tags?.map((t) => (
-                          <span key={t} className="text-xs px-2 py-0.5 bg-neutral-100 text-neutral-500 rounded font-mono">{t}</span>
-                        ))}
-                      </div>
-                      <div className="hidden md:flex items-center gap-1 text-xs text-neutral-400 flex-shrink-0 w-16 justify-end">
-                        <Download size={11} /> {ds.downloads?.toLocaleString()}
-                      </div>
-                      <div className="flex items-center gap-1 sm:gap-1.5 flex-shrink-0">
-                        {/* 설명자료 내려받기: 리스트 뷰 — 모바일에서는 공간상 숨김 */}
-                        <button title="설명자료 내려받기" onClick={e => { e.stopPropagation(); downloadDescription(ds); }} className="hidden sm:flex items-center justify-center w-8 h-8 rounded-lg bg-neutral-100 hover:bg-neutral-200 text-neutral-500 transition-colors"><FileText size={14} /></button>
-                        <button title="장바구니" onClick={e => { e.stopPropagation(); addToCart(ds.id); }}
-                          className={`flex items-center justify-center w-8 h-8 rounded-lg transition-colors ${inCart ? "bg-brand-100 text-brand-600" : "bg-neutral-100 hover:bg-neutral-200 text-neutral-500"}`}>
-                          <ShoppingCart size={14} />
+
+                    {/* 동작: 설명자료 · 장바구니 · 자세히/권한 신청 */}
+                    <div className={`flex flex-none items-center gap-2 ${grid ? "mt-auto pt-1.5" : ""}`}>
+                      <button type="button" title="설명자료 내려받기" aria-label="설명자료 내려받기" onClick={(e) => { e.stopPropagation(); downloadDescription(ds); }}
+                        className="hidden h-10 w-10 place-items-center rounded-full border border-neutral-200 text-neutral-500 hover:bg-neutral-50 hover:text-neutral-900 sm:grid"><FileText size={16} /></button>
+                      <button type="button" title={inCart ? "장바구니에 담김" : "장바구니 담기"} aria-pressed={inCart} aria-label="장바구니 담기" onClick={(e) => { e.stopPropagation(); addToCart(ds.id); }}
+                        className={`grid h-10 w-10 place-items-center rounded-full border ${inCart ? "border-brand-100 bg-brand-50 text-brand-600" : "border-neutral-200 text-neutral-500 hover:bg-neutral-50 hover:text-neutral-900"}`}><ShoppingCart size={16} /></button>
+                      {isLocked ? (
+                        <button type="button" onClick={(e) => { e.stopPropagation(); go(); }}
+                          className={`press inline-flex h-10 items-center justify-center gap-1.5 rounded-full border border-neutral-200 bg-white px-4 text-sm font-bold text-neutral-900 hover:bg-neutral-50 ${grid ? "flex-1" : ""}`}>
+                          {alreadyRequested ? <><CheckSquare size={14} /> 권한 신청 대기 중</> : <><Lock size={14} /> 접근 권한 신청</>}
                         </button>
-                        {/* 미리보기: 행 전체가 클릭 가능하므로 모바일에서는 숨김 */}
-                        <Link href={`/datasets/${ds.id}`} title="미리보기"
-                          onClick={e => e.stopPropagation()}
-                          className="hidden sm:flex items-center justify-center w-8 h-8 rounded-lg bg-neutral-100 hover:bg-neutral-200 text-neutral-500 transition-colors">
-                          <Eye size={14} />
+                      ) : (
+                        <Link href={`/datasets/${ds.id}`} onClick={(e) => e.stopPropagation()}
+                          className={`press inline-flex h-10 items-center justify-center rounded-full bg-brand-500 px-4 text-sm font-bold text-white hover:bg-brand-600 ${grid ? "flex-1" : ""}`}>
+                          자세히 · 신청
                         </Link>
-                        <Link href={`/datasets/${ds.id}`}
-                          onClick={e => e.stopPropagation()}
-                          className="text-xs font-semibold text-white bg-brand-600 hover:bg-brand-700 px-3 sm:px-4 py-2 rounded-lg transition-colors active:scale-95 whitespace-nowrap">
-                          신청하기
-                        </Link>
-                      </div>
+                      )}
                     </div>
-                  );
-                })}
-              </div>
-            )}
-          </div>
-        </>
+                  </article>
+                );
+              })}
+            </div>
+          )}
+
+          {/* 여러 개 선택했을 때 떠 있는 막대 */}
+          {selected.size > 0 && (
+            <div className="fixed bottom-5 left-1/2 z-40 flex max-w-[calc(100vw-2rem)] -translate-x-1/2 items-center gap-3 rounded-full bg-navy-900 py-2.5 pl-5 pr-2.5 font-bold text-white shadow-[0_20px_50px_-20px_rgba(0,0,0,.6)]">
+              <span className="whitespace-nowrap text-sm"><b className="text-accent-300 tabular-nums">{selected.size}</b>개 선택</span>
+              <button type="button" onClick={addSelectedToCart} className="press h-9 rounded-full bg-accent-400 px-4 text-[13px] font-bold text-navy-900 hover:bg-accent-300">장바구니에 담기</button>
+              <button type="button" onClick={() => setSelected(new Set())} className="press h-9 rounded-full border border-white/20 px-3.5 text-[13px] font-bold text-white hover:bg-white/10">선택 해제</button>
+            </div>
+          )}
+        </div>
       )}
     </div>
   );

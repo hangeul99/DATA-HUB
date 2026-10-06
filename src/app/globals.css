@@ -136,6 +136,13 @@ body {
 
 /* 효과 클래스는 components 레이어 → Tailwind 유틸리티가 우선 적용됨 */
 @layer components {
+  /* 데이터 탐색 필터용 드롭다운 — 화살표를 직접 그려 브라우저마다 같은 모양 */
+  .ds-select {
+    height: 50px; padding: 0 36px 0 14px; border: 1px solid #E2E6EC; border-radius: 14px; font-weight: 600; color: #111827;
+    appearance: none; background: #fff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%236B7280' stroke-width='2.5'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E") no-repeat right 14px center;
+  }
+  .ds-select:focus-visible { outline: none; border-color: #2E4A6E; box-shadow: 0 0 0 3px #E0E7EF; }
+
   :root {
     /* 에밀 코왈스키 권장 곡선: 빠르게 시작해서 부드럽게 멈춤 */
     --ease-out: cubic-bezier(.23, 1, .32, 1);

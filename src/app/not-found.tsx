@@ -24,7 +24,7 @@ export default function NotFound() {
 
           {/* 검색 → 데이터 탐색으로 */}
           <form action="/datasets" role="search"
-            className="mx-auto mt-9 flex h-14 max-w-md items-center gap-2 rounded-full bg-white pl-5 pr-1.5 shadow-[0_0_0_1px_#E3E7EC,0_10px_30px_-18px_rgba(20,26,34,.35)] focus-within:shadow-[0_0_0_2px_#4FAFAF]">
+            className="mx-auto mt-9 flex h-14 max-w-md items-center gap-2 rounded-full bg-white pl-5 pr-1.5 shadow-[0_0_0_1px_#E3E7EC,0_10px_30px_-18px_rgba(20,26,34,.35)] focus-within:shadow-[0_0_0_2px_#E4B84E]">
             <Search size={18} className="flex-none text-neutral-500" aria-hidden="true" />
             <label htmlFor="nf-q" className="sr-only">데이터 검색</label>
             <input id="nf-q" name="q" type="search" placeholder="예: 김해 인구, 산업단지"

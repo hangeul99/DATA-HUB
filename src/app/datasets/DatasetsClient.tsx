@@ -6,9 +6,10 @@ import { useRouter, useSearchParams } from "next/navigation";
 import {
   Search, Grid3X3, List, Download, X,
   FileText, Eye, ShoppingCart, CheckSquare, Trash2,
-  HelpCircle, Upload, Loader2, ClipboardList, Lock, Unlock,
+  HelpCircle, Upload, Loader2, ClipboardList, Lock,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
+import AccessRequestModal from "@/components/AccessRequestModal";
 import type { User } from "@supabase/supabase-js";
 
 // ── 탭 정의 ──────────────────────────────────────────────────
@@ -26,12 +27,20 @@ const CATEGORIES = ["전체 카테고리", "통계/공공 데이터", "연구/�
 const YEARS      = ["전체 연도", "2025", "2024", "2023", "2022 이전"];
 const FILE_TYPES = ["전체 형식", "CSV", "Excel", "JSON", "Parquet", "TXT", "SAS/SPSS"];
 
+// ── 신청 처리 상태 표시 (applications.status) ──
+const STATUS_LABEL: Record<string, string> = { pending: "검토 중", approved: "승인됨", rejected: "반려됨" };
+const STATUS_STYLE: Record<string, string> = {
+  pending: "bg-amber-50 text-amber-800",
+  approved: "bg-emerald-50 text-emerald-700",
+  rejected: "bg-red-50 text-red-700",
+};
+
 // ── 카테고리별 아이콘 색상 ────────────────────────────────────
 const iconColor: Record<string, string> = {
   "통계/공공 데이터": "bg-blue-50 text-blue-600",
   "연구/학술 데이터": "bg-brand-50 text-brand-600",
   "금융/경제 데이터": "bg-emerald-50 text-emerald-600",
-  "지역/업체 데이터": "bg-orange-50 text-orange-600",
+  "지역/업체 데이터": "bg-accent-50 text-accent-700",
 };
 
 // ── 신청 내역 행 타입 ────────────────────────────────────────
@@ -41,6 +50,7 @@ interface Application {
   field: string;
   period: string;
   purpose: string;
+  status: string | null; // pending(검토 중) / approved(승인) / rejected(반려)
   datasets: {
     id: string;
     title: string;
@@ -71,67 +81,6 @@ interface Dataset {
   created_at: string;
 }
 
-
-// ── 지역/업체 접근 권한 신청 모달 ─────────────────────────────
-function AccessRequestModal({ onClose, onSubmit }: { onClose: () => void; onSubmit: (reason: string) => Promise<void> }) {
-  const [reason, setReason] = useState("");
-  const [submitting, setSubmitting] = useState(false);
-  const [done, setDone] = useState(false);
-
-  const handleSubmit = async () => {
-    if (!reason.trim()) return;
-    setSubmitting(true);
-    await onSubmit(reason.trim());
-    setDone(true);
-    setSubmitting(false);
-  };
-
-  if (done) return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4">
-      <div className="bg-white rounded-2xl p-6 sm:p-8 max-w-md w-full text-center">
-        <div className="w-14 h-14 rounded-full bg-emerald-50 flex items-center justify-center mx-auto mb-4">
-          <Unlock size={24} className="text-emerald-600" />
-        </div>
-        <h3 className="text-lg font-bold mb-2">신청 완료</h3>
-        <p className="text-sm text-neutral-500 mb-6">관리자 검토 후 승인되면 지역/업체 데이터에 접근할 수 있습니다.</p>
-        <button onClick={onClose} className="w-full bg-brand-600 hover:bg-brand-700 text-white font-semibold py-3 rounded-xl transition-colors">확인</button>
-      </div>
-    </div>
-  );
-
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4">
-      <div className="bg-white rounded-2xl p-5 sm:p-7 max-w-md w-full shadow-xl">
-        <div className="flex items-center justify-between mb-5">
-          <div className="flex items-center gap-2">
-            <Lock size={16} className="text-orange-500" />
-            <h3 className="text-lg font-bold text-neutral-900">지역/업체 데이터 접근 신청</h3>
-          </div>
-          <button onClick={onClose} className="p-1.5 hover:bg-neutral-100 rounded-lg transition-colors"><X size={16} /></button>
-        </div>
-        <p className="text-sm text-neutral-500 mb-5 leading-relaxed">
-          지역/업체 데이터는 관리자 승인 후 이용할 수 있습니다.<br />
-          아래에 접근이 필요한 이유를 작성해주세요.
-        </p>
-        <textarea
-          value={reason}
-          onChange={e => setReason(e.target.value)}
-          placeholder="예) 지역 소상공인 분석 연구에 활용하고자 합니다."
-          rows={4}
-          className="w-full border border-neutral-200 rounded-xl px-4 py-3 text-sm resize-none outline-none focus:ring-2 focus:ring-brand-400 placeholder:text-neutral-400"
-        />
-        <button
-          onClick={handleSubmit}
-          disabled={!reason.trim() || submitting}
-          className="mt-4 w-full flex items-center justify-center gap-2 bg-brand-600 hover:bg-brand-700 disabled:bg-neutral-200 disabled:text-neutral-400 text-white font-semibold py-3 rounded-xl transition-colors active:scale-95"
-        >
-          {submitting && <Loader2 size={14} className="animate-spin" />}
-          {submitting ? "신청 중..." : "접근 권한 신청"}
-        </button>
-      </div>
-    </div>
-  );
-}
 
 // ── 토스트 알림 컴포넌트 ──────────────────────────────────────
 function Toast({ message, onClose }: { message: string; onClose: () => void }) {
@@ -214,7 +163,7 @@ export default function DatasetsClient() {
     if (q) setQuery(q);
     // 신청 완료 팝업·홈 안내 링크에서 특정 탭으로 바로 열기
     const tab = searchParams.get("tab");
-    if (tab && ["browse","history","cart","guide","result"].includes(tab)) setActiveTab(tab as TabId);
+    if (tab && TABS.some((t) => t.id === tab)) setActiveTab(tab as TabId);
   }, [searchParams]);
 
   // ── 지역/업체 접근 권한 + 신청 여부 확인 ─────────────────
@@ -249,7 +198,7 @@ export default function DatasetsClient() {
     const supabase = createClient();
     supabase
       .from("applications")
-      .select("id, created_at, field, period, purpose, datasets(id, title, category, year, tags)")
+      .select("id, created_at, field, period, purpose, status, datasets(id, title, category, year, tags)")
       .eq("user_id", user.id)
       .order("created_at", { ascending: false })
       .then(({ data }) => {
@@ -416,7 +365,7 @@ export default function DatasetsClient() {
       {/* ── 탭 바 ── */}
       <div className="bg-white border-b border-neutral-200">
         {/* 모바일: 탭이 많아 넘칠 수 있으므로 가로 스크롤 허용 */}
-        <div className="max-w-7xl mx-auto px-6 lg:px-8 overflow-x-auto">
+        <div className="max-w-[1680px] mx-auto px-6 lg:px-8 overflow-x-auto">
           <div className="flex justify-start sm:justify-center">
             {TABS.map((tab) => (
               <button key={tab.id} onClick={() => setActiveTab(tab.id)}
@@ -492,6 +441,11 @@ export default function DatasetsClient() {
                       <p className="text-xs text-neutral-400 mt-0.5">이용 기간: {app.period}</p>
                     </div>
 
+                    {/* 처리 상태 — 센터 검토 결과 */}
+                    <span className={`inline-flex flex-shrink-0 items-center rounded-full px-2.5 py-1 text-xs font-semibold ${STATUS_STYLE[app.status ?? "pending"] ?? STATUS_STYLE.pending}`}>
+                      {STATUS_LABEL[app.status ?? "pending"] ?? "검토 중"}
+                    </span>
+
                     {/* 분야 배지 */}
                     <span className={`hidden sm:inline-flex text-xs font-medium px-2.5 py-1 rounded-full flex-shrink-0 ${badgeColor}`}>
                       {app.field || "기타"}
@@ -519,7 +473,7 @@ export default function DatasetsClient() {
 
       {/* ── 장바구니 탭 ── */}
       {activeTab === "cart" && (
-        <div className="max-w-7xl mx-auto px-6 lg:px-8 py-10">
+        <div className="max-w-[1680px] mx-auto px-6 lg:px-8 py-10">
           <div className="flex items-center justify-between mb-6">
             <h2 className="text-xl font-bold text-neutral-900">장바구니 <span className="text-brand-600">{cart.size}</span>개</h2>
           </div>
@@ -677,7 +631,7 @@ export default function DatasetsClient() {
         <>
           {/* 페이지 헤더 + 필터 */}
           <div className="bg-white border-b border-neutral-100">
-            <div className="max-w-7xl mx-auto px-6 lg:px-8 py-6 sm:py-10">
+            <div className="max-w-[1680px] mx-auto px-6 lg:px-8 py-6 sm:py-10">
               <h1 className="text-2xl sm:text-3xl font-bold text-neutral-900 mb-1">데이터 탐색</h1>
               <p className="text-neutral-500 text-sm">
                 검증된 {datasets.length}개 데이터셋을 탐색하고 이용 신청하세요.
@@ -785,7 +739,7 @@ export default function DatasetsClient() {
           </div>
 
           {/* 결과 목록 */}
-          <div className="max-w-7xl mx-auto px-6 lg:px-8 py-6 sm:py-8">
+          <div className="max-w-[1680px] mx-auto px-6 lg:px-8 py-6 sm:py-8">
             <p className="text-sm text-neutral-500 mb-6">
               총 <span className="font-semibold text-neutral-900">{filtered.length}</span>개 데이터셋
               {selected.size > 0 && <span className="ml-2 text-brand-600 font-medium">{selected.size}개 선택됨</span>}
@@ -804,7 +758,7 @@ export default function DatasetsClient() {
               </div>
             ) : view === "grid" ? (
               // ── 그리드 뷰 ──
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-5">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-3 sm:gap-5">
                 {filtered.map((ds) => {
                   const isSelected = selected.has(ds.id);
                   const inCart = cart.has(ds.id);
@@ -814,13 +768,13 @@ export default function DatasetsClient() {
                     <div key={ds.id}
                       onClick={() => !isLocked && router.push(`/datasets/${ds.id}`)}
                       className={`group bg-white rounded-2xl border transition-all duration-200 flex flex-col overflow-hidden cursor-pointer
-                        ${isLocked ? "border-orange-200" : isSelected ? "border-brand-400 ring-2 ring-brand-200 shadow-brand" : "border-neutral-100 hover:border-brand-200 hover:shadow-brand"}`}>
+                        ${isLocked ? "border-accent-300" : isSelected ? "border-brand-400 ring-2 ring-brand-200 shadow-brand" : "border-neutral-100 hover:border-brand-200 hover:shadow-brand"}`}>
 
                       {/* 잠금 배너 */}
                       {isLocked && (
-                        <div className="bg-orange-50 border-b border-orange-100 px-3 py-1.5 flex items-center gap-1.5">
-                          <Lock size={11} className="text-orange-500 flex-shrink-0" />
-                          <span className="text-[10px] text-orange-600 font-medium">접근 권한 필요</span>
+                        <div className="bg-accent-50 border-b border-accent-200 px-3 py-1.5 flex items-center gap-1.5">
+                          <Lock size={11} className="text-accent-600 flex-shrink-0" />
+                          <span className="text-[10px] text-accent-700 font-medium">접근 권한 필요</span>
                         </div>
                       )}
 
@@ -865,7 +819,7 @@ export default function DatasetsClient() {
                           // 잠금 상태: 접근 권한 신청 버튼
                           <button
                             onClick={e => { e.stopPropagation(); user ? setShowAccessModal(true) : window.location.href = "/login"; }}
-                            className="flex-1 text-center text-xs font-semibold flex items-center justify-center gap-1.5 py-2 rounded-lg transition-colors active:scale-95 bg-orange-500 hover:bg-orange-600 text-white"
+                            className="flex-1 text-center text-xs font-semibold flex items-center justify-center gap-1.5 py-2 rounded-lg transition-colors active:scale-95 bg-accent-400 hover:bg-accent-300 text-navy-900"
                           >
                             {alreadyRequested ? (
                               <><CheckSquare size={12} /> 신청 완료 (대기중)</>

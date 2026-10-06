@@ -30,7 +30,7 @@ function BarsViz() {
           <rect key={x} className="viz-bar" style={{ "--i": i } as React.CSSProperties} x={x} y={y} width="46" height={230 - y} rx="10" />
         ))}
       </g>
-      <rect className="viz-bar" style={{ "--i": 6 } as React.CSSProperties} x="424" y="22" width="46" height="208" rx="10" fill="#0D7377" />
+      <rect className="viz-bar" style={{ "--i": 6 } as React.CSSProperties} x="424" y="22" width="46" height="208" rx="10" fill="#2E4A6E" />
     </svg>
   );
 }
@@ -47,8 +47,8 @@ function ScatterViz() {
   return (
     <svg viewBox="0 0 500 230" fill="none" aria-hidden="true" className="block w-full h-auto overflow-visible">
       <g stroke="rgba(255,255,255,.08)"><path d="M10 210H490M10 150H490M10 90H490M10 30H490" /></g>
-      <path className="viz-draw" style={{ "--len": 500 } as React.CSSProperties} d="M20 205 L480 35" stroke="#4FAFAF" strokeWidth="2" strokeDasharray="6 6" />
-      <g fill="#8FD3D3">
+      <path className="viz-draw" style={{ "--len": 500 } as React.CSSProperties} d="M20 205 L480 35" stroke="#E4B84E" strokeWidth="2" strokeDasharray="6 6" />
+      <g fill="#F0CF7A">
         {pts.map((p, i) => (
           <circle key={i} className="viz-pt" style={{ "--i": i, "--o": p.o.toFixed(2) } as React.CSSProperties} cx={p.x.toFixed(1)} cy={p.y.toFixed(1)} r={p.r.toFixed(1)} />
         ))}
@@ -63,11 +63,11 @@ function LineViz() {
     <svg viewBox="0 0 500 230" fill="none" aria-hidden="true" className="block w-full h-auto overflow-visible">
       <defs>
         <linearGradient id="cat-line-fill" x1="0" x2="0" y1="0" y2="1">
-          <stop offset="0" stopColor="#4FAFAF" stopOpacity=".38" /><stop offset="1" stopColor="#4FAFAF" stopOpacity="0" />
+          <stop offset="0" stopColor="#E4B84E" stopOpacity=".38" /><stop offset="1" stopColor="#E4B84E" stopOpacity="0" />
         </linearGradient>
       </defs>
       <path className="viz-area" d={`${d} V230 H0Z`} fill="url(#cat-line-fill)" />
-      <path className="viz-draw" style={{ "--len": 720 } as React.CSSProperties} d={d} stroke="#8FD3D3" strokeWidth="3" strokeLinejoin="round" strokeLinecap="round" />
+      <path className="viz-draw" style={{ "--len": 720 } as React.CSSProperties} d={d} stroke="#F0CF7A" strokeWidth="3" strokeLinejoin="round" strokeLinecap="round" />
     </svg>
   );
 }
@@ -94,7 +94,7 @@ export function DotMap({ w, h, step, hot, base }: { w: number; h: number; step: 
     // 점이 수백 개라 점마다 애니메이션하면 무거움 → 묶음(viz-group) 전체를 한 번에 나타나게
     <svg viewBox={`0 0 ${w} ${h}`} fill="none" aria-hidden="true" className="viz-group block w-full h-auto overflow-visible">
       {dots.map((p) => (
-        <circle key={`${p.x}-${p.y}`} cx={p.x} cy={p.y} r={p.r.toFixed(1)} fill={p.hot ? "#0D7377" : base} opacity={p.o.toFixed(2)} />
+        <circle key={`${p.x}-${p.y}`} cx={p.x} cy={p.y} r={p.r.toFixed(1)} fill={p.hot ? "#2E4A6E" : base} opacity={p.o.toFixed(2)} />
       ))}
     </svg>
   );
@@ -122,13 +122,13 @@ function Tile({ tile, count, index }: { tile: (typeof TILES)[0]; count: number; 
           tile.dark ? "bg-[linear-gradient(180deg,#0E253C,#071220)] text-white" : "bg-[#F3F5F7] text-neutral-900"
         }`}
       >
-        <span className={`text-[15px] font-bold ${tile.dark ? "text-[#8FD3D3]" : "text-brand-600"}`}>
+        <span className={`text-[15px] font-bold ${tile.dark ? "text-[#F0CF7A]" : "text-brand-600"}`}>
           {short}{count > 0 ? ` · ${count.toLocaleString()}개` : ""}
         </span>
         <h3 className="mt-2 text-[28px] sm:text-[34px] lg:text-[40px] font-extrabold leading-[1.22] tracking-[-.035em] text-balance">{tile.title}</h3>
         <p className={`mt-3 max-w-[22em] text-base sm:text-[17px] leading-relaxed ${tile.dark ? "text-white/80" : "text-neutral-600"}`}>{tile.desc}</p>
         <span className={`press mt-6 inline-flex h-11 items-center rounded-full px-5 text-[15px] font-bold ${
-          tile.dark ? "bg-[#4FAFAF] text-[#04282A] group-hover:bg-[#8FD3D3]" : "bg-brand-500 text-white group-hover:bg-brand-600"
+          tile.dark ? "bg-[#E4B84E] text-[#0A1626] group-hover:bg-[#F0CF7A]" : "bg-brand-500 text-white group-hover:bg-brand-600"
         }`}>
           데이터 보기
         </span>

@@ -21,7 +21,7 @@ export default function CtaSection() {
 
   return (
     <section ref={sectionRef} className="px-4 pb-28 md:pb-36">
-      <div className="reveal relative mx-auto max-w-[1208px] overflow-hidden rounded-3xl bg-[linear-gradient(135deg,#0E253C,#094D50_60%,#0B6063)] px-6 py-24 text-center text-white md:py-[120px]">
+      <div className="reveal relative mx-auto max-w-[1208px] overflow-hidden rounded-3xl bg-[linear-gradient(135deg,#0E253C,#15283F_60%,#1F3755)] px-6 py-24 text-center text-white md:py-[120px]">
         {/* 배경: 사진(흑백 톤으로 섞음) → 틸 그림자 → 도트 무늬 */}
         <Image src="/images/home/gimhae-cta.jpg" alt="" fill sizes="(max-width:1240px) 100vw, 1208px" loading="eager" fetchPriority="low" quality={60}
           className="object-cover opacity-[.34] mix-blend-luminosity" />
@@ -36,7 +36,7 @@ export default function CtaSection() {
             회원가입 후 신청하면 검토를 거쳐 연구와 프로젝트에 바로 쓸 수 있어요.
           </p>
           <div className="mt-9 flex flex-wrap justify-center gap-3">
-            <Link href="/signup" className="press inline-flex h-[52px] items-center rounded-full bg-[#4FAFAF] px-7 font-bold text-[#04282A] hover:bg-[#8FD3D3]">
+            <Link href="/signup" className="press inline-flex h-[52px] items-center rounded-full bg-[#E4B84E] px-7 font-bold text-[#0A1626] hover:bg-[#F0CF7A]">
               시작하기
             </Link>
             <Link href="/datasets" className="press inline-flex h-[52px] items-center rounded-full px-7 font-bold text-white shadow-[inset_0_0_0_1.5px_rgba(255,255,255,.4)] hover:bg-white/[.08]">

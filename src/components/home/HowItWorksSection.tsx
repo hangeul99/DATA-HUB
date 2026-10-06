@@ -43,7 +43,7 @@ export default function HowItWorksSection() {
           <ol className="relative grid grid-cols-1 gap-7 min-[860px]:grid-cols-5 min-[860px]:gap-5">
           {STEPS.map((s, i) => (
             <li key={s.title} className="relative flex items-start gap-4 min-[860px]:flex-col min-[860px]:items-center min-[860px]:text-center">
-              <span className="step-num flex h-[60px] w-[60px] flex-none items-center justify-center rounded-full bg-white text-[21px] font-extrabold text-neutral-500 shadow-[inset_0_0_0_2px_#CDD3DA] group-[.go]:bg-brand-500 group-[.go]:text-white group-[.go]:shadow-[0_10px_24px_-10px_rgba(13,115,119,.7)] group-[.go]:scale-[1.04]"
+              <span className="step-num flex h-[60px] w-[60px] flex-none items-center justify-center rounded-full bg-white text-[21px] font-extrabold text-neutral-500 shadow-[inset_0_0_0_2px_#CDD3DA] group-[.go]:bg-brand-500 group-[.go]:text-white group-[.go]:shadow-[0_10px_24px_-10px_rgba(46,74,110,.7)] group-[.go]:scale-[1.04]"
                 style={{ "--i": i } as React.CSSProperties}>
                 {i + 1}
               </span>

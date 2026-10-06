@@ -2,7 +2,8 @@
    globals.css — 전역 스타일 및 브랜드 컬러 정의
 
    ★ 색상 변경하고 싶을 때:
-     - brand-xxx: 메인 틸(Teal) 계열 컬러 → 버튼, 링크, 포인트 색상
+     - brand-xxx: 메인 남색(Navy) 계열 → 버튼, 링크, 제목 포인트
+     - accent-xxx: 앰버(금빛) 계열 → 어두운 배경 위 강조, 배지, 숫자 단위
      - navy-xxx: 네이비 계열 컬러 → 배경 그라디언트, 헤더
      - neutral-xxx: 회색 계열 → 텍스트, 배경, 테두리
 
@@ -21,19 +22,32 @@
   --color-background: var(--background);
   --color-foreground: var(--foreground);
 
-  /* ── 브랜드 컬러 (딥 틸 계열) ──
+  /* ── 브랜드 컬러 (남색 계열) ──
      가장 많이 쓰이는 색: brand-600 (버튼, 링크 등)
      숫자가 작을수록 밝고, 클수록 어둡습니다 */
-  --color-brand-50: #E6F4F4;
-  --color-brand-100: #C2E3E3;
-  --color-brand-200: #89C9C9;
-  --color-brand-300: #4FAFAF;
-  --color-brand-400: #2A9898;
-  --color-brand-500: #0D7377;
-  --color-brand-600: #0B6063; /* ← 주로 사용되는 메인 브랜드 컬러 */
-  --color-brand-700: #094D50;
-  --color-brand-800: #063A3C;
-  --color-brand-900: #042728;
+  --color-brand-50: #F1F4F8;
+  --color-brand-100: #E0E7EF;
+  --color-brand-200: #C2CEDD;
+  --color-brand-300: #E4B84E;
+  --color-brand-400: #6580A1;
+  --color-brand-500: #2E4A6E;
+  --color-brand-600: #1F3755; /* ← 주로 사용되는 메인 브랜드 컬러 */
+  --color-brand-700: #15283F;
+  --color-brand-800: #0F1D2F;
+  --color-brand-900: #0A1626;
+
+  /* ── 강조 컬러 (앰버·금빛) — 어두운 배경 위 포인트, 배지, 단위 ──
+     글자색으로 쓸 때는 흰 바탕에서 accent-700 이상을 쓰세요 (밝은 앰버는 흰 바탕에서 잘 안 보임) */
+  --color-accent-50: #FDF8EA;
+  --color-accent-100: #FAEFCB;
+  --color-accent-200: #F6E3A6;
+  --color-accent-300: #F0CF7A;
+  --color-accent-400: #E4B84E;
+  --color-accent-500: #D4A032;
+  --color-accent-600: #B2821F;
+  --color-accent-700: #8A5A12;
+  --color-accent-800: #5F3E0C;
+  --color-accent-900: #3B2607;
 
   /* ── 네이비 계열 (배경, 그라디언트용) ── */
   --color-navy-50: #EEF2F7;
@@ -99,7 +113,7 @@ body {
 
 /* 그라디언트 텍스트 유틸리티 클래스 — className="gradient-text" 로 사용 */
 .gradient-text {
-  background: linear-gradient(135deg, #0D7377 0%, #2D5F8F 100%);
+  background: linear-gradient(135deg, #2E4A6E 0%, #2D5F8F 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
@@ -107,17 +121,17 @@ body {
 
 /* 브랜드 그림자 유틸리티 — className="shadow-brand" 또는 "shadow-brand-lg" 로 사용 */
 .shadow-brand {
-  box-shadow: 0 4px 24px -4px rgba(13, 115, 119, 0.25), 0 1px 4px rgba(13, 115, 119, 0.1);
+  box-shadow: 0 4px 24px -4px rgba(46, 74, 110, 0.25), 0 1px 4px rgba(46, 74, 110, 0.1);
 }
 .shadow-brand-lg {
-  box-shadow: 0 12px 40px -8px rgba(13, 115, 119, 0.35), 0 4px 12px rgba(13, 115, 119, 0.15);
+  box-shadow: 0 12px 40px -8px rgba(46, 74, 110, 0.35), 0 4px 12px rgba(46, 74, 110, 0.15);
 }
 
 /* ============================================================
    홈 화면 전용 효과 (시안 v7)
 
    ★ 모든 효과는 "움직임 줄이기" 설정 시 정지되고 내용은 그대로 보임
-   ★ 색은 위 @theme의 brand / navy 토큰과 같은 값을 사용
+   ★ 색은 위 @theme의 brand / accent / navy 토큰과 같은 값을 사용
 ============================================================ */
 
 /* 효과 클래스는 components 레이어 → Tailwind 유틸리티가 우선 적용됨 */
@@ -151,18 +165,18 @@ body {
   .hero-ring { border-radius: 9999px; border: 1px solid rgba(255,255,255,.08); animation: hero-spin 18s linear infinite; will-change: rotate; }
   .hero-ring::before {
     content: ""; position: absolute; top: -3px; left: 50%; width: 6px; height: 6px; border-radius: 9999px;
-    background: #BFE3E3; box-shadow: 0 0 12px rgba(191,227,227,.8);
+    background: #F6E3A6; box-shadow: 0 0 12px rgba(246,227,166,.8);
   }
   .hero-ring-2 { border-color: rgba(255,255,255,.05); animation-duration: 30s; animation-direction: reverse; }
   .hero-ring-2::before { background: #fff; box-shadow: 0 0 12px rgba(255,255,255,.8); }
   .hero-ring-3 { border-color: rgba(255,255,255,.035); animation-duration: 48s; }
-  .hero-ring-3::before { width: 4px; height: 4px; top: -2px; background: #4FAFAF; }
+  .hero-ring-3::before { width: 4px; height: 4px; top: -2px; background: #E4B84E; }
   @keyframes hero-spin { to { rotate: 360deg; } }
   /* ── 히어로: 행성 지평선 ── */
   .hero-horizon {
     border-radius: 50%;
-    background: radial-gradient(ellipse at 50% 0%, rgba(79,175,175,.16), rgba(7,13,24,0) 60%);
-    box-shadow: inset 0 1.5px 0 rgba(143,211,211,.45), 0 -16px 50px -14px rgba(79,175,175,.35);
+    background: radial-gradient(ellipse at 50% 0%, rgba(228,184,78,.16), rgba(7,13,24,0) 60%);
+    box-shadow: inset 0 1.5px 0 rgba(240,207,122,.45), 0 -16px 50px -14px rgba(228,184,78,.35);
   }
   /* ── 히어로: 필름 그레인 (그라디언트 줄무늬 제거) ── */
   .hero-grain {
@@ -245,7 +259,7 @@ body {
   .step-fill { scale: 0 1; transform-origin: left; transition: scale 1.4s var(--ease-in-out) .1s; }
   .go .step-fill { scale: 1 1; }
   .step-num { transition: background-color .4s ease, color .4s ease, box-shadow .4s ease, scale .5s var(--ease-out); transition-delay: calc(var(--i) * 260ms + 150ms); }
-  .go .step-num { background: #0D7377; color: #fff; box-shadow: 0 10px 24px -10px rgba(13,115,119,.7); scale: 1.04; }
+  .go .step-num { background: #2E4A6E; color: #fff; box-shadow: 0 10px 24px -10px rgba(46,74,110,.7); scale: 1.04; }
   @media (max-width: 859px) {
     .step-fill { scale: 1 0; transform-origin: top; }
     .go .step-fill { scale: 1 1; }

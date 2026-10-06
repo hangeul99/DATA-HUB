@@ -197,7 +197,7 @@ function pearsonCorr(a: number[], b: number[]): number {
 }
 
 // ── 컬러 팔레트 ───────────────────────────────────────────────
-const COLORS = ["#0D7377", "#2A9898", "#4FAFAF", "#0E253C", "#2D5F8F", "#4D7FB1", "#7A9FC5"];
+const COLORS = ["#2E4A6E", "#6580A1", "#E4B84E", "#0E253C", "#2D5F8F", "#4D7FB1", "#7A9FC5"];
 
 // ── 차트 종류 정의 ──────────────────────────────────────────────
 const CHART_TYPES = [
@@ -1045,7 +1045,7 @@ export default function AnalysisClient() {
 
   // ── 분석 결과 화면 ─────────────────────────────────────────
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6 sm:py-10">
+    <div className="max-w-[1680px] mx-auto px-4 sm:px-6 py-6 sm:py-10">
 
       {/* 헤더 */}
       <div className="flex items-center justify-between mb-6">
@@ -1207,7 +1207,7 @@ export default function AnalysisClient() {
                           const bg = isDiag
                             ? "rgba(120,120,120,0.15)"
                             : val > 0
-                            ? `rgba(13,115,119,${alpha * 0.7 + 0.05})`
+                            ? `rgba(46,74,110,${alpha * 0.7 + 0.05})`
                             : `rgba(234,88,12,${alpha * 0.7 + 0.05})`;
                           const textColor = alpha > 0.5 && !isDiag ? "text-white" : "text-neutral-700";
                           return (
@@ -1252,7 +1252,7 @@ export default function AnalysisClient() {
                       <PolarGrid stroke="#e5e7eb" />
                       <PolarAngleAxis dataKey="col" tick={{ fontSize: 11, fill: "#6b7280" }} />
                       <PolarRadiusAxis angle={30} domain={[0, 100]} tick={{ fontSize: 10 }} tickFormatter={(v) => `${v}%`} />
-                      <Radar name="평균(정규화)" dataKey="평균" stroke="#0D7377" fill="#0D7377" fillOpacity={0.2} dot={{ r: 4, fill: "#0D7377" }} />
+                      <Radar name="평균(정규화)" dataKey="평균" stroke="#2E4A6E" fill="#2E4A6E" fillOpacity={0.2} dot={{ r: 4, fill: "#2E4A6E" }} />
                       <Tooltip formatter={(v) => [`${v}%`, "정규화 평균"]} />
                       <Legend />
                     </RadarChart>
@@ -1288,7 +1288,7 @@ export default function AnalysisClient() {
                           <YAxis tick={{ fontSize: 8 }} />
                           <Tooltip formatter={(v) => [`${v}`, "빈도"]} contentStyle={{ fontSize: 11 }} />
                           <Bar dataKey="count" radius={[2, 2, 0, 0]}>
-                            {chartData.map((_, i) => <Cell key={i} fill="#0D7377" />)}
+                            {chartData.map((_, i) => <Cell key={i} fill="#2E4A6E" />)}
                           </Bar>
                         </BarChart>
                       </ResponsiveContainer>
@@ -1299,7 +1299,7 @@ export default function AnalysisClient() {
                           <XAxis dataKey="label" tick={{ fontSize: 7 }} interval="preserveStartEnd" />
                           <YAxis tick={{ fontSize: 8 }} />
                           <Tooltip formatter={(v) => [`${v}건`, "건수"]} contentStyle={{ fontSize: 11 }} />
-                          <Line type="monotone" dataKey="count" stroke="#0D7377" strokeWidth={1.5} dot={false} />
+                          <Line type="monotone" dataKey="count" stroke="#2E4A6E" strokeWidth={1.5} dot={false} />
                         </LineChart>
                       </ResponsiveContainer>
                     ) : (
@@ -1635,7 +1635,7 @@ export default function AnalysisClient() {
                       <XAxis dataKey="label" tick={{ fontSize: 11 }} angle={-35} textAnchor="end" interval={0} />
                       <YAxis tick={{ fontSize: 11 }} />
                       <Tooltip formatter={(v) => [v, yCol ?? ""]} />
-                      <Line type="monotone" dataKey="value" stroke="#0D7377" strokeWidth={2} dot={{ r: 4, fill: "#0D7377" }} />
+                      <Line type="monotone" dataKey="value" stroke="#2E4A6E" strokeWidth={2} dot={{ r: 4, fill: "#2E4A6E" }} />
                     </LineChart>
                   </ResponsiveContainer>
                 )}
@@ -1645,15 +1645,15 @@ export default function AnalysisClient() {
                     <AreaChart data={aggChartData} margin={{ top: 10, right: 20, left: 0, bottom: 40 }}>
                       <defs>
                         <linearGradient id="chartAreaGrad" x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="5%" stopColor="#0D7377" stopOpacity={0.35} />
-                          <stop offset="95%" stopColor="#0D7377" stopOpacity={0} />
+                          <stop offset="5%" stopColor="#2E4A6E" stopOpacity={0.35} />
+                          <stop offset="95%" stopColor="#2E4A6E" stopOpacity={0} />
                         </linearGradient>
                       </defs>
                       <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
                       <XAxis dataKey="label" tick={{ fontSize: 11 }} angle={-35} textAnchor="end" interval={0} />
                       <YAxis tick={{ fontSize: 11 }} />
                       <Tooltip formatter={(v) => [v, yCol ?? ""]} />
-                      <Area type="monotone" dataKey="value" stroke="#0D7377" fill="url(#chartAreaGrad)" strokeWidth={2} />
+                      <Area type="monotone" dataKey="value" stroke="#2E4A6E" fill="url(#chartAreaGrad)" strokeWidth={2} />
                     </AreaChart>
                   </ResponsiveContainer>
                 )}
@@ -1719,7 +1719,7 @@ export default function AnalysisClient() {
                         <ComposedChart data={trendData} margin={{ top: 10, right: 30, left: 10, bottom: 30 }}>
                           <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
                           <XAxis dataKey="x" type="number" tick={{ fontSize: 11 }}
-                            label={{ value: xCol ?? "", position: "insideBottom", offset: -15, fontSize: 12, fill: "#0D7377", fontWeight: 600 }} />
+                            label={{ value: xCol ?? "", position: "insideBottom", offset: -15, fontSize: 12, fill: "#2E4A6E", fontWeight: 600 }} />
                           <YAxis type="number" tick={{ fontSize: 11 }}
                             label={{ value: yCol ?? "", angle: -90, position: "insideLeft", offset: 15, fontSize: 12, fill: "#10b981", fontWeight: 600 }} />
                           <ZAxis dataKey="z" range={zRange} />
@@ -1734,7 +1734,7 @@ export default function AnalysisClient() {
                               </div>
                             );
                           }} />
-                          <Scatter data={scatterChartData} fill="#0D7377" fillOpacity={0.55} />
+                          <Scatter data={scatterChartData} fill="#2E4A6E" fillOpacity={0.55} />
                           {isScatter && <Line dataKey="trend" stroke="#f59e0b" strokeWidth={2} dot={false} type="linear" isAnimationActive={false} strokeDasharray="6 3" />}
                         </ComposedChart>
                       </ResponsiveContainer>
@@ -1763,7 +1763,7 @@ export default function AnalysisClient() {
                       <XAxis dataKey="label" tick={{ fontSize: 11 }} />
                       <YAxis tick={{ fontSize: 11 }} />
                       <Tooltip formatter={(v) => [`${v}건`, "빈도"]} />
-                      <Bar dataKey="count" fill="#0D7377" radius={[4, 4, 0, 0]} />
+                      <Bar dataKey="count" fill="#2E4A6E" radius={[4, 4, 0, 0]} />
                     </BarChart>
                   </ResponsiveContainer>
                 )}
@@ -1774,7 +1774,7 @@ export default function AnalysisClient() {
                       <PolarGrid stroke="#e5e7eb" />
                       <PolarAngleAxis dataKey="col" tick={{ fontSize: 11, fill: "#6b7280" }} />
                       <PolarRadiusAxis angle={30} domain={[0, 100]} tick={{ fontSize: 10 }} tickFormatter={(v) => `${v}%`} />
-                      <Radar name="평균(정규화)" dataKey="value" stroke="#0D7377" fill="#0D7377" fillOpacity={0.25} dot={{ r: 4, fill: "#0D7377" }} />
+                      <Radar name="평균(정규화)" dataKey="value" stroke="#2E4A6E" fill="#2E4A6E" fillOpacity={0.25} dot={{ r: 4, fill: "#2E4A6E" }} />
                       <Tooltip formatter={(v) => [`${v}%`, "정규화 평균"]} />
                       <Legend />
                     </RadarChart>
@@ -1808,7 +1808,7 @@ export default function AnalysisClient() {
                               </td>
                               {matrix[ri].map((val, ci) => {
                                 const alpha = maxVal > 0 ? val / maxVal : 0;
-                                const bg = `rgba(13,115,119,${0.06 + alpha * 0.94})`;
+                                const bg = `rgba(46,74,110,${0.06 + alpha * 0.94})`;
                                 const textColor = alpha > 0.55 ? "white" : "#374151";
                                 return (
                                   <td key={ci} title={`${yl} × ${xLabels[ci]}: ${val.toFixed(1)}`}
@@ -1956,7 +1956,7 @@ export default function AnalysisClient() {
                 )}
 
                 {isWaterfall2 && (() => {
-                  const POS_COLOR = "#0D7377";
+                  const POS_COLOR = "#2E4A6E";
                   const NEG_COLOR = "#ef4444";
                   const TOTAL_COLOR = "#0E253C";
                   return (

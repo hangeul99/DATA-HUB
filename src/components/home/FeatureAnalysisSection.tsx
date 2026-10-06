@@ -16,7 +16,7 @@ import { useInViewOnce, useReveal } from "./motion";
 
 const POINTS = ["숫자, 날짜, 주소 열 자동 인식", "주소가 있으면 지도로 표시", "파일은 내 브라우저 안에서만 처리"];
 const COLUMNS = [["업종", "범주"], ["개업일", "날짜"], ["매출", "숫자"], ["주소", "위치"], ["종업원 수", "숫자"]];
-const BARS = [["음식점", 170, "#0D7377"], ["소매", 128, "#2A9898"], ["서비스", 98, "#4FAFAF"], ["교육", 62, "#89C9C9"], ["의료", 44, "#89C9C9"]] as const;
+const BARS = [["음식점", 170, "#2E4A6E"], ["소매", 128, "#6580A1"], ["서비스", 98, "#E4B84E"], ["교육", 62, "#C2CEDD"], ["의료", 44, "#C2CEDD"]] as const;
 const MINIMAP_HOT: [number, number][] = [[70, 62], [96, 44]];
 
 export default function FeatureAnalysisSection() {

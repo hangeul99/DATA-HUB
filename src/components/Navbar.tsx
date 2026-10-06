@@ -67,9 +67,9 @@ export default function Navbar() {
 
   const linkColor = isHome && !scrolled ? "text-white" : "text-neutral-700";
 
-  // 홈 첫 화면에서는 로고·로그인/시작하기를 숨김 (히어로에 큰 로고와 검색이 이미 있음)
-  // → 스크롤해서 흰 메뉴바가 되면 부드럽게 나타남. 자리는 그대로 두어 메뉴 위치가 흔들리지 않음
-  const hideOnHeroTop = isHome && !scrolled;
+  // 홈 맨 위에서도 로고·로그인/시작하기를 보여 줌 (v9 히어로에는 큰 로고가 없어 겹치지 않음)
+  // 다시 숨기고 싶으면: const hideOnHeroTop = isHome && !scrolled;
+  const hideOnHeroTop = false;
   const heroTopHidden = hideOnHeroTop
     ? "opacity-0 invisible -translate-y-1 pointer-events-none"
     : "opacity-100 visible translate-y-0";

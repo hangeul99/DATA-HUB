@@ -57,7 +57,7 @@ export default function PolicyPage() {
 
         {/* ── 머리글 ── */}
         <header className="border-b border-neutral-200/70 bg-white">
-          <div className="mx-auto max-w-6xl px-5 py-12 sm:px-6 sm:py-16">
+          <div className="mx-auto max-w-[1400px] px-5 py-12 sm:px-6 sm:py-16">
             <h1 className="text-3xl font-extrabold tracking-[-.03em] text-neutral-900 sm:text-[40px]">정책</h1>
             <p className="mt-3 max-w-[40em] text-base leading-relaxed text-neutral-600 sm:text-[17px]">
               데이터거버넌스센터는 데이터를 안전하게 공개하고 공정하게 활용하도록 아래 정책에 따라 데이터허브를 운영합니다.
@@ -66,11 +66,11 @@ export default function PolicyPage() {
           </div>
         </header>
 
-        <div className="mx-auto max-w-6xl px-5 py-10 sm:px-6 sm:py-14">
+        <div className="mx-auto max-w-[1400px] px-5 py-10 sm:px-6 sm:py-14">
 
           {/* ── 운영 가이드라인 PDF ── */}
           <section aria-labelledby="guideline-title"
-            className="relative overflow-hidden rounded-3xl bg-[linear-gradient(135deg,#0E253C,#094D50_60%,#0B6063)] p-7 text-white sm:p-10">
+            className="relative overflow-hidden rounded-3xl bg-[linear-gradient(135deg,#0E253C,#15283F_60%,#1F3755)] p-7 text-white sm:p-10">
             <div aria-hidden="true" className="pointer-events-none absolute inset-0 opacity-20 [background-image:radial-gradient(rgba(255,255,255,.25)_1px,transparent_1.2px)] [background-size:22px_22px] [mask-image:linear-gradient(90deg,transparent,#000)]" />
             <div className="relative flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
               <div className="flex flex-col items-start gap-4 sm:flex-row">
@@ -90,7 +90,7 @@ export default function PolicyPage() {
               </div>
               <div className="flex flex-none flex-wrap gap-2">
                 <a href={GUIDELINE_PDF.href} target="_blank" rel="noopener noreferrer"
-                  className="press inline-flex h-12 items-center gap-2 rounded-full bg-[#4FAFAF] px-5 font-bold text-[#04282A] hover:bg-[#8FD3D3]">
+                  className="press inline-flex h-12 items-center gap-2 rounded-full bg-[#E4B84E] px-5 font-bold text-[#0A1626] hover:bg-[#F0CF7A]">
                   <ExternalLink size={16} aria-hidden="true" /> PDF 보기
                 </a>
                 <a href={GUIDELINE_PDF.href} download="데이터거버넌스센터_운영가이드라인(안)_2026.pdf"

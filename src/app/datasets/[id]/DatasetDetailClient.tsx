@@ -18,6 +18,7 @@ import {
   FileText, ShoppingCart, Info, Copy, Check, ExternalLink, Clock,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
+import AccessRequestModal from "@/components/AccessRequestModal";
 
 // ── 신청서 선택지 ───────────────────────────────────────────────
 const FIELDS = ["학술연구", "산업활용", "정책수립", "교육", "기타"];
@@ -41,10 +42,10 @@ interface Dataset {
 interface UserInfo { id: string; name: string; email: string }
 
 const fmtSize = (bytes: number | null) =>
-  !bytes ? "-" : bytes < 1024 * 1024 ? `${Math.max(1, Math.round(bytes / 1024))}KB` : `${(bytes / 1024 / 1024).toFixed(1)}MB`;
+  !bytes ? "-" : bytes < 1024 * 1024 ? `${Math.max(1, Math.round(bytes / 1024))}KB` : bytes < 1024 ** 3 ? `${(bytes / 1024 / 1024).toFixed(1)}MB` : `${(bytes / 1024 ** 3).toFixed(2)}GB`;
 const fileFormat = (path: string | null) => {
   const ext = path?.split(".").pop()?.toLowerCase();
-  if (!ext || ext === path) return "-";
+  if (!ext || !path?.includes(".")) return "-";
   return ext === "xlsx" || ext === "xls" ? "Excel" : ext.toUpperCase();
 };
 
@@ -62,8 +63,9 @@ function parseDescription(desc: string) {
     source,
     org: source?.split(",")[0] ?? null,
     license: source?.match(/이용허락범위 (.+)$/)?.[1] ?? null,
-    url: source?.match(/https?:\/\/\S+/)?.[0] ?? null,
+    url: source?.match(/https?:\/\/[^\s,)]+/)?.[0] ?? null,
     structured: !!(pick("주요 항목") || source),
+    more: body, // 첫 문단 뒤 나머지 (형식에 안 맞는 예전 설명을 그대로 보여줄 때 사용)
   };
 }
 
@@ -200,7 +202,7 @@ function ApplyModal({ dataset, userInfo, onClose, onSuccess }: {
               <p className="mb-4 flex items-center gap-2 text-[15px] text-neutral-700"><Shield size={17} className="text-brand-600" aria-hidden="true" /> 아래 내용을 확인하고 동의해야 신청할 수 있습니다.</p>
               <div className="overflow-hidden rounded-2xl ring-1 ring-neutral-200">
                 <label className="flex cursor-pointer items-start gap-3 bg-neutral-50 px-4 py-4 text-[15px] font-bold text-neutral-900">
-                  <input type="checkbox" checked={agreed} onChange={(e) => setAgreed(e.target.checked)} className="mt-0.5 h-5 w-5 flex-none accent-[#0D7377]" />
+                  <input type="checkbox" checked={agreed} onChange={(e) => setAgreed(e.target.checked)} className="mt-0.5 h-5 w-5 flex-none accent-[#2E4A6E]" />
                   보안 서약 전체에 동의합니다
                 </label>
                 <ul className="divide-y divide-neutral-100">
@@ -270,6 +272,8 @@ export default function DatasetDetailClient({ id }: { id: string }) {
   const [loading, setLoading] = useState(true);
   const [appStatus, setAppStatus] = useState<"pending" | "approved" | "rejected" | null>(null);
   const [userInfo, setUserInfo] = useState<UserInfo | null>(null);
+  const [localApproved, setLocalApproved] = useState(false); // 지역/업체 데이터 접근 권한 (profiles.local_data_approved)
+  const [showAccess, setShowAccess] = useState(false);
   const [downloading, setDownloading] = useState(false);
   const [downloadError, setDownloadError] = useState<string | null>(null);
   const [showApply, setShowApply] = useState(false);
@@ -293,8 +297,9 @@ export default function DatasetDetailClient({ id }: { id: string }) {
       if (!ds) { router.replace("/datasets"); return; }
       setDataset(ds as Dataset);
       if (user) {
-        const { data: profile } = await supabase.from("profiles").select("name, email").eq("id", user.id).maybeSingle();
+        const { data: profile } = await supabase.from("profiles").select("name, email, local_data_approved").eq("id", user.id).maybeSingle();
         if (cancelled) return;
+        setLocalApproved(Boolean(profile?.local_data_approved));
         setUserInfo({
           id: user.id,
           name: profile?.name ?? user.user_metadata?.full_name ?? user.email?.split("@")[0] ?? "",
@@ -415,11 +420,11 @@ export default function DatasetDetailClient({ id }: { id: string }) {
                 <p className="t-body text-neutral-700">{info.note}</p>
               </section>
             )}
-            {/* 형식에 맞지 않는 예전 설명은 그대로 보여줌 */}
-            {!info.structured && dataset.description && (
+            {/* 형식에 맞지 않는 예전 설명: 첫 문단은 제목 아래에 이미 보였으므로 나머지 문단만 */}
+            {!info.structured && info.more && (
               <section>
                 <h2 className="t-h3 mb-3">데이터 설명</h2>
-                <p className="t-body whitespace-pre-line text-neutral-700">{dataset.description}</p>
+                <p className="t-body whitespace-pre-line text-neutral-700">{info.more}</p>
               </section>
             )}
             {citation && (
@@ -459,7 +464,10 @@ export default function DatasetDetailClient({ id }: { id: string }) {
               ) : (
                 <>
                   <div className="flex gap-3 rounded-2xl bg-neutral-50 p-4 text-[15px] text-neutral-700"><Info size={19} className="mt-0.5 flex-none text-neutral-500" /><div><b className="block text-neutral-900">신청 전</b>신청서를 내고 승인되면 여기서 바로 내려받을 수 있습니다.</div></div>
-                  {userInfo ? (
+                  {userInfo && isLocalData && !localApproved ? (
+                    /* 지역/업체 데이터: 접근 권한을 먼저 승인받아야 신청 가능 (탐색 페이지의 잠금과 동일) */
+                    <button onClick={() => setShowAccess(true)} className="press mt-3 flex h-12 w-full items-center justify-center gap-2 rounded-full bg-accent-100 font-bold text-accent-800 ring-1 ring-accent-300 hover:bg-accent-200"><Lock size={16} /> 접근 권한 먼저 신청하기</button>
+                  ) : userInfo ? (
                     <button onClick={() => setShowApply(true)} className="press mt-3 h-12 w-full rounded-full bg-brand-500 font-bold text-white hover:bg-brand-600">이 데이터 신청하기</button>
                   ) : (
                     <Link href={`/login?next=/datasets/${dataset.id}`} className="press mt-3 block h-12 w-full rounded-full bg-brand-500 pt-3 text-center font-bold text-white hover:bg-brand-600">로그인하고 신청하기</Link>
@@ -510,6 +518,10 @@ export default function DatasetDetailClient({ id }: { id: string }) {
         </div>
       </div>
 
+      {showAccess && userInfo && (
+        <AccessRequestModal onClose={() => setShowAccess(false)}
+          onSubmit={async (reason) => { await createClient().from("access_requests").insert({ user_id: userInfo.id, reason, status: "pending" }); }} />
+      )}
       {showApply && userInfo && (
         <ApplyModal dataset={dataset} userInfo={userInfo} onClose={() => setShowApply(false)}
           onSuccess={() => { setShowApply(false); setShowSuccess(true); setAppStatus("pending"); }} />

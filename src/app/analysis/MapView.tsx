@@ -46,7 +46,7 @@ export default function MapView({ points, latCol, lngCol }: {
       displayed.forEach((p) => {
         const m = L.circleMarker([p.lat, p.lng], {
           radius: 7,
-          fillColor: "#0D7377",
+          fillColor: "#2E4A6E",
           color: "#fff",
           weight: 2,
           fillOpacity: 0.85,

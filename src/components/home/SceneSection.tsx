@@ -8,14 +8,14 @@
    - 스크롤 연동은 CSS(animation-timeline)로 처리 → 자바스크립트 없음, 끊김 없음
    - 지원하지 않는 브라우저·움직임 줄이기: 펼쳐진 사진 위에 두 문장을 모두 표시
    ★ 사진 교체: public/images/home/ 에 새 사진을 넣고 PHOTO 경로와 출처 문구 수정
-     (학교 공식 캠퍼스 사진으로 바꾸는 것을 권장)
+     (현재: 위키미디어 공용의 인제대 캠퍼스 벚꽃 항공 사진)
 ============================================================ */
 
 import Image from "next/image";
 
-const PHOTO = "/images/home/gimhae-haebancheon.jpg";
-// 위키미디어 공용 사진 — CC BY 4.0 라이선스라 출처 표기 필수
-const CREDIT = "사진 xiquinhosilva, CC BY 4.0";
+const PHOTO = "/images/home/inje-campus.jpg"; // 인제대학교 김해캠퍼스 항공 사진 (벚꽃, 2025.4)
+// 위키미디어 공용 사진 — CC BY-SA 4.0 라이선스라 출처 표기 필수
+const CREDIT = "사진 SMART COOKIEEEEE, CC BY-SA 4.0 (위키미디어 공용)";
 
 export default function SceneSection() {
   return (
@@ -24,7 +24,7 @@ export default function SceneSection() {
         {/* 사진 카드 (clip-path로 둥근 카드 → 화면 가득) */}
         <div className="scene-photo absolute inset-0 bg-navy-800">
           {/* loading="eager": 스크롤해서 닿는 순간 큰 사진을 불러오면 끊기므로 미리 받아 둠 (우선순위는 낮게) */}
-          <Image src={PHOTO} alt="김해 해반천을 따라 달리는 경전철과 인제대역" fill sizes="100vw" loading="eager" fetchPriority="low" quality={70} className="object-cover" />
+          <Image src={PHOTO} alt="벚꽃이 핀 인제대학교 김해캠퍼스 항공 사진" fill sizes="100vw" loading="eager" fetchPriority="low" quality={70} className="object-cover" />
           {/* 글자가 잘 읽히도록 아래로 갈수록 어둡게 */}
           <div aria-hidden="true" className="absolute inset-0 bg-[linear-gradient(180deg,rgba(7,18,32,.15)_0%,rgba(7,18,32,.35)_45%,rgba(7,18,32,.78)_100%)]" />
         </div>

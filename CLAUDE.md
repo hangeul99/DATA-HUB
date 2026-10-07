@@ -23,6 +23,8 @@
 - 지역/업체 데이터 접근 권한 시스템 (잠금 카드 + 신청 모달 + 관리자 승인)
 - RLS 설정 완료 (profiles, datasets, applications, download_logs, analysis_logs, access_requests)
 - 쿠키 안내 배너 (하단 고정, localStorage로 닫기 상태 유지)
+- 디자인 v9 (2026-10): 남색+앰버 팔레트, 홈 히어로 "김해를 데이터로 읽는 곳", 탐색·정책·조사·게시판 재디자인
+- 서비스 키(SUPABASE_SERVICE_ROLE_KEY) Vercel 등록 완료 → 승인 후 다운로드·관리자 API 동작
 
 🔜 향후 과제:
 - 보유기간 자동 파기 (Supabase pg_cron 설정 필요, 현재 수동 관리)
@@ -83,7 +85,7 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=sb_publishable_...
 
 ```
 Vercel 배포: ✅ 완료
-GitHub 연결: 🔜 진행 예정
+GitHub 연결: ✅ 완료 (push → Vercel 자동 배포)
 ```
 
 ### GitHub 연결 방법
@@ -135,7 +137,7 @@ git add . && git commit -m "수정 내용" && git push
 |-----|------|
 | 이용 현황 | 분석 로그 목록, 이메일 마스킹, 파일명, 소속, 엑셀 내보내기 |
 | 데이터 신청 | 신청 목록, 승인/거절, 어떤 데이터셋 신청했는지 표시 |
-| 데이터셋 관리 | 데이터셋 등록/수정/삭제 |
+| 데이터셋 관리 | 데이터셋 등록/삭제, 폴더 일괄 등록 |
 
 ### 이메일 마스킹 규칙
 
@@ -200,8 +202,9 @@ lhg9449@gmail.com → lhg****@gmail.com
 ### 색상 시스템
 
 ```
-브랜드 색: brand-600 (#0D7377 계열)
-네이비: navy-900
+기본색: brand-500 (#2E4A6E 남색 계열) — 버튼·링크·선택
+강조색: accent-400 (#E4B84E 앰버) — 어두운 배경 위 강조·배지·단위 (흰 바탕 글자색 금지)
+네이비: navy-900 (#0A1626)
 텍스트: neutral-700 / neutral-800
 보조: neutral-100 ~ neutral-400
 경고: amber-xxx
@@ -213,3 +216,6 @@ lhg9449@gmail.com → lhg****@gmail.com
 - 간격은 DESIGN.md의 base unit 배수로만 쓴다.
 - 작업 후 playwright MCP로 데스크톱/모바일(375px) 화면을 캡처해 스스로 검수한다.
 - 디자인 기준은 emil-design-eng, 레이아웃 참고는 design-taste-frontend 스킬을 쓴다.
+- 디자인을 바꿀 때는 라이브를 바로 고치지 말고 시안(Claude 아티팩트)을 먼저 보여 주고 승인 뒤 구현한다.
+- 코드에는 한국어 주석을 달고, 고칠 때 자주 찾는 위치는 "★ 수정:" 표시를 남긴다.
+- 코드 수정 뒤에는 묻지 말고 바로 빌드 → git push (Vercel 자동 배포) → 배포 성공 확인까지 한다.

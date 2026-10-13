@@ -42,7 +42,7 @@ export default function BoardShell({ type, counts, children }: { type: string; c
         <header className="border-b border-neutral-200 bg-white">
           <div className="mx-auto max-w-[1400px] px-4 pb-8 pt-9 sm:px-6 sm:pt-10">
             <h1 className="t-h1">게시판</h1>
-            <p className="mt-2 max-w-[60ch] text-base text-neutral-600">이용 중 궁금한 점, 필요한 데이터 요청, 나누고 싶은 자료를 올리는 곳입니다. 읽기는 누구나, 글과 댓글은 회원만 쓸 수 있습니다.</p>
+            <p className="mt-2 max-w-[60ch] text-base text-neutral-600">이용 중 궁금한 점, 필요한 데이터 요청, 나누고 싶은 자료를 올리는 곳입니다. 읽기는 누구나, 글·댓글·첨부파일 받기는 회원만 할 수 있습니다.</p>
           </div>
         </header>
 
@@ -67,7 +67,7 @@ export default function BoardShell({ type, counts, children }: { type: string; c
             </nav>
             <div className="mt-4 hidden rounded-[14px] border border-neutral-200 bg-white p-3.5 text-[13.5px] text-neutral-600 md:block">
               <b className="mb-1 block text-[13px] text-neutral-900">이용 안내</b>
-              읽기는 누구나, 글과 댓글은 로그인한 회원만 쓸 수 있습니다. 자료 게시판은 파일 1개(20MB)를 첨부할 수 있습니다.
+              읽기는 누구나, 글·댓글·첨부파일 받기는 로그인한 회원만 할 수 있습니다. 자료 게시판은 파일 1개(20MB)를 첨부할 수 있습니다.
             </div>
           </aside>
 

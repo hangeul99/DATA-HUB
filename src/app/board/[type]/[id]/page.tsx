@@ -4,7 +4,7 @@
    게시글 보기 (/board/[type]/[id]) — 시안 v9
 
    왼쪽 메뉴(BoardShell) + 오른쪽: 제목·작성자·날짜·조회 → 본문 → 첨부파일 상자 → 댓글
-   기능은 그대로: 조회수 증가, 본인·관리자만 수정·삭제, 첨부는 로그인 없이 받고 기록 남김, 댓글은 회원만
+   기능: 조회수 증가, 본인·관리자만 수정·삭제, 첨부파일·댓글은 로그인한 회원만 (다운로드 기록에 계정이 남음)
 ============================================================ */
 
 import { useState, useEffect } from "react";
@@ -21,14 +21,6 @@ interface Post {
   attachment_path?: string | null; attachment_name?: string | null;
 }
 interface Comment { id: string; created_at: string; content: string; author_name: string; user_id: string }
-
-// 비로그인 사용자 식별 ID — localStorage에 저장해 같은 브라우저면 동일한 번호 유지
-function getGuestId(): string {
-  const key = "dh_guest_id";
-  let id = localStorage.getItem(key);
-  if (!id) { id = String(Math.floor(1000 + Math.random() * 9000)); localStorage.setItem(key, id); }
-  return id;
-}
 
 export default function PostDetailPage() {
   const params = useParams();
@@ -104,6 +96,8 @@ export default function PostDetailPage() {
   const handleDownload = async () => {
     if (!post?.attachment_path || !post?.attachment_name) return;
     setDownloadError(null);
+    // 첨부파일은 로그인한 회원만 — 기록에 계정이 남아야 이용 실적을 정확히 셀 수 있음
+    if (!currentUserId) { router.push(`/login?next=/board/${type}/${id}`); return; }
     const supabase = createClient();
     const { data } = supabase.storage.from("post-attachments").getPublicUrl(post.attachment_path);
     if (!data?.publicUrl) return;
@@ -118,12 +112,12 @@ export default function PostDetailPage() {
       setDownloadError("파일을 내려받지 못했습니다. 잠시 후 다시 시도해 주세요.");
       return;
     }
-    // 비로그인 포함 다운로드 기록
+    // 다운로드 기록 (누가 어떤 파일을 받았는지)
     try {
       const { data: { user } } = await supabase.auth.getUser();
       await supabase.from("board_download_logs").insert({
         post_id: post.id, post_title: post.title, file_name: post.attachment_name, board_type: type,
-        user_id: user?.id ?? null, user_email: user?.email ?? `게스트-${getGuestId()}`,
+        user_id: user?.id ?? null, user_email: user?.email ?? null,
       });
     } catch { /* 기록 실패는 다운로드에 영향 없음 */ }
   };
@@ -166,9 +160,9 @@ export default function PostDetailPage() {
               <FileText size={22} className="flex-none text-neutral-500" aria-hidden="true" />
               <div className="min-w-0 flex-1">
                 <p className="truncate text-[14.5px] font-bold text-neutral-900">{post.attachment_name}</p>
-                <p className="text-[12.5px] text-neutral-500">첨부파일 · 로그인 없이 받을 수 있습니다</p>
+                <p className="text-[12.5px] text-neutral-500">첨부파일 · {currentUserId ? "내려받을 수 있습니다" : "로그인 후 내려받을 수 있습니다"}</p>
               </div>
-              <button type="button" onClick={handleDownload} className="press inline-flex h-9 items-center gap-1.5 rounded-full bg-brand-500 px-4 text-[13px] font-bold text-white hover:bg-brand-600"><Download size={14} /> 내려받기</button>
+              <button type="button" onClick={handleDownload} className="press inline-flex h-9 items-center gap-1.5 rounded-full bg-brand-500 px-4 text-[13px] font-bold text-white hover:bg-brand-600"><Download size={14} /> {currentUserId ? "내려받기" : "로그인하고 받기"}</button>
               {downloadError && <p className="w-full text-sm text-red-600">{downloadError}</p>}
             </div>
           )}

@@ -49,12 +49,19 @@ export default function LoginPage() {
     const supabase = createClient();
     const { error } = await supabase.auth.signInWithOAuth({
       provider: "google",
-      options: { redirectTo: `${location.origin}/auth/callback` },
+      options: { redirectTo: `${location.origin}/auth/callback?next=${encodeURIComponent(nextPath())}` },
     });
     if (error) {
       setError("구글 로그인 중 오류가 발생했습니다.");
       setLoadingGoogle(false);
     }
+  };
+
+  /** 로그인 뒤 돌아갈 주소 — ?next= 또는 ?redirect= 값이 "/"로 시작하는 사이트 안 경로일 때만 사용 */
+  const nextPath = () => {
+    const q = new URLSearchParams(window.location.search);
+    const n = q.get("next") ?? q.get("redirect") ?? "/";
+    return n.startsWith("/") && !n.startsWith("//") ? n : "/";
   };
 
   // 이메일/비밀번호 로그인
@@ -85,7 +92,7 @@ export default function LoginPage() {
       setCaptchaKey((k) => k + 1);
       setLoadingEmail(false);
     } else {
-      router.push("/");
+      router.push(nextPath()); // 원래 보던 페이지(상세·게시글 등)로 돌아감
       router.refresh();
     }
   };

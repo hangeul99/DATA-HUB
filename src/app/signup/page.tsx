@@ -70,7 +70,7 @@ export default function SignupPage() {
     setLoading(true);
     const supabase = createClient();
 
-    const { error } = await supabase.auth.signUp({
+    const { data, error } = await supabase.auth.signUp({
       email,
       password,
       options: {
@@ -101,7 +101,16 @@ export default function SignupPage() {
       setCaptchaKey((k) => k + 1);
       setLoading(false);
     } else {
-      // 성공 → 이메일 인증 안내 화면으로 전환
+      // 이메일 인증이 꺼져 있으면 가입 즉시 로그인된 상태(session 있음)
+      // → 인증 메일 콜백을 거치지 않으므로 소속기관을 여기서 바로 저장하고 홈으로
+      if (data.session && data.user) {
+        try {
+          await supabase.from("profiles").update({ organization: organization.trim(), name: name.trim() }).eq("id", data.user.id);
+        } catch { /* 저장 실패해도 홈의 소속 입력 창이 다시 물어봄 */ }
+        window.location.href = "/";
+        return;
+      }
+      // 이메일 인증이 켜져 있으면 → 인증 메일 안내 화면
       setDone(true);
     }
   };

@@ -82,9 +82,20 @@ export default function SignupPage() {
     });
 
     if (error) {
-      if (error.message.includes("already registered")) setError("이미 가입된 이메일입니다. 로그인해주세요.");
-      else if (error.message.toLowerCase().includes("captcha")) setError("보안 확인에 실패했습니다. 다시 시도해주세요.");
-      else setError("회원가입 중 오류가 발생했습니다.");
+      // Supabase 오류를 원인별 한국어 안내로 (모르는 오류는 원문 코드를 함께 보여 줘 원인 파악이 쉽도록)
+      const msg = error.message.toLowerCase();
+      const code = (error as { code?: string }).code ?? "";
+      console.error("[signup]", error.status, code, error.message);
+      if (msg.includes("already registered")) setError("이미 가입된 이메일입니다. 로그인해주세요.");
+      else if (msg.includes("captcha")) setError("보안 확인에 실패했습니다. 다시 시도해주세요.");
+      else if (msg.includes("rate limit") || code === "over_email_send_rate_limit" || error.status === 429)
+        setError("지금 가입 신청이 많아 인증 메일을 보낼 수 없습니다. 1시간쯤 뒤에 다시 시도하거나 Google로 가입해 주세요.");
+      else if (msg.includes("sending") && msg.includes("email"))
+        setError("인증 메일을 보내지 못했습니다. 잠시 후 다시 시도하거나 Google로 가입해 주세요.");
+      else if (msg.includes("password")) setError("비밀번호가 보안 기준에 맞지 않습니다. 영문·숫자를 섞어 8자 이상으로 입력해 주세요.");
+      else if (msg.includes("invalid") && msg.includes("email")) setError("이메일 주소 형식을 확인해 주세요.");
+      else if (msg.includes("signups not allowed")) setError("현재 회원가입이 중지되어 있습니다. 관리자에게 문의해 주세요.");
+      else setError(`회원가입 중 오류가 발생했습니다. (${error.status ?? ""} ${code || error.message})`);
       // 캡차 토큰은 1회용이므로 실패 시 위젯 리셋
       setCaptchaToken(null);
       setCaptchaKey((k) => k + 1);
